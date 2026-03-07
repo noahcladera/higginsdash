@@ -106,6 +106,41 @@ input[type="search"]::placeholder{color:var(--t4);}
 .lloc.school{color:var(--c-school);}
 .lloc.gocap{color:var(--c-gocap);}
 .lkids{font-family:"DM Mono",monospace;font-size:10px;text-align:center;padding:2px 7px;background:var(--s2);border:1px solid var(--b2);border-radius:12px;}
+
+@media(max-width:768px){
+  .toolbar{padding:8px 12px;gap:6px;}
+  .stats-strip{padding:5px 12px;font-size:9px;}
+  .legend{padding:6px 12px;gap:12px;}
+  .cal-outer,.sched-outer{max-height:calc(100vh - 200px);}
+}
+@media(max-width:480px){
+  .toolbar{padding:6px 10px;flex-direction:column;align-items:stretch;}
+  .toolbar>span,.toolbar>select,.toolbar>input,.toolbar>.sep,.toolbar>.btn-grp{flex-shrink:0;}
+  input[type="search"]{width:100%;}
+  .stats-strip{padding:4px 10px;font-size:8px;}
+  .legend{padding:5px 10px;gap:8px;font-size:10px;}
+  .cal-time-head,.time-cell{width:40px;height:44px;}
+  .time-slot{height:44px;}
+  .cal-day-head .dn{font-size:11px;}
+  .cal-day-head .dc{font-size:8px;}
+  .now-line{left:40px;}
+  .sched-name-cell{min-width:90px;font-size:10px;padding:3px 8px;}
+  .sched-timeline-cell{height:30px;min-width:18px;}
+  .sched-time-head{font-size:8px;padding:4px 6px;}
+  .sched-day-tab{padding:5px 10px;}
+  .sched-day-tab button{padding:3px 8px;font-size:9px;}
+  .popover{min-width:auto;max-width:none;left:8px!important;right:8px!important;bottom:12px!important;top:auto!important;max-height:40vh;overflow-y:auto;}
+  .list-wrap{padding:12px 14px;}
+  .list-dtitle{font-size:10px;}
+  .list-ev{grid-template-columns:70px 1fr 80px;gap:8px;padding:8px 10px;}
+  .list-ev .lloc,.list-ev .lkids{display:none;}
+  .lt{font-size:9px;}
+  .ln{font-size:11px;}
+  .ls,.lc{font-size:9px;}
+  .daynav{padding:5px 12px;}
+  .daynav-btn{padding:3px 10px;font-size:11px;}
+  .daynav-lbl{font-size:12px;}
+}
 </style>
 </head>
 <body>
@@ -347,8 +382,11 @@ function renderCal() {
     document.getElementById('dayNavLbl').textContent = days.join(' · ');
   } else days = DAYS;
 
-  const minW = view === 'day' ? 300 : view === '3day' ? 200 : 130;
-  grid.style.cssText = `display:grid;grid-template-columns:52px repeat(${days.length},minmax(${minW}px,1fr));grid-template-rows:auto repeat(${hours.length},${SLOTH}px);`;
+  const w = window.innerWidth;
+  const timeCol = w <= 480 ? 40 : 52;
+  const minW = w <= 480 ? (view === 'day' ? 180 : view === '3day' ? 140 : 90) : w <= 768 ? (view === 'day' ? 240 : view === '3day' ? 160 : 100) : (view === 'day' ? 300 : view === '3day' ? 200 : 130);
+  const slotH = w <= 480 ? 44 : SLOTH;
+  grid.style.cssText = `display:grid;grid-template-columns:${timeCol}px repeat(${days.length},minmax(${minW}px,1fr));grid-template-rows:auto repeat(${hours.length},${slotH}px);`;
   grid.innerHTML = '';
 
   const byDay = {}; DAYS.forEach(d => byDay[d] = []);
@@ -373,7 +411,7 @@ function renderCal() {
     const col = document.createElement('div');
     col.className = 'day-col' + (day === TODAY ? ' today' : '');
     col.style.gridArea = `2/${ci + 2}/span ${hours.length}`;
-    col.style.height = `${hours.length * SLOTH}px`;
+    col.style.height = `${hours.length * slotH}px`;
     hours.forEach(() => { const s = document.createElement('div'); s.className = 'time-slot'; col.appendChild(s); });
 
     const layer = document.createElement('div'); layer.className = 'ev-layer';
@@ -381,8 +419,8 @@ function renderCal() {
     const slotMap = computeOverlapSlots(evs);
 
     evs.forEach(e => {
-      const top = ((HT.t2m(e.start_time) - SH * 60) / 60) * SLOTH;
-      const height = Math.max(((HT.t2m(e.end_time) - HT.t2m(e.start_time)) / 60) * SLOTH, 28);
+      const top = ((HT.t2m(e.start_time) - SH * 60) / 60) * slotH;
+      const height = Math.max(((HT.t2m(e.end_time) - HT.t2m(e.start_time)) / 60) * slotH, 24);
       const info = slotMap.get(e.id) || { slot: 0, total: 1 };
       const cw = 100 / info.total, lp = info.slot * cw;
 
@@ -464,9 +502,12 @@ function updateNowLine() {
   const now = new Date();
   const minOfDay = now.getHours() * 60 + now.getMinutes();
   if (minOfDay < SH * 60 || minOfDay > EH * 60) { nl.style.display = 'none'; return; }
-  const top = ((minOfDay - SH * 60) / 60) * SLOTH;
+  const w = window.innerWidth;
+  const slotH = w <= 480 ? 44 : SLOTH;
+  const timeCol = w <= 480 ? 40 : 52;
+  const top = ((minOfDay - SH * 60) / 60) * slotH;
   nl.style.display = 'block';
-  nl.style.top = (52 + top) + 'px';
+  nl.style.top = (timeCol + top) + 'px';
 }
 function scrollToNow() {
   if (view === 'list' || view === 'schedule') return;
@@ -506,7 +547,9 @@ function renderSchedule() {
   const hours = []; for (let h = SH; h <= EH; h++) hours.push(h);
   const totalMins = (EH - SH) * 60;
 
-  grid.style.cssText = `display:grid;grid-template-columns:140px 1fr;grid-template-rows:auto repeat(${rows.length}, 32px);min-width:600px;`;
+  const schedMinW = window.innerWidth <= 480 ? 320 : window.innerWidth <= 768 ? 450 : 600;
+  const nameW = window.innerWidth <= 480 ? 90 : 140;
+  grid.style.cssText = `display:grid;grid-template-columns:${nameW}px 1fr;grid-template-rows:auto repeat(${rows.length}, 32px);min-width:${schedMinW}px;`;
   grid.innerHTML = '';
 
   const blank = document.createElement('div');

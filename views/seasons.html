@@ -44,6 +44,32 @@
 .cc-label{color:var(--t3);}
 .w-val{color:var(--c-triaz);font-family:"DM Mono",monospace;font-size:10px;}
 .s-val{color:var(--orange);font-family:"DM Mono",monospace;font-size:10px;}
+
+.cmp-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+@media(max-width:768px){
+  .page{padding:20px 24px;}
+  .split-hd{grid-template-columns:1fr;margin-bottom:20px;}
+  #typeCmp,#dayCmp{grid-template-columns:1fr !important;gap:12px;margin-bottom:20px;}
+  .cmp-wrap{margin-bottom:20px;}
+}
+@media(max-width:480px){
+  .page{padding:16px 12px;}
+  .sh{padding:16px 18px;}
+  .shn{font-size:10px;margin-bottom:10px;}
+  .shv{font-size:22px;}
+  .shsub{font-size:10px;}
+  .kpi-grid{grid-template-columns:1fr;margin-top:12px;}
+  .kpi{padding:9px 12px;}
+  .kpiv{font-size:16px;}
+  .kpil{font-size:7px;}
+  .cmp th,.cmp td{font-size:11px;padding:6px 10px;}
+  .cmp .metric{font-size:9px;}
+  .coach-cmp{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;margin-bottom:20px;}
+  .cc{padding:10px 12px;}
+  .ccn{font-size:12px;margin-bottom:6px;}
+  .cc-row{font-size:10px;}
+}
 </style>
 </head>
 <body>
@@ -68,6 +94,7 @@
   <div id="splitHd" class="split-hd"></div>
 
   <div class="sec-label">Key Metrics Comparison</div>
+  <div class="cmp-wrap">
   <table class="cmp">
     <thead>
       <tr>
@@ -79,6 +106,7 @@
     </thead>
     <tbody id="cmpBody"></tbody>
   </table>
+  </div>
 
   <div class="sec-label">Coach Activity — Both Seasons</div>
   <div class="coach-cmp" id="coachCmp"></div>

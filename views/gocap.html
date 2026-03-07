@@ -157,6 +157,52 @@
 .crow:last-child{border-bottom:none;}
 .cname{font-size:12px;color:var(--t2);flex:1;}
 .cval{font-family:"DM Mono",monospace;font-size:11px;color:var(--t3);}
+
+@media(max-width:768px){
+  .main{padding:16px 18px;}
+  .side{padding:16px;gap:14px;}
+  .gantt-wrap{margin-top:18px;}
+}
+@media(max-width:480px){
+  .status-strip{padding:8px 12px;gap:10px;font-size:10px;}
+  .status-clock{font-size:15px;}
+  .status-counts{font-size:9px;gap:8px;}
+  .status-next{min-width:0;font-size:9px;}
+  .status-pills{gap:4px;}
+  .status-pill{padding:2px 7px;font-size:8px;}
+  .status-legend{gap:8px;font-size:8px;}
+  .main{padding:12px 14px;}
+  .side{padding:12px 14px;gap:12px;}
+  .day-tabs{padding:4px 0;margin-bottom:14px;gap:3px;}
+  .dtab{padding:4px 10px;font-size:9px;}
+  .dcard-head{padding:10px 12px;gap:8px;}
+  .dstatus{min-width:65px;font-size:8px;padding:3px 6px;}
+  .dtime{min-width:44px;font-size:11px;}
+  .dname{font-size:12px;}
+  .dsub{font-size:9px;}
+  .dtag{font-size:8px;padding:2px 5px;}
+  .dtimeline{padding:10px 12px 12px;}
+  .tl-row{padding:5px 0;}
+  .tl-time{min-width:38px;font-size:9px;}
+  .tl-label{font-size:11px;}
+  .tl-sub{font-size:9px;}
+  .gantt{grid-template-columns:70px 1fr;gap:6px;font-size:9px;}
+  .gantt-label{padding:4px 0;font-size:9px;}
+  .gantt-track{height:24px;margin:3px 0;}
+  .gantt-wrap{margin-top:16px;}
+  .gantt-time-axis{font-size:8px;}
+  .map-wrap{max-height:200px;}
+  .map-wrap svg{max-height:180px;}
+  .map-sub{padding:4px 10px;font-size:7px;}
+  .map-modal-close{top:12px;right:12px;width:38px;height:38px;font-size:18px;}
+  .map-modal-title{top:14px;left:14px;font-size:10px;}
+  .map-modal-controls{top:14px;padding:6px 12px;gap:8px;}
+  .map-play-btn{padding:5px 10px;font-size:10px;}
+  .map-time-label{font-size:10px;min-width:50px;}
+  .map-modal-legend{bottom:12px;left:12px;font-size:9px;padding:8px 10px;gap:10px;}
+  .map-legend-dot{width:8px;height:8px;}
+  .bakfiets-marker{width:26px;height:26px;font-size:12px;border-width:2px;}
+}
 </style>
 </head>
 <body>

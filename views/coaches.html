@@ -53,6 +53,35 @@
 .wc{font-family:"DM Mono",monospace;font-size:10px;color:var(--t3);}
 .wbar-wrap{height:4px;background:var(--b2);border-radius:2px;overflow:hidden;}
 .wbar{height:100%;border-radius:2px;background:var(--orange);}
+
+@media(max-width:768px){
+  .main{padding:20px 24px;}
+  .side{padding:20px;gap:14px;}
+}
+@media(max-width:480px){
+  .main{padding:14px 12px;}
+  .side{padding:14px 12px;gap:12px;}
+  .totals{grid-template-columns:repeat(2,1fr);margin-bottom:20px;}
+  .tb{padding:12px 14px;}
+  .tbv{font-size:22px;}
+  .tbl{font-size:7px;}
+  .rates-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:20px;}
+  .rc{padding:10px 12px;}
+  .rcn{font-size:12px;}
+  .rcr,.rck{font-size:9px;}
+  .rctotal{font-size:11px;}
+  .detail .dh{padding:10px 12px;}
+  .dhn{font-size:13px;}
+  .dhs{font-size:8px;}
+  .dhtotal{font-size:12px;}
+  .hrow,.crow2{grid-template-columns:1fr 50px 55px 55px;gap:6px;padding:6px 12px;}
+  .hc,.cv{font-size:7px;}
+  .cn{font-size:10px;}
+  .cs{font-size:8px;}
+  .wrow{padding:7px 12px;}
+  .wn{font-size:11px;}
+  .wc{font-size:9px;}
+}
 </style>
 </head>
 <body>

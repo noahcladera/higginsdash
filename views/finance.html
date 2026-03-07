@@ -42,6 +42,26 @@
 
 .sort-btn{background:none;border:none;color:var(--t4);cursor:pointer;font-size:9px;padding:2px;}
 .sort-btn:hover{color:var(--t2);}
+
+.pl-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+@media(max-width:768px){
+  .main{padding:20px 24px;}
+  .side{padding:20px;gap:14px;}
+}
+@media(max-width:480px){
+  .main{padding:14px 12px;}
+  .side{padding:14px 12px;gap:12px;}
+  .kpis{grid-template-columns:1fr;margin-bottom:20px;}
+  .kpi{padding:14px 16px;}
+  .kpiv{font-size:22px;}
+  .kpil{font-size:7px;}
+  .pl-table th,.pl-table td{font-size:10px;padding:6px 8px;}
+  .pl-table .mono{font-size:10px;}
+  .pl-table tfoot td{font-size:11px;padding:10px;}
+  .bc-label{min-width:60px;font-size:10px;}
+  .bc-val{min-width:44px;font-size:9px;}
+}
 </style>
 </head>
 <body>
@@ -79,6 +99,7 @@
       <span>P&L by Class</span>
       <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--t4)">Only rows with financial data shown</span>
     </div>
+    <div class="pl-table-wrap">
     <table class="pl-table" id="plTable">
       <thead>
         <tr>
@@ -94,6 +115,7 @@
       <tbody id="plBody"></tbody>
       <tfoot id="plFoot"></tfoot>
     </table>
+    </div>
   </div>
 
   <div class="side">
