@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Higgins Tennis — Command Center</title>
+<title>Higgins Tennis — OPS</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/main.css">
 <style>
 .stats{display:grid;grid-template-columns:repeat(7,1fr);background:var(--b1);border-bottom:1px solid var(--b2);gap:1px;}
 @media(max-width:900px){.stats{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:500px){.stats{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:480px){.sc{padding:12px 14px;}.sv{font-size:24px;}.sl{font-size:8px;}.sn{font-size:9px;}}
+@media(max-width:480px){.sc{padding:12px 14px;}.sv{font-size:22px;}.sl{font-size:10px;}.sn{font-size:10px;}}
 .sc{background:var(--s1);padding:20px 24px;}
-.sv{font-size:30px;font-weight:700;line-height:1;letter-spacing:-.5px;margin-bottom:5px;}
-.sl{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:1.5px;color:var(--t3);text-transform:uppercase;}
+.sv{font-size:24px;font-weight:700;line-height:1;letter-spacing:-.5px;margin-bottom:5px;}
+.sl{font-size:11px;font-weight:500;color:var(--t3);}
 .sn{font-size:10px;color:var(--t3);margin-top:4px;}
 
 .main{display:grid;grid-template-columns:1fr 340px;min-height:calc(100vh - 170px);}
@@ -22,15 +22,15 @@
 @media(max-width:480px){.lcol{padding:16px 12px;}}
 .side{padding:24px 22px;background:var(--s0);display:flex;flex-direction:column;gap:18px;}
 @media(max-width:480px){.side{padding:16px 12px;gap:14px;}}
-.slbl{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:2.5px;color:var(--t4);text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--b1);}
+.slbl{font-size:11px;font-weight:600;letter-spacing:0.5px;color:var(--t3);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--b1);}
 
 .mods{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:32px;}
 @media(max-width:700px){.mods{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:480px){.mods{grid-template-columns:1fr;}.mod{padding:14px 12px;}.mi{font-size:18px;}.mn{font-size:12px;}.md{font-size:9px;}}
-.mod{background:var(--s1);border:1px solid var(--b2);border-radius:7px;padding:18px 16px 14px;text-decoration:none;color:var(--t1);transition:all .18s;display:block;position:relative;overflow:hidden;}
-.mod:hover{background:var(--s2);border-color:var(--b3);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.3);}
+.mod{background:var(--s1);border:1px solid var(--b2);border-radius:8px;padding:18px 16px 14px;text-decoration:none;color:var(--t1);transition:border-color .15s;display:block;position:relative;overflow:hidden;}
+.mod:hover{border-color:var(--b3);}
 .mod.live{border-color:rgba(245,160,32,.18);}
-.mod.live:hover{border-color:var(--orange);box-shadow:0 6px 24px rgba(245,160,32,.12);}
+.mod.live:hover{border-color:var(--orange);}
 .mi{font-size:20px;margin-bottom:9px;display:block;}
 .mn{font-size:13px;font-weight:700;color:var(--t2);margin-bottom:3px;}
 .mod.live .mn{color:var(--orange);}
@@ -52,7 +52,7 @@
 .lrow{display:flex;align-items:center;gap:10px;padding:10px 15px;border-bottom:1px solid var(--b1);}
 .lrow:last-child{border-bottom:none;}
 .ldot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
-.lname{font-size:12px;font-weight:500;color:var(--t2);flex:1;}
+.lname{font-size:13px;font-weight:500;color:var(--t2);flex:1;}
 .lcnt{font-family:"DM Mono",monospace;font-size:10px;color:var(--t4);}
 
 .fr-row{display:flex;align-items:center;gap:10px;padding:8px 15px;border-bottom:1px solid var(--b1);}
@@ -126,8 +126,8 @@
     <div class="card"><div class="chd"><span class="cht">Enrollment</span></div><div id="fillRows"></div></div>
 
     <div style="display:flex;align-items:center;gap:8px;padding:10px 0;">
-      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--t4)">LAST LOADED FROM CSV</div>
-      <button onclick="reloadCSV()" style="margin-left:auto;font-family:'DM Mono',monospace;font-size:9px;padding:4px 10px;background:var(--s2);border:1px solid var(--b3);color:var(--t3);border-radius:3px;cursor:pointer;">↻ RELOAD</button>
+      <div style="font-size:10px;color:var(--t4)">Last loaded from CSV</div>
+      <button onclick="reloadCSV()" style="margin-left:auto;font-size:10px;padding:4px 10px;background:var(--s2);border:1px solid var(--b3);color:var(--t3);border-radius:4px;cursor:pointer;">Reload</button>
     </div>
   </div>
 </div>
@@ -170,7 +170,7 @@ function renderStats() {
   document.getElementById('st-rev').textContent      = HT.eur(rev);
   const fillEl = document.getElementById('st-fill');
   fillEl.textContent  = fill + '%';
-  fillEl.style.color  = fill < 60 ? '#f87171' : 'var(--c-triaz)';
+  fillEl.style.color  = fill < 60 ? 'var(--neg)' : 'var(--pos)';
   document.getElementById('st-fill-note').textContent = totalPax + ' / ' + totalMax + ' spots';
   document.getElementById('st-hours').textContent = totalHours.toFixed(1);
 }
@@ -225,7 +225,7 @@ function renderSidebar() {
     .map(c => ({ name: c.program_name.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i,'').slice(0,32), pax: c.participants||0, max: c.max_participants, pct: Math.round((c.participants||0)/c.max_participants*100) }))
     .sort((a,b) => a.pct - b.pct).slice(0, 8);
   document.getElementById('fillRows').innerHTML = fillData.map(f => {
-    const col = f.pct < 50 ? '#f87171' : f.pct < 75 ? 'var(--orange)' : 'var(--c-triaz)';
+    const col = f.pct < 50 ? 'var(--neg)' : f.pct < 75 ? 'var(--orange)' : 'var(--pos)';
     return `<div class="fr-row"><div class="fr-name">${f.name}</div><div class="fr-bar-wrap"><div class="fr-bar" style="width:${f.pct}%;background:${col}"></div></div><div class="fr-pct" style="color:${col}">${f.pct}%</div></div>`;
   }).join('');
 }

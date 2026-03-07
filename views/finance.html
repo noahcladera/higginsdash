@@ -12,26 +12,32 @@
 .main{padding:28px 32px;border-right:1px solid var(--b1);}
 .side{padding:24px 20px;background:var(--s0);display:flex;flex-direction:column;gap:18px;}
 
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--b1);border:1px solid var(--b2);border-radius:7px;overflow:hidden;margin-bottom:28px;}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--b1);border:1px solid var(--b2);border-radius:8px;overflow:hidden;margin-bottom:14px;}
 @media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr);}}
 .kpi{background:var(--s1);padding:18px 20px;}
 .kpiv{font-size:26px;font-weight:700;line-height:1;letter-spacing:-.5px;}
-.kpil{font-family:"DM Mono",monospace;font-size:8px;color:var(--t4);letter-spacing:1.5px;margin-top:5px;}
+.kpil{font-size:10px;font-weight:500;color:var(--t3);margin-top:5px;}
+
+.kpis-secondary{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--b1);border:1px solid var(--b2);border-radius:8px;overflow:hidden;margin-bottom:28px;}
+@media(max-width:700px){.kpis-secondary{grid-template-columns:repeat(2,1fr);}}
+.kpis-secondary .kpi{padding:12px 16px;}
+.kpis-secondary .kpiv{font-size:16px;}
+.kpis-secondary .kpil{font-size:10px;}
 
 .pl-table{width:100%;border-collapse:collapse;margin-bottom:28px;}
-.pl-table th{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:1.5px;color:var(--t4);text-transform:uppercase;padding:8px 12px;text-align:right;border-bottom:1px solid var(--b2);}
+.pl-table th{font-size:10px;font-weight:500;color:var(--t3);padding:8px 12px;text-align:right;border-bottom:1px solid var(--b2);}
 .pl-table th:first-child{text-align:left;}
 .pl-table td{padding:9px 12px;border-bottom:1px solid rgba(26,48,32,.5);font-size:12px;text-align:right;cursor:pointer;transition:background .1s;}
 .pl-table td:first-child{text-align:left;font-weight:500;}
 .pl-table tr:hover td{background:var(--s2);}
 .pl-table tr.cancelled td{opacity:.35;}
 .pl-table .mono{font-family:"DM Mono",monospace;font-size:11px;}
-.pl-table .pos{color:#4ade80;}
-.pl-table .neg{color:#f87171;}
+.pl-table .pos{color:var(--pos);}
+.pl-table .neg{color:var(--neg);}
 .pl-table .warn{color:var(--orange);}
 .pl-table tfoot td{font-weight:700;border-top:2px solid var(--b3);border-bottom:none;font-family:"DM Mono",monospace;font-size:12px;padding:12px;}
 
-.type-pill{font-family:"DM Mono",monospace;font-size:8px;padding:2px 6px;border-radius:2px;}
+.type-pill{font-size:10px;padding:2px 6px;border-radius:4px;}
 
 .bar-chart{display:flex;flex-direction:column;gap:6px;}
 .bc-row{display:flex;align-items:center;gap:8px;}
@@ -40,7 +46,16 @@
 .bc-bar{height:100%;border-radius:2px;transition:width .3s;}
 .bc-val{font-family:"DM Mono",monospace;font-size:10px;color:var(--t3);min-width:52px;text-align:right;}
 
-.sort-btn{background:none;border:none;color:var(--t4);cursor:pointer;font-size:9px;padding:2px;}
+.pie-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.pie-svg{display:block;}
+.pie-legend{display:flex;flex-direction:column;gap:4px;width:100%;}
+.pie-legend-row{display:flex;align-items:center;gap:8px;font-size:11px;}
+.pie-legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.pie-legend-label{color:var(--t2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pie-legend-val{font-family:"DM Mono",monospace;font-size:10px;color:var(--t3);}
+.pie-center{font-family:"DM Mono",monospace;font-size:10px;font-weight:600;fill:var(--t2);}
+
+.sort-btn{background:none;border:none;color:var(--t4);cursor:pointer;font-size:10px;padding:2px;}
 .sort-btn:hover{color:var(--t2);}
 
 .pl-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -52,10 +67,10 @@
 @media(max-width:480px){
   .main{padding:14px 12px;}
   .side{padding:14px 12px;gap:12px;}
-  .kpis{grid-template-columns:1fr;margin-bottom:20px;}
+  .kpis,.kpis-secondary{grid-template-columns:1fr;margin-bottom:20px;}
   .kpi{padding:14px 16px;}
   .kpiv{font-size:22px;}
-  .kpil{font-size:7px;}
+  .kpil{font-size:9px;}
   .pl-table th,.pl-table td{font-size:10px;padding:6px 8px;}
   .pl-table .mono{font-size:10px;}
   .pl-table tfoot td{font-size:11px;padding:10px;}
@@ -71,9 +86,9 @@
   <div style="display:flex;align-items:center;gap:12px;">
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
     <div class="season-switcher" id="seasonSwitcher">
-      <div class="s-opt" data-s="Winter 2026">WINTER 2026</div>
+      <div class="s-opt" data-s="Winter 2026">Winter 2026</div>
       <div class="s-sep"></div>
-      <div class="s-opt" data-s="Spring 2026">SPRING 2026</div>
+      <div class="s-opt" data-s="Spring 2026">Spring 2026</div>
     </div>
   </div>
 </header>
@@ -89,15 +104,21 @@
 <div class="page">
   <div class="main">
     <div class="kpis" id="kpis">
-      <div class="kpi"><div class="kpiv" id="kRev" style="color:var(--c-triaz)">—</div><div class="kpil">TOTAL REVENUE</div></div>
-      <div class="kpi"><div class="kpiv" id="kExp" style="color:#f87171">—</div><div class="kpil">TOTAL EXPENSES</div></div>
-      <div class="kpi"><div class="kpiv" id="kNet">—</div><div class="kpil">NET PROFIT</div></div>
-      <div class="kpi"><div class="kpiv" id="kMargin">—</div><div class="kpil">MARGIN</div></div>
+      <div class="kpi"><div class="kpiv" id="kRev" style="color:var(--c-triaz)">—</div><div class="kpil">Total revenue</div></div>
+      <div class="kpi"><div class="kpiv" id="kExp" style="color:var(--neg)">—</div><div class="kpil">Total expenses</div></div>
+      <div class="kpi"><div class="kpiv" id="kNet">—</div><div class="kpil">Net profit</div></div>
+      <div class="kpi"><div class="kpiv" id="kMargin">—</div><div class="kpil">Margin</div></div>
+    </div>
+    <div class="kpis kpis-secondary" id="kpisSecondary">
+      <div class="kpi"><div class="kpiv" id="kRevPerStudent">—</div><div class="kpil">Revenue / student</div></div>
+      <div class="kpi"><div class="kpiv" id="kRevPerClass">—</div><div class="kpil">Revenue / class</div></div>
+      <div class="kpi"><div class="kpiv" id="kAvgClassSize">—</div><div class="kpil">Avg class size</div></div>
+      <div class="kpi"><div class="kpiv" id="kCostPerStudent">—</div><div class="kpil">Cost / student</div></div>
     </div>
 
     <div class="sec-label" style="display:flex;align-items:center;justify-content:space-between">
       <span>P&L by Class</span>
-      <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--t4)">Only rows with financial data shown</span>
+      <span style="font-size:10px;color:var(--t4)">Only rows with financial data shown</span>
     </div>
     <div class="pl-table-wrap">
     <table class="pl-table" id="plTable">
@@ -143,8 +164,37 @@
 <script>
 const HT = window.HT;
 const TYPE_COLORS={'GoCAP':'var(--c-gocap)','Club':'var(--c-triaz)','School':'var(--c-school)','Private':'var(--c-rand)'};
-const LOC_COLORS={'Triaz':'var(--c-triaz)','AJErnstraat':'var(--c-triaz)','Randwijck':'var(--c-rand)','AICS South Campus':'var(--c-school)','VU':'var(--c-school)'};
+const LOC_COLORS={'Triaz':'var(--c-triaz)','AJ Ernststraat':'var(--c-triaz)','AJErnstraat':'var(--c-triaz)','Randwijck':'var(--c-rand)','AICS South Campus':'var(--c-school)','VU':'var(--c-school)'};
 let season=HT.getSeason(), all=[], sortKey='net', sortDir=-1;
+
+function polarToCart(cx,cy,r,angle){ return [cx+r*Math.cos(angle),cy+r*Math.sin(angle)]; }
+function arcPath(cx,cy,r,ir,startAngle,endAngle){
+  const [x1,y1]=polarToCart(cx,cy,r,startAngle);
+  const [x2,y2]=polarToCart(cx,cy,r,endAngle);
+  const [x3,y3]=polarToCart(cx,cy,ir,endAngle);
+  const [x4,y4]=polarToCart(cx,cy,ir,startAngle);
+  const large=(endAngle-startAngle)>Math.PI?1:0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${ir} ${ir} 0 ${large} 0 ${x4} ${y4} Z`;
+}
+function renderPie(containerId,dataMap,colorMap){
+  const entries=Object.entries(dataMap).sort((a,b)=>b[1]-a[1]);
+  const total=entries.reduce((s,[,v])=>s+v,0);
+  const el=document.getElementById(containerId);
+  if(!total){ el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t4);font-size:11px">No data</div>'; return; }
+  const size=120,cx=size/2,cy=size/2,r=45,ir=28;
+  let cumAngle=-Math.PI/2;
+  let paths='';
+  let legend='';
+  entries.forEach(([name,val])=>{
+    const pct=val/total;
+    const angle=pct*Math.PI*2;
+    const color=colorMap[name]||'var(--t3)';
+    paths+=`<path d="${arcPath(cx,cy,r,ir,cumAngle,cumAngle+angle)}" fill="${color}"/>`;
+    legend+=`<div class="pie-legend-row"><span class="pie-legend-dot" style="background:${color}"></span><span class="pie-legend-label">${(name||'').toString().slice(0,20)}</span><span class="pie-legend-val">${HT.eur(val)}</span></div>`;
+    cumAngle+=angle;
+  });
+  el.innerHTML=`<div class="pie-wrap"><svg class="pie-svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${paths}<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" class="pie-center">${HT.eur(total)}</text></svg><div class="pie-legend">${legend}</div></div>`;
+}
 
 async function load(){
   all=await HT.API.classes({season});
@@ -162,9 +212,16 @@ function render(){
   document.getElementById('kRev').textContent=HT.eur(totRev);
   document.getElementById('kExp').textContent=HT.eur(totExp);
   const netEl=document.getElementById('kNet');
-  netEl.textContent=HT.eur(totNet); netEl.style.color=totNet>=0?'#4ade80':'#f87171';
+  netEl.textContent=HT.eur(totNet); netEl.style.color=totNet>=0?'var(--pos)':'var(--neg)';
   const mEl=document.getElementById('kMargin');
-  mEl.textContent=margin+'%'; mEl.style.color=margin>=30?'#4ade80':margin>=15?'var(--orange)':'#f87171';
+  mEl.textContent=margin+'%'; mEl.style.color=margin>=30?'var(--pos)':margin>=15?'var(--orange)':'var(--neg)';
+
+  const totalStudents=active.reduce((s,c)=>s+(c.participants||0),0);
+  const classCount=active.length||1;
+  document.getElementById('kRevPerStudent').textContent=totalStudents>0?HT.eur(totRev/totalStudents):'—';
+  document.getElementById('kRevPerClass').textContent=classCount>0?HT.eur(totRev/classCount):'—';
+  document.getElementById('kAvgClassSize').textContent=classCount>0?(totalStudents/classCount).toFixed(1):'—';
+  document.getElementById('kCostPerStudent').textContent=totalStudents>0?HT.eur(totExp/totalStudents):'—';
 
   // Sort
   const rows=[...withData].sort((a,b)=>{
@@ -181,11 +238,11 @@ function render(){
     sumRev+=rev; sumExp+=exp; sumNet+=net;
     const fill=c.max_participants>0?Math.round((c.participants||0)/c.max_participants*100):null;
     const fillStr=fill!=null?fill+'%':'—';
-    const fillColor=fill==null?'var(--t4)':fill<50?'#f87171':fill<75?'var(--orange)':'#4ade80';
+    const fillColor=fill==null?'var(--t4)':fill<50?'var(--neg)':fill<75?'var(--orange)':'var(--pos)';
     const tcol=TYPE_COLORS[c.type]||'var(--t3)';
     const cleanName=c.program_name.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\S*\s+[\d:\/]+-[\d:]+\s*/i,'');
     return `<tr>
-      <td>${cleanName.slice(0,38)}<div style="font-size:9px;color:var(--t4);font-family:'DM Mono',monospace">${c.day} ${c.start_time}–${c.end_time}</div></td>
+      <td>${cleanName.slice(0,38)}<div style="font-size:10px;color:var(--t4)">${c.day} ${c.start_time}–${c.end_time}</div></td>
       <td><span class="type-pill" style="background:${tcol}22;color:${tcol};border:1px solid ${tcol}44">${c.type}</span></td>
       <td class="mono">${rev?HT.eur(rev):'—'}</td>
       <td class="mono">${exp?HT.eur(exp):'—'}</td>
@@ -203,26 +260,22 @@ function render(){
     <td colspan="2"></td>
   </tr>`;
 
-  // Revenue by location
+  // Revenue by location (pie)
   const locMap={};
   active.forEach(c=>{ const l=c.location; if(c.session_cost) locMap[l]=(locMap[l]||0)+(c.session_cost||0); });
-  const maxLoc=Math.max(...Object.values(locMap),1);
-  document.getElementById('locChart').innerHTML=`<div class="bar-chart">`+Object.entries(locMap).sort((a,b)=>b[1]-a[1])
-    .map(([l,v])=>`<div class="bc-row"><div class="bc-label">${l.split(' ')[0]}</div><div class="bc-bar-wrap"><div class="bc-bar" style="width:${Math.round(v/maxLoc*100)}%;background:${LOC_COLORS[l]||'var(--t3)'}"></div></div><div class="bc-val">${HT.eur(v)}</div></div>`).join('')+'</div>';
+  renderPie('locChart',locMap,LOC_COLORS);
 
-  // Revenue by type
+  // Revenue by type (pie)
   const typeMap={};
   active.forEach(c=>{ if(c.session_cost) typeMap[c.type]=(typeMap[c.type]||0)+(c.session_cost||0); });
-  const maxType=Math.max(...Object.values(typeMap),1);
-  document.getElementById('typeChart').innerHTML=`<div class="bar-chart">`+Object.entries(typeMap).sort((a,b)=>b[1]-a[1])
-    .map(([t,v])=>`<div class="bc-row"><div class="bc-label">${t}</div><div class="bc-bar-wrap"><div class="bc-bar" style="width:${Math.round(v/maxType*100)}%;background:${TYPE_COLORS[t]||'var(--t3)'}"></div></div><div class="bc-val">${HT.eur(v)}</div></div>`).join('')+'</div>';
+  renderPie('typeChart',typeMap,TYPE_COLORS);
 
   // Margin by type
   const mMap={};
   active.forEach(c=>{ if(!mMap[c.type])mMap[c.type]={rev:0,exp:0}; mMap[c.type].rev+=c.session_cost||0; mMap[c.type].exp+=c.expenses||0; });
   document.getElementById('marginRows').innerHTML=Object.entries(mMap).map(([t,{rev,exp}])=>{
     const m=rev>0?Math.round((rev-exp)/rev*100):null;
-    const col=m==null?'var(--t4)':m>=30?'#4ade80':m>=0?'var(--orange)':'#f87171';
+    const col=m==null?'var(--t4)':m>=30?'var(--pos)':m>=0?'var(--orange)':'var(--neg)';
     return `<div class="crow"><div class="cname">${t}</div><div class="cval" style="color:${col}">${m!=null?m+'%':'—'}</div></div>`;
   }).join('');
 }

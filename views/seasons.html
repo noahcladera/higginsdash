@@ -10,34 +10,34 @@
 .page{padding:28px 32px;max-width:1200px;}
 
 /* split header */
-.split-hd{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--b1);border:1px solid var(--b2);border-radius:7px;overflow:hidden;margin-bottom:28px;}
+.split-hd{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--b1);border:1px solid var(--b2);border-radius:8px;overflow:hidden;margin-bottom:28px;}
 .sh{background:var(--s1);padding:20px 24px;}
-.shn{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:2px;color:var(--t4);margin-bottom:12px;text-transform:uppercase;}
+.shn{font-size:12px;font-weight:600;color:var(--t3);margin-bottom:12px;}
 .shv{font-size:28px;font-weight:700;letter-spacing:-.5px;line-height:1;margin-bottom:3px;}
 .shsub{font-size:11px;color:var(--t3);}
 
 .kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--b2);margin-top:14px;border-top:1px solid var(--b2);}
 .kpi{background:var(--s1);padding:11px 14px;}
 .kpiv{font-size:18px;font-weight:700;line-height:1;}
-.kpil{font-family:"DM Mono",monospace;font-size:8px;color:var(--t4);letter-spacing:1px;margin-top:3px;}
+.kpil{font-size:10px;font-weight:500;color:var(--t3);margin-top:3px;}
 
 /* comparison table */
 .cmp{width:100%;border-collapse:collapse;margin-bottom:28px;}
-.cmp th{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:1.5px;color:var(--t4);text-transform:uppercase;padding:8px 14px;border-bottom:1px solid var(--b2);}
+.cmp th{font-size:10px;font-weight:500;color:var(--t3);padding:8px 14px;border-bottom:1px solid var(--b2);}
 .cmp th.wth{color:#7a9a80;}
 .cmp th.sth{color:var(--orange);}
 .cmp td{padding:9px 14px;border-bottom:1px solid rgba(26,48,32,.4);font-size:12px;vertical-align:top;}
 .cmp tr:hover td{background:var(--s2);}
-.cmp .metric{font-family:"DM Mono",monospace;font-size:10px;color:var(--t3);letter-spacing:.5px;}
+.cmp .metric{font-size:11px;font-weight:500;color:var(--t3);}
 .cmp .wval{color:var(--c-triaz);}
 .cmp .sval{color:var(--orange);}
-.delta-pos{color:#4ade80;font-family:"DM Mono",monospace;font-size:10px;}
-.delta-neg{color:#f87171;font-family:"DM Mono",monospace;font-size:10px;}
+.delta-pos{color:var(--pos);font-size:10px;}
+.delta-neg{color:var(--neg);font-size:10px;}
 .delta-neu{color:var(--t4);font-family:"DM Mono",monospace;font-size:10px;}
 
 /* coach comparison */
 .coach-cmp{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-bottom:28px;}
-.cc{background:var(--s1);border:1px solid var(--b2);border-radius:6px;padding:12px 14px;}
+.cc{background:var(--s1);border:1px solid var(--b2);border-radius:8px;padding:12px 14px;}
 .ccn{font-size:13px;font-weight:700;margin-bottom:8px;}
 .cc-row{display:flex;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px solid rgba(26,48,32,.4);}
 .cc-row:last-child{border-bottom:none;}
@@ -56,15 +56,15 @@
 @media(max-width:480px){
   .page{padding:16px 12px;}
   .sh{padding:16px 18px;}
-  .shn{font-size:10px;margin-bottom:10px;}
+  .shn{font-size:11px;margin-bottom:10px;}
   .shv{font-size:22px;}
   .shsub{font-size:10px;}
   .kpi-grid{grid-template-columns:1fr;margin-top:12px;}
   .kpi{padding:9px 12px;}
   .kpiv{font-size:16px;}
-  .kpil{font-size:7px;}
+  .kpil{font-size:9px;}
   .cmp th,.cmp td{font-size:11px;padding:6px 10px;}
-  .cmp .metric{font-size:9px;}
+  .cmp .metric{font-size:10px;}
   .coach-cmp{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;margin-bottom:20px;}
   .cc{padding:10px 12px;}
   .ccn{font-size:12px;margin-bottom:6px;}
@@ -78,7 +78,7 @@
     <span class="logo-text">higginstennis.nl<span class="logo-tag">OPS</span></span></a>
   <div style="display:flex;align-items:center;gap:12px;">
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
-    <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t3);letter-spacing:2px">SEASON COMPARISON</span>
+    <span style="font-size:10px;font-weight:500;color:var(--t3)">Season comparison</span>
   </div>
 </header>
 <nav>
@@ -99,8 +99,8 @@
     <thead>
       <tr>
         <th>Metric</th>
-        <th class="wth">❄ Winter 2026</th>
-        <th class="sth">☀ Spring 2026</th>
+        <th class="wth">Winter 2026</th>
+        <th class="sth">Spring 2026</th>
         <th>Change</th>
       </tr>
     </thead>
@@ -157,25 +157,25 @@ function render(winter,spring){
   // Split header
   document.getElementById('splitHd').innerHTML=`
     <div class="sh">
-      <div class="shn">❄ Winter 2026</div>
+      <div class="shn">Winter 2026</div>
       <div class="shv" style="color:var(--c-triaz)">Jan 5 – Mar 30</div>
       <div class="shsub">School holidays Feb 21–Mar 1</div>
       <div class="kpi-grid">
-        <div class="kpi"><div class="kpiv" style="color:var(--c-triaz)">${W.classes}</div><div class="kpil">CLASSES</div></div>
-        <div class="kpi"><div class="kpiv" style="color:var(--c-triaz)">${W.pax}</div><div class="kpil">STUDENTS</div></div>
-        <div class="kpi"><div class="kpiv" style="color:var(--c-triaz)">${HT.eur(W.rev)}</div><div class="kpil">REVENUE</div></div>
-        <div class="kpi"><div class="kpiv" style="color:var(--c-triaz)">${W.fill}%</div><div class="kpil">FILL RATE</div></div>
+        <div class="kpi"><div class="kpiv" style="color:var(--c-triaz)">${W.classes}</div><div class="kpil">Classes</div></div>
+        <div class="kpi"><div class="kpiv" style="color:var(--c-triaz)">${W.pax}</div><div class="kpil">Students</div></div>
+        <div class="kpi"><div class="kpiv" style="color:var(--c-triaz)">${HT.eur(W.rev)}</div><div class="kpil">Revenue</div></div>
+        <div class="kpi"><div class="kpiv" style="color:var(--c-triaz)">${W.fill}%</div><div class="kpil">Fill rate</div></div>
       </div>
     </div>
     <div class="sh">
-      <div class="shn">☀ Spring 2026</div>
+      <div class="shn">Spring 2026</div>
       <div class="shv" style="color:var(--orange)">Apr 1 – Jul 3</div>
       <div class="shsub">BSA / IFS / Amity alt. end dates</div>
       <div class="kpi-grid">
-        <div class="kpi"><div class="kpiv" style="color:var(--orange)">${S.classes}</div><div class="kpil">CLASSES</div></div>
-        <div class="kpi"><div class="kpiv" style="color:var(--orange)">${S.pax}</div><div class="kpil">STUDENTS</div></div>
-        <div class="kpi"><div class="kpiv" style="color:var(--orange)">${HT.eur(S.rev)}</div><div class="kpil">REVENUE</div></div>
-        <div class="kpi"><div class="kpiv" style="color:var(--orange)">${S.fill}%</div><div class="kpil">FILL RATE</div></div>
+        <div class="kpi"><div class="kpiv" style="color:var(--orange)">${S.classes}</div><div class="kpil">Classes</div></div>
+        <div class="kpi"><div class="kpiv" style="color:var(--orange)">${S.pax}</div><div class="kpil">Students</div></div>
+        <div class="kpi"><div class="kpiv" style="color:var(--orange)">${HT.eur(S.rev)}</div><div class="kpil">Revenue</div></div>
+        <div class="kpi"><div class="kpiv" style="color:var(--orange)">${S.fill}%</div><div class="kpil">Fill rate</div></div>
       </div>
     </div>`;
 
@@ -193,8 +193,8 @@ function render(winter,spring){
   ];
   document.getElementById('cmpBody').innerHTML=metrics.map(m=>{
     const fv=m.fmt==='eur'?HT.eur:m.fmt==='pct'?v=>v+'%':v=>v;
-    const wc=m.fmt==='eur'&&m.w<0?'color:#f87171':'';
-    const sc=m.fmt==='eur'&&m.s<0?'color:#f87171':'';
+    const wc=m.fmt==='eur'&&m.w<0?'color:var(--neg)':'';
+    const sc=m.fmt==='eur'&&m.s<0?'color:var(--neg)':'';
     return `<tr>
       <td class="metric">${m.label}</td>
       <td class="wval" style="${wc}">${fv(m.w)}</td>
@@ -211,8 +211,8 @@ function render(winter,spring){
   document.getElementById('coachCmp').innerHTML=allCoaches.map(n=>`
     <div class="cc">
       <div class="ccn">${n}</div>
-      <div class="cc-row"><div class="cc-label">❄ Winter</div><div class="w-val">${wByCoach[n]||0} class${(wByCoach[n]||0)!==1?'es':''}</div></div>
-      <div class="cc-row"><div class="cc-label">☀ Spring</div><div class="s-val">${sByCoach[n]||0} class${(sByCoach[n]||0)!==1?'es':''}</div></div>
+      <div class="cc-row"><div class="cc-label">Winter</div><div class="w-val">${wByCoach[n]||0} class${(wByCoach[n]||0)!==1?'es':''}</div></div>
+      <div class="cc-row"><div class="cc-label">Spring</div><div class="s-val">${sByCoach[n]||0} class${(sByCoach[n]||0)!==1?'es':''}</div></div>
     </div>`).join('');
 
   // Type comparison
@@ -236,7 +236,7 @@ function render(winter,spring){
       </div>
     </div>`;
   }
-  document.getElementById('typeCmp').innerHTML=makeTypeCard('❄ Winter 2026',wTypes,'var(--c-triaz)')+makeTypeCard('☀ Spring 2026',sTypes,'var(--orange)');
+  document.getElementById('typeCmp').innerHTML=makeTypeCard('Winter 2026',wTypes,'var(--c-triaz)')+makeTypeCard('Spring 2026',sTypes,'var(--orange)');
 
   // Day distribution
   const wDays={}, sDays={};
@@ -258,7 +258,7 @@ function render(winter,spring){
       </div>
     </div>`;
   }
-  document.getElementById('dayCmp').innerHTML=makeDayCard('❄ Winter 2026',wDays,'var(--c-triaz)')+makeDayCard('☀ Spring 2026',sDays,'var(--orange)');
+  document.getElementById('dayCmp').innerHTML=makeDayCard('Winter 2026',wDays,'var(--c-triaz)')+makeDayCard('Spring 2026',sDays,'var(--orange)');
 }
 
 load();

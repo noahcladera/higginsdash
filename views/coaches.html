@@ -15,7 +15,7 @@
 .totals{display:grid;grid-template-columns:repeat(4,1fr);background:var(--b1);border:1px solid var(--b2);border-radius:7px;overflow:hidden;margin-bottom:28px;gap:1px;}
 .tb{background:var(--s1);padding:16px 18px;}
 .tbv{font-size:26px;font-weight:700;color:var(--c-triaz);letter-spacing:-.5px;line-height:1;}
-.tbl{font-family:"DM Mono",monospace;font-size:8px;color:var(--t4);letter-spacing:1.5px;margin-top:4px;}
+.tbl{font-size:10px;font-weight:500;color:var(--t3);margin-top:4px;}
 
 .rates-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-bottom:28px;}
 .rc{background:var(--s1);border:1px solid var(--b2);border-radius:7px;padding:14px 16px;cursor:pointer;transition:all .15s;border-left:3px solid transparent;}
@@ -23,7 +23,7 @@
 .rc.on{border-left-color:var(--orange);background:var(--s2);}
 .rcn{font-size:14px;font-weight:700;margin-bottom:4px;}
 .rcr{font-family:"DM Mono",monospace;font-size:10px;color:var(--orange);margin-bottom:3px;}
-.rck{font-size:10px;color:var(--t3);line-height:1.5;}
+.rck{font-size:11px;color:var(--t3);line-height:1.5;}
 .rctotal{font-family:"DM Mono",monospace;font-size:12px;font-weight:700;color:var(--c-triaz);margin-top:7px;}
 
 .detail{background:var(--s1);border:1px solid var(--b2);border-radius:7px;overflow:hidden;}
@@ -32,7 +32,7 @@
 .dhs{font-family:"DM Mono",monospace;font-size:9px;color:var(--t4);margin-top:2px;}
 .dhtotal{font-family:"DM Mono",monospace;font-size:14px;font-weight:700;color:var(--c-triaz);}
 .hrow{display:grid;grid-template-columns:1fr 65px 70px 70px;gap:8px;padding:8px 16px;background:var(--s3);}
-.hc{font-family:"DM Mono",monospace;font-size:8px;color:var(--t4);letter-spacing:1.5px;text-transform:uppercase;text-align:right;}
+.hc{font-size:10px;font-weight:500;color:var(--t3);text-align:right;}
 .hc:first-child{text-align:left;}
 .crow2{display:grid;grid-template-columns:1fr 65px 70px 70px;gap:8px;align-items:center;padding:9px 16px;border-bottom:1px solid var(--b1);transition:background .1s;}
 .crow2:last-child{border-bottom:none;}
@@ -64,7 +64,7 @@
   .totals{grid-template-columns:repeat(2,1fr);margin-bottom:20px;}
   .tb{padding:12px 14px;}
   .tbv{font-size:22px;}
-  .tbl{font-size:7px;}
+  .tbl{font-size:9px;}
   .rates-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:20px;}
   .rc{padding:10px 12px;}
   .rcn{font-size:12px;}
@@ -75,7 +75,8 @@
   .dhs{font-size:8px;}
   .dhtotal{font-size:12px;}
   .hrow,.crow2{grid-template-columns:1fr 50px 55px 55px;gap:6px;padding:6px 12px;}
-  .hc,.cv{font-size:7px;}
+  .hc{font-size:9px;}
+  .cv{font-size:10px;}
   .cn{font-size:10px;}
   .cs{font-size:8px;}
   .wrow{padding:7px 12px;}
@@ -109,10 +110,10 @@
 <div class="page">
   <div class="main">
     <div class="totals">
-      <div class="tb"><div class="tbv" id="tCoaches">—</div><div class="tbl">ACTIVE COACHES</div></div>
-      <div class="tb"><div class="tbv" id="tClasses">—</div><div class="tbl">TOTAL CLASSES</div></div>
-      <div class="tb"><div class="tbv" id="tPay">—</div><div class="tbl">TOTAL PAY (KNOWN)</div></div>
-      <div class="tb"><div class="tbv" id="tHours">—</div><div class="tbl">HOURS / WEEK</div></div>
+      <div class="tb"><div class="tbv" id="tCoaches">—</div><div class="tbl">Active coaches</div></div>
+      <div class="tb"><div class="tbv" id="tClasses">—</div><div class="tbl">Total classes</div></div>
+      <div class="tb"><div class="tbv" id="tPay">—</div><div class="tbl">Total pay</div></div>
+      <div class="tb"><div class="tbv" id="tHours">—</div><div class="tbl">Hours / week</div></div>
     </div>
     <div class="sec-label">Coaches — click to expand</div>
     <div class="rates-grid" id="ratesGrid"></div>
