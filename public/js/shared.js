@@ -19,6 +19,7 @@ const API = {
   stats(season)   { return API.get('/api/stats?season=' + encodeURIComponent(season)); },
   seasons()       { return API.get('/api/seasons'); },
   coaches(season) { return API.get('/api/coaches?season=' + encodeURIComponent(season)); },
+  coachContacts() { return fetch('/api/coach-contacts', { cache: 'no-store' }).then(r => r.ok ? r.json() : {}); },
   reload()        { return API.post('/api/reload'); },
 };
 
@@ -49,20 +50,32 @@ function colorClass(c) {
 }
 
 // ── Season switcher (shared header widget, persisted globally) ─────────────────
-function initSeasonSwitcher(onChange) {
+// Fetches seasons from API, builds a select dropdown. Scales to any number of seasons.
+async function initSeasonSwitcher(onChange) {
   const sw = document.getElementById('seasonSwitcher');
-  if (!sw) return;
-  sw.addEventListener('click', e => {
-    const opt = e.target.closest('.s-opt');
-    if (!opt) return;
-    const season = opt.dataset.s;
-    setSeason(season);
-    document.querySelectorAll('.s-opt').forEach(el => el.classList.toggle('on', el.dataset.s === season));
-    if (onChange) onChange(season);
+  if (!sw) return getSeason();
+  const sel = document.getElementById('seasonSelect');
+  if (!sel) return getSeason();
+  let seasons = [];
+  try {
+    seasons = await API.seasons();
+  } catch (e) {
+    seasons = [autoSeason()];
+  }
+  if (!seasons.length) seasons = [autoSeason()];
+  sel.innerHTML = seasons.map(s => `<option value="${s.replace(/"/g, '&quot;')}">${s}</option>`).join('');
+  let initial = getSeason();
+  if (!seasons.includes(initial)) {
+    initial = seasons[seasons.length - 1];
+    setSeason(initial);
+    if (onChange) onChange(initial);
+  }
+  sel.value = initial;
+  sel.addEventListener('change', () => {
+    const s = sel.value;
+    setSeason(s);
+    if (onChange) onChange(s);
   });
-  // Set initial state from persisted season (global across all pages)
-  const initial = getSeason();
-  document.querySelectorAll('.s-opt').forEach(el => el.classList.toggle('on', el.dataset.s === initial));
   return initial;
 }
 

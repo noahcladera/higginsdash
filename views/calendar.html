@@ -7,18 +7,42 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/main.css">
 <style>
-.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 20px;background:var(--s1);border-bottom:1px solid var(--b1);}
-.fl{font-size:11px;font-weight:500;color:var(--t3);}
-select{background:var(--s2);border:1px solid var(--b2);color:var(--t1);font-family:"DM Sans",sans-serif;font-size:12px;padding:5px 9px;border-radius:3px;cursor:pointer;}
-select:focus{outline:none;border-color:var(--orange);}
-input[type="search"]{background:var(--s2);border:1px solid var(--b2);color:var(--t1);font-size:12px;padding:5px 10px;border-radius:3px;width:140px;transition:border-color .15s;}
-input[type="search"]:focus{outline:none;border-color:var(--orange);}
-input[type="search"]::placeholder{color:var(--t4);}
-.sep{width:1px;height:22px;background:var(--b2);}
-.btn-grp{display:flex;gap:3px;}
-.vbtn{padding:5px 13px;background:var(--s2);border:1px solid var(--b2);color:var(--t3);font-size:11px;cursor:pointer;border-radius:4px;transition:all .15s;}
-.vbtn:hover{color:var(--t2);}
-.vbtn.active{background:var(--orange);color:#000;border-color:var(--orange);font-weight:700;}
+/* Calendar page: sidebar + main */
+.cal-page{display:flex;min-height:calc(100vh - 102px);}
+.cal-sidebar{width:220px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--b1);padding:16px 14px;display:flex;flex-direction:column;gap:20px;}
+.cal-sidebar .slbl{font-size:10px;font-weight:600;letter-spacing:0.5px;color:var(--t4);text-transform:uppercase;margin-bottom:8px;}
+.cal-sidebar .fl-row{display:flex;flex-direction:column;gap:6px;margin-bottom:4px;}
+.cal-sidebar .fl{font-size:11px;font-weight:500;color:var(--t3);}
+.cal-sidebar select{background:var(--s2);border:1px solid var(--b2);color:var(--t1);font-family:"DM Sans",sans-serif;font-size:12px;padding:6px 10px;border-radius:4px;cursor:pointer;width:100%;}
+.cal-sidebar select:focus{outline:none;border-color:var(--orange);}
+/* Scrollable filter menus (vertical) */
+.filter-bar{display:flex;flex-direction:column;gap:4px;overflow-y:auto;padding:4px 0;margin-bottom:12px;max-height:140px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
+.filter-bar::-webkit-scrollbar{width:5px;}
+.filter-bar::-webkit-scrollbar-track{background:var(--b1);border-radius:3px;}
+.filter-bar::-webkit-scrollbar-thumb{background:var(--b3);border-radius:3px;}
+.filter-chip{flex-shrink:0;padding:6px 10px;background:var(--s2);border:1px solid var(--b2);color:var(--t3);font-size:11px;cursor:pointer;border-radius:4px;transition:all .15s;text-align:left;}
+.filter-chip:hover{color:var(--t2);border-color:var(--b3);}
+.filter-chip.on{background:var(--orange);color:#000;border-color:var(--orange);}
+.filter-chip .chip-hrs{font-size:9px;opacity:.8;margin-left:4px;}
+.cal-sidebar input[type="search"]{background:var(--s2);border:1px solid var(--b2);color:var(--t1);font-size:12px;padding:6px 10px;border-radius:4px;width:100%;transition:border-color .15s;}
+.cal-sidebar input[type="search"]:focus{outline:none;border-color:var(--orange);}
+.cal-sidebar input[type="search"]::placeholder{color:var(--t4);}
+.cal-sidebar .btn-grp{display:flex;flex-direction:column;gap:4px;}
+.cal-sidebar .vbtn{padding:7px 12px;background:var(--s2);border:1px solid var(--b2);color:var(--t3);font-size:11px;cursor:pointer;border-radius:4px;transition:all .15s;text-align:left;}
+.cal-sidebar .vbtn:hover{color:var(--t2);}
+.cal-sidebar .vbtn.active{background:var(--orange);color:#000;border-color:var(--orange);font-weight:600;}
+.cal-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;}
+.cal-toolbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--s1);border-bottom:1px solid var(--b1);flex-wrap:wrap;}
+.cal-toolbar input[type="search"]{flex:1;min-width:180px;background:var(--s2);border:1px solid var(--b2);color:var(--t1);font-size:12px;padding:6px 12px;border-radius:4px;}
+.cal-toolbar input[type="search"]:focus{outline:none;border-color:var(--orange);}
+.cal-toolbar input[type="search"]::placeholder{color:var(--t4);}
+.cal-view-btns{display:flex;gap:4px;}
+.cal-view-btns .vbtn{padding:5px 12px;background:var(--s2);border:1px solid var(--b2);color:var(--t3);font-size:11px;cursor:pointer;border-radius:4px;transition:all .15s;}
+.cal-view-btns .vbtn:hover{color:var(--t2);}
+.cal-view-btns .vbtn.active{background:var(--orange);color:#000;border-color:var(--orange);font-weight:600;}
+.cal-main #calView,.cal-main #schedView,.cal-main #listView{flex:1;min-height:0;display:flex;flex-direction:column;}
+.cal-main #calView .cal-outer,.cal-main #schedView.sched-outer{flex:1;min-height:0;}
+.cal-main #listView{overflow-y:auto;}
 .stats-strip{display:flex;gap:16px;padding:6px 20px;background:var(--s0);border-bottom:1px solid var(--b1);font-size:11px;color:var(--t3);}
 .stats-strip span{color:var(--t2);}
 .daynav{display:none;align-items:center;gap:10px;padding:7px 20px;background:var(--s2);border-bottom:1px solid var(--b1);}
@@ -86,6 +110,20 @@ input[type="search"]::placeholder{color:var(--t4);}
 .popover-fill{height:4px;background:var(--b2);border-radius:2px;margin-top:4px;overflow:hidden;}
 .popover-fill-bar{height:100%;border-radius:2px;background:var(--c-triaz);}
 
+/* Contact a sub — select dropdown + action buttons */
+.sub-section{margin-top:16px;padding-top:14px;border-top:1px solid var(--b2);}
+.sub-section .slbl{font-size:10px;font-weight:600;letter-spacing:0.5px;color:var(--t4);text-transform:uppercase;margin-bottom:10px;}
+.sub-picker{display:flex;flex-direction:column;gap:10px;}
+.sub-select{background:var(--s2);border:1px solid var(--b2);color:var(--t1);font-family:"DM Sans",sans-serif;font-size:12px;padding:7px 10px;border-radius:4px;cursor:pointer;width:100%;}
+.sub-select:focus{outline:none;border-color:var(--orange);}
+.sub-actions{display:flex;gap:8px;}
+.sub-contact-btn{flex:1;padding:8px 0;font-size:11px;font-weight:500;background:var(--s2);border:1px solid var(--b2);color:var(--t2);border-radius:4px;cursor:pointer;text-decoration:none;text-align:center;transition:all .15s;}
+.sub-contact-btn:hover{background:var(--orange);color:#000;border-color:var(--orange);}
+.sub-contact-btn.wa{color:#25D366;}
+.sub-contact-btn.wa:hover{background:#25D366;color:#fff;border-color:#25D366;}
+.sub-contact-btn.disabled{opacity:.35;pointer-events:none;cursor:default;}
+.sub-no-contacts{font-size:11px;color:var(--t4);padding:8px 0;}
+
 .list-wrap{padding:20px 24px;transition:opacity .15s;}
 .list-day{margin-bottom:22px;}
 .list-dtitle{font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--orange);border-bottom:1px solid var(--b2);padding-bottom:6px;margin-bottom:8px;}
@@ -108,15 +146,20 @@ input[type="search"]::placeholder{color:var(--t4);}
 .lkids{font-family:"DM Mono",monospace;font-size:10px;text-align:center;padding:2px 7px;background:var(--s2);border:1px solid var(--b2);border-radius:12px;}
 
 @media(max-width:768px){
-  .toolbar{padding:8px 12px;gap:6px;}
+  .cal-page{flex-direction:column;}
+  .cal-sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:12px;padding:12px 16px;border-right:none;border-bottom:1px solid var(--b1);}
+  .cal-sidebar .fl-row{flex:1;min-width:120px;margin-bottom:0;}
+  .cal-toolbar{padding:8px 12px;gap:8px;}
+  .cal-toolbar input[type="search"]{min-width:120px;}
   .stats-strip{padding:5px 12px;font-size:10px;}
   .legend{padding:6px 12px;gap:12px;}
   .cal-outer,.sched-outer{max-height:calc(100vh - 200px);}
 }
 @media(max-width:480px){
-  .toolbar{padding:6px 10px;flex-direction:column;align-items:stretch;}
-  .toolbar>span,.toolbar>select,.toolbar>input,.toolbar>.sep,.toolbar>.btn-grp{flex-shrink:0;}
-  input[type="search"]{width:100%;}
+  .cal-sidebar{flex-direction:column;padding:10px 12px;}
+  .cal-sidebar .fl-row{min-width:0;}
+  .cal-toolbar{flex-direction:column;align-items:stretch;}
+  .cal-view-btns{flex-wrap:wrap;}
   .stats-strip{padding:4px 10px;font-size:10px;}
   .legend{padding:5px 10px;gap:8px;font-size:10px;}
   .cal-time-head,.time-cell{width:40px;height:44px;}
@@ -146,49 +189,57 @@ input[type="search"]::placeholder{color:var(--t4);}
 <body>
 <header>
   <a class="logo" href="/">
-    <div class="logo-ball"></div>
-    <span class="logo-text">higginstennis.nl<span class="logo-tag">OPS</span></span>
+    <img class="logo-img" src="/assets/logo.avif" alt="Higgins Tennis" />
+    <span class="logo-tag">OPS</span>
   </a>
   <div style="display:flex;align-items:center;gap:12px;">
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
     <div class="season-switcher" id="seasonSwitcher">
-      <div class="s-opt" data-s="Winter 2026">WINTER 2026</div>
-      <div class="s-sep"></div>
-      <div class="s-opt" data-s="Spring 2026">SPRING 2026</div>
+      <select class="season-select" id="seasonSelect" title="Select season">
+        <option>Loading…</option>
+      </select>
     </div>
   </div>
 </header>
 <nav>
   <a class="ni" href="/">Home</a>
   <a class="ni" href="/calendar">Calendar</a>
-  <a class="ni" href="/gocap">GoCAP</a>
+  <a class="ni" href="/gocap">Transportation</a>
   <a class="ni" href="/finance">Finance</a>
   <a class="ni" href="/coaches">Coaches</a>
   <a class="ni" href="/seasons">Seasons</a>
 </nav>
 
-<div class="toolbar">
-  <span class="fl">Coach</span>
-  <select id="sCoach" onchange="applyFilters()"><option value="">All Coaches</option></select>
-  <span class="fl">Type</span>
-  <select id="sType" onchange="applyFilters()">
-    <option value="">All Types</option>
-    <option>GoCAP</option><option>Club</option><option>School</option><option>Private</option>
-  </select>
-  <span class="fl">Location</span>
-  <select id="sLoc" onchange="applyFilters()"><option value="">All Locations</option></select>
-  <div class="sep"></div>
-  <input type="search" id="sSearch" placeholder="Search classes…" oninput="debouncedSearch()">
-  <div class="sep"></div>
-  <div class="btn-grp">
-    <button class="vbtn" data-v="day">DAY</button>
-    <button class="vbtn" data-v="3day">3 DAYS</button>
-    <button class="vbtn active" data-v="week">WEEK</button>
-    <button class="vbtn" data-v="list">LIST</button>
-    <button class="vbtn" data-v="schedule">SCHEDULE</button>
+<div class="cal-page">
+<aside class="cal-sidebar">
+  <div>
+    <div class="slbl">Filters</div>
+    <div class="fl-row">
+      <label class="fl">Coach</label>
+      <div class="filter-bar" id="sCoachBar" role="listbox"></div>
+    </div>
+    <div class="fl-row">
+      <label class="fl">Type</label>
+      <div class="filter-bar" id="sTypeBar" role="listbox"></div>
+    </div>
+    <div class="fl-row">
+      <label class="fl" for="sLoc">Location</label>
+      <select id="sLoc" onchange="applyFilters()"><option value="">All Locations</option></select>
+    </div>
+  </div>
+</aside>
+
+<main class="cal-main">
+<div class="cal-toolbar">
+  <input type="search" id="sSearch" placeholder="Search classes, coaches, locations…" oninput="debouncedSearch()">
+  <div class="cal-view-btns">
+    <button class="vbtn" data-v="day">Day</button>
+    <button class="vbtn" data-v="3day">3 Days</button>
+    <button class="vbtn active" data-v="week">Week</button>
+    <button class="vbtn" data-v="list">List</button>
+    <button class="vbtn" data-v="schedule">Schedule</button>
   </div>
 </div>
-
 <div class="stats-strip" id="statsStrip">
   <span id="stClasses">0</span> classes · <span id="stHours">0</span>h · <span id="stCoaches">0</span> coaches · <span id="stStudents">0 / 0</span> spots
 </div>
@@ -220,6 +271,8 @@ input[type="search"]::placeholder{color:var(--t4);}
 <div id="calView"><div class="cal-outer" id="calOuter"><div class="cal-grid" id="calGrid"></div><div class="now-line" id="nowLine" style="display:none"></div></div></div>
 <div id="schedView" class="sched-outer hidden"><div class="sched-grid" id="schedGrid"></div></div>
 <div id="listView" class="list-wrap hidden"></div>
+</main>
+</div>
 
 <div class="popover" id="popover">
   <div class="popover-title" id="popTitle"></div>
@@ -248,6 +301,9 @@ const TODAY = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
 let season = HT.getSeason();
 let all = [], filtered = [];
+let coachContacts = {};
+let currentModalClass = null;
+let currentModalSubs = [];
 let view = 'week', dayOff = 0;
 let schedDay = TODAY;
 let searchDebounce = null;
@@ -261,27 +317,78 @@ function activeForStats(arr) {
   return arr.filter(c => !isCancelled(c));
 }
 
+function renderFilterBars() {
+  const active = all.filter(c => !c.cancelled);
+  const coachMap = {};
+  active.forEach(c => c.coaches.filter(Boolean).forEach(n => { coachMap[n] = (coachMap[n] || []).concat(c); }));
+  const coachesByHours = Object.entries(coachMap)
+    .map(([n, cls]) => ({ name: n, hours: HT.coachEffectiveWorkload(cls).hours }))
+    .sort((a, b) => b.hours - a.hours)
+    .map(c => ({ name: c.name, hrs: c.hours.toFixed(1) }));
+
+  const coachBar = document.getElementById('sCoachBar');
+  coachBar.innerHTML = '<span class="filter-chip on" data-coach="">All</span>' +
+    coachesByHours.map(c => `<span class="filter-chip" data-coach="${c.name}">${c.name}<span class="chip-hrs">${c.hrs}h</span></span>`).join('');
+  coachBar.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      coachBar.querySelectorAll('.filter-chip').forEach(x => x.classList.remove('on'));
+      chip.classList.add('on');
+      applyFilters();
+    });
+  });
+
+  const types = ['GoCAP', 'Club', 'School', 'Private'];
+  const typeBar = document.getElementById('sTypeBar');
+  typeBar.innerHTML = '<span class="filter-chip on" data-type="">All</span>' +
+    types.map(t => `<span class="filter-chip" data-type="${t}">${t}</span>`).join('');
+  typeBar.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      typeBar.querySelectorAll('.filter-chip').forEach(x => x.classList.remove('on'));
+      chip.classList.add('on');
+      applyFilters();
+    });
+  });
+}
+
 async function loadData() {
   try {
-    all = await HT.API.classes({ season });
-    const coaches = [...new Set(all.flatMap(c => c.coaches).filter(Boolean))].sort();
+    const [classes, contacts] = await Promise.all([
+      HT.API.classes({ season }),
+      HT.API.coachContacts().catch(() => ({}))
+    ]);
+    all = classes;
+    coachContacts = contacts || {};
+    renderFilterBars();
     const locs = [...new Set(all.map(c => c.location).filter(Boolean))].sort();
-    document.getElementById('sCoach').innerHTML = '<option value="">All Coaches</option>' + coaches.map(c => `<option value="${c}">${c}</option>`).join('');
     document.getElementById('sLoc').innerHTML = '<option value="">All Locations</option>' + locs.map(l => `<option value="${l}">${l}</option>`).join('');
     applyFilters();
   } catch (e) { HT.showError(e.message); }
 }
 
+function buildSubMessage(e, coachName) {
+  const className = (e.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim();
+  const timeStr = `${e.day} ${e.start_time}–${e.end_time}`;
+  const withCoaches = e.coaches.filter(Boolean).length > 1 ? ` with ${e.coaches.filter(Boolean).join(' and ')}` : '';
+  const kidsInfo = (e.participants || e.max_participants) ? `${e.participants || 0}/${e.max_participants || '?'} participants – please check roster for names` : 'check roster for participant names';
+  return `Hi ${coachName}, can you sub in for ${className} on ${timeStr}${withCoaches}? Kids: ${kidsInfo}.`;
+}
+
 function applyFilters() {
-  const coach = document.getElementById('sCoach').value;
-  const type = document.getElementById('sType').value;
+  const coach = document.querySelector('#sCoachBar .filter-chip.on')?.dataset.coach ?? '';
+  const type = document.querySelector('#sTypeBar .filter-chip.on')?.dataset.type ?? '';
   const loc = document.getElementById('sLoc').value;
   const q = (document.getElementById('sSearch').value || '').trim().toLowerCase();
   filtered = all.filter(c => {
     if (coach && !c.coaches.includes(coach)) return false;
     if (type && c.type !== type) return false;
     if (loc && c.location !== loc) return false;
-    if (q && !(c.program_name || '').toLowerCase().includes(q)) return false;
+    if (q) {
+    const hay = [
+      c.program_name, c.location, c.type,
+      ...(c.coaches || []), c.age_group, c.notes
+    ].filter(Boolean).join(' ').toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
     return true;
   });
   renderStats();
@@ -650,6 +757,27 @@ function openMo(id) {
   hidePopover();
   const coaches = e.coaches.filter(Boolean).join(', ');
   const p = e.net_profit;
+  const teaching = new Set(e.coaches.filter(Boolean));
+  const allCoaches = [...new Set(all.flatMap(c => c.coaches).filter(Boolean))].sort();
+  const contactKey = (n) => Object.keys(coachContacts || {}).find(k => k.trim().toLowerCase() === (n||'').trim().toLowerCase());
+  const potentialSubs = allCoaches.filter(n => !teaching.has(n)).map(name => ({
+    name,
+    ...(coachContacts[contactKey(name) || name] || {})
+  }));
+  currentModalClass = e;
+  currentModalSubs = potentialSubs.map(c => ({
+    name: c.name,
+    phone: c.phone || '',
+    email: c.email || ''
+  }));
+  const subHtml = potentialSubs.length
+    ? `<div class="sub-picker">
+        <select class="sub-select" id="subSelect">
+          ${potentialSubs.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+        </select>
+        <div class="sub-actions" id="subActions"></div>
+      </div>`
+    : '<div class="sub-no-contacts">All coaches are on this class.</div>';
   document.getElementById('moTitle').textContent = (e.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim();
   document.getElementById('moBody').innerHTML = `
     <div class="mrow"><span class="mk">Day & Time</span><span class="mv">${e.day} · ${e.start_time}–${e.end_time}</span></div>
@@ -663,10 +791,36 @@ function openMo(id) {
     <div class="mrow"><span class="mk">Cost / Class</span><span class="mv">${HT.eur(e.cost_per_class)}</span></div>
     <div class="mrow"><span class="mk">Session Revenue</span><span class="mv">${HT.eur(e.session_cost)}</span></div>
     <div class="mrow"><span class="mk">Expenses</span><span class="mv">${HT.eur(e.expenses)}</span></div>
-    <div class="mrow"><span class="mk">Net Profit</span><span class="mv ${(p != null && p >= 0) ? 'pp' : 'pn'}">${HT.eur(p)}</span></div>
+    <div class="mrow"><span class="mk">Net Profit</span><span class="mv ${(p != null && p >= 0) ? 'metric-up' : 'metric-down'}">${HT.eur(p)}</span></div>
     ${e.notes ? `<div class="mrow"><span class="mk">Notes</span><span class="mv" style="font-size:11px;max-width:240px;text-align:right">${e.notes}</span></div>` : ''}
+    <div class="sub-section">
+      <div class="slbl">Contact a sub</div>
+      ${subHtml}
+    </div>
   `;
   document.getElementById('mo').classList.add('open');
+  const sel = document.getElementById('subSelect');
+  if (sel) { updateSubActions(e); sel.addEventListener('change', () => updateSubActions(e)); }
+}
+
+function updateSubActions(classObj) {
+  const sel = document.getElementById('subSelect');
+  if (!sel || !classObj) return;
+  const subs = currentModalSubs;
+  const name = sel.value;
+  const sub = subs.find(s => s.name === name) || {};
+  const msg = encodeURIComponent(buildSubMessage(classObj, name));
+  const phone = (sub.phone || '').replace(/\D/g, '').replace(/^0/, '');
+  const mailSubj = encodeURIComponent(`Sub request: ${(classObj.program_name||'').slice(0,40)} – ${classObj.day} ${classObj.start_time}`);
+  const mailBody = encodeURIComponent(buildSubMessage(classObj, name));
+  const wa = phone ? `https://wa.me/${phone}?text=${msg}` : null;
+  const tel = sub.phone ? `tel:${sub.phone}` : null;
+  const mail = sub.email ? `mailto:${sub.email}?subject=${mailSubj}&body=${mailBody}` : null;
+  document.getElementById('subActions').innerHTML = `
+    <a class="sub-contact-btn wa${wa ? '' : ' disabled'}" ${wa ? `href="${wa}" target="_blank" rel="noopener"` : ''}>WhatsApp</a>
+    <a class="sub-contact-btn${tel ? '' : ' disabled'}" ${tel ? `href="${tel}"` : ''}>Call</a>
+    <a class="sub-contact-btn${mail ? '' : ' disabled'}" ${mail ? `href="${mail}"` : ''}>Email</a>
+  `;
 }
 function closeMo() { document.getElementById('mo').classList.remove('open'); }
 

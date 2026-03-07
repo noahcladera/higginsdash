@@ -6,19 +6,19 @@
   --green:       #34c759;
   --green-soft:  #2d9d4a;
 
-  /* Category colors — shared across themes */
+  /* Category colors — dark mode (default): boosted opacity for legibility */
   --c-triaz:     #34c759;
-  --c-triaz-bg:  rgba(52,199,89,0.12);
-  --c-triaz-bd:  rgba(52,199,89,0.35);
+  --c-triaz-bg:  rgba(52,199,89,0.18);
+  --c-triaz-bd:  rgba(52,199,89,0.4);
   --c-rand:      #ff6b6b;
-  --c-rand-bg:   rgba(255,107,107,0.12);
-  --c-rand-bd:   rgba(255,107,107,0.35);
+  --c-rand-bg:   rgba(255,107,107,0.18);
+  --c-rand-bd:   rgba(255,107,107,0.4);
   --c-school:    #5ac8fa;
-  --c-school-bg: rgba(90,200,250,0.12);
-  --c-school-bd: rgba(90,200,250,0.35);
+  --c-school-bg: rgba(90,200,250,0.18);
+  --c-school-bd: rgba(90,200,250,0.4);
   --c-gocap:     #f5a020;
-  --c-gocap-bg:  rgba(245,160,32,0.12);
-  --c-gocap-bd:  rgba(245,160,32,0.35);
+  --c-gocap-bg:  rgba(245,160,32,0.18);
+  --c-gocap-bd:  rgba(245,160,32,0.4);
 
   /* Solid variants for status pills/cards (no transparency) */
   --c-gocap-solid:  #2a1f0a;
@@ -29,19 +29,19 @@
   --pos:   #4ade80;
   --neg:   #f87171;
 
-  /* Dark mode (default) */
-  --bg:    #141417;
-  --s0:    #1a1a1e;
-  --s1:    #202024;
-  --s2:    #28282d;
-  --s3:    #303035;
-  --b1:    #2a2a2f;
-  --b2:    #3a3a40;
-  --b3:    #4a4a50;
-  --t1:    #f0f0f2;
-  --t2:    #b0b0b5;
-  --t3:    #909095;
-  --t4:    #606065;
+  /* Dark mode (default) — eye-comfort: avoid pure black, boost muted text */
+  --bg:    #161619;
+  --s0:    #1c1c20;
+  --s1:    #222226;
+  --s2:    #2a2a2f;
+  --s3:    #323238;
+  --b1:    #2e2e33;
+  --b2:    #3e3e44;
+  --b3:    #4e4e55;
+  --t1:    #f2f2f4;
+  --t2:    #b8b8bd;
+  --t3:    #9a9a9f;
+  --t4:    #707076;
   --header-bg:   #1a1a1e;
   --header-border: #2a2a2f;
   --nav-bg:      #1a1a1e;
@@ -49,34 +49,108 @@
 
 /* Light mode */
 [data-theme="light"] {
-  --bg:    #f0f0f5;
-  --s0:    #fafafa;
-  --s1:    #f5f5f7;
-  --s2:    #ebebf0;
-  --s3:    #e8e8ed;
-  --b1:    #e5e5ea;
-  --b2:    #d1d1d6;
-  --b3:    #aeaeb2;
+  --bg:    #eeeef2;
+  --s0:    #f4f4f6;
+  --s1:    #eeeef1;
+  --s2:    #e6e6eb;
+  --s3:    #dfdfe5;
+  --b1:    #dcdce2;
+  --b2:    #c8c8ce;
+  --b3:    #a8a8ae;
   --t1:    #1d1d1f;
   --t2:    #424245;
   --t3:    #58585c;
   --t4:    #6a6a6f;
-  --header-bg:   #fafafa;
-  --header-border: #e5e5ea;
-  --nav-bg:      #f5f5f7;
+  --header-bg:   #f4f4f6;
+  --header-border: #dcdce2;
+  --nav-bg:      #eeeef1;
 
   /* Solid variants for light mode — boosted contrast */
   --c-gocap-solid:  #f5e6cc;
   --c-school-solid: #b8e3f5;
   --c-triaz-solid:  #c8e8d0;
 
-  /* Category color backgrounds — boosted for light mode contrast */
-  --c-triaz-bg:  rgba(52,199,89,0.22);
-  --c-triaz-bd:  rgba(52,199,89,0.45);
-  --c-school-bg: rgba(90,200,250,0.22);
-  --c-school-bd: rgba(90,200,250,0.45);
-  --c-gocap-bg:  rgba(245,160,32,0.22);
-  --c-gocap-bd:  rgba(245,160,32,0.45);
+  /* Category color backgrounds — more opaque for light mode calendar */
+  --c-triaz-bg:  rgba(52,199,89,0.42);
+  --c-triaz-bd:  rgba(52,199,89,0.55);
+  --c-rand-bg:   rgba(255,107,107,0.42);
+  --c-rand-bd:   rgba(255,107,107,0.55);
+  --c-school-bg: rgba(90,200,250,0.42);
+  --c-school-bd: rgba(90,200,250,0.55);
+  --c-gocap-bg:  rgba(245,160,32,0.42);
+  --c-gocap-bd:  rgba(245,160,32,0.55);
+}
+
+/* Light mode: dark text on calendar event blocks for legibility */
+[data-theme="light"] .ev .ev-name,
+[data-theme="light"] .ev .ev-coach,
+[data-theme="light"] .ev .ev-time {
+  color: #1d1d1f;
+}
+[data-theme="light"] .ev .ev-time {
+  opacity: 0.85;
+}
+[data-theme="light"] .sched-bar {
+  color: #1d1d1f;
+}
+[data-theme="light"] .ev .ev-fill {
+  color: #1d1d1f;
+}
+
+/* Light mode: dark text on colored pills/buttons for legibility */
+[data-theme="light"] .status-pill {
+  color: #1d1d1f !important;
+}
+[data-theme="light"] .dstatus {
+  color: #1d1d1f !important;
+}
+[data-theme="light"] .dtab.on {
+  color: #1d1d1f !important;
+}
+[data-theme="light"] .dtag {
+  color: #1d1d1f !important;
+}
+[data-theme="light"] .dtime {
+  color: #1d1d1f;
+}
+[data-theme="light"] .mod.live .mn {
+  color: #1d1d1f;
+}
+[data-theme="light"] .mbadge.bl {
+  color: #b85c00;
+  background: rgba(245,160,32,0.3);
+  border-color: rgba(245,160,32,0.5);
+}
+[data-theme="light"] .ni.active {
+  color: #b85c00;
+}
+[data-theme="light"] .status-clock,
+[data-theme="light"] .status-next strong {
+  color: #b85c00;
+}
+[data-theme="light"] .logo-tag {
+  color: #b85c00;
+}
+
+/* Light mode: week-at-a-glance pills — less transparency, dark text for legibility */
+[data-theme="light"] .wps .wp {
+  color: #1d1d1f !important;
+}
+[data-theme="light"] .wps .wp.triaz {
+  background: rgba(52,199,89,0.55);
+  border-color: rgba(52,199,89,0.65);
+}
+[data-theme="light"] .wps .wp.randwijck {
+  background: rgba(255,107,107,0.55);
+  border-color: rgba(255,107,107,0.65);
+}
+[data-theme="light"] .wps .wp.school {
+  background: rgba(90,200,250,0.55);
+  border-color: rgba(90,200,250,0.65);
+}
+[data-theme="light"] .wps .wp.gocap {
+  background: rgba(245,160,32,0.55);
+  border-color: rgba(245,160,32,0.65);
 }
 
 /* ── RESET ── */
@@ -101,28 +175,34 @@ header {
   position: sticky; top: 0; z-index: 100;
 }
 .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-.logo-ball {
-  width: 32px; height: 32px; background: var(--orange); border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; flex-shrink: 0;
+.logo-img {
+  height: 44px;
+  width: auto;
+  display: block;
+  object-fit: contain;
 }
-.logo-text  { font-weight: 600; font-size: 17px; color: var(--t1); letter-spacing: -.2px; }
-.logo-tag   { color: var(--t3); font-size: 9px; font-family: "DM Mono",monospace; letter-spacing: 2px; margin-left: 6px; vertical-align: middle; }
+.logo-tag {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  color: var(--orange);
+}
 
-/* ── SEASON SWITCHER (pill) ── */
+/* ── SEASON SWITCHER (dropdown) ── */
 .season-switcher {
   display: flex; align-items: center;
-  background: var(--s2); border: 1px solid var(--b2);
-  border-radius: 100px; overflow: hidden; cursor: pointer; transition: border-color .2s;
 }
-.season-switcher:hover { border-color: var(--b3); }
-.s-opt {
-  padding: 6px 14px; font-family: "DM Mono",monospace; font-size: 10px;
-  letter-spacing: 0.5px; color: var(--t3); white-space: nowrap;
-  transition: all .2s; user-select: none;
+.season-select {
+  font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: 0.5px;
+  color: var(--t2); background: var(--s2); border: 1px solid var(--b2);
+  border-radius: 6px; padding: 6px 28px 6px 12px; cursor: pointer;
+  appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='%23909095'%3E%3Cpath d='M0 0l5 6 5-6H0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  transition: border-color .15s; min-width: 110px;
 }
-.s-opt.on { background: var(--orange); color: #1a0f00; font-weight: 600; }
-.s-sep    { width: 1px; background: var(--b2); align-self: stretch; }
+.season-select:hover { border-color: var(--b3); }
+.season-select:focus { outline: none; border-color: var(--orange); }
 
 /* ── NAV ── */
 nav {
@@ -135,7 +215,7 @@ nav::-webkit-scrollbar { height: 0; }
   display: flex; align-items: center; gap: 6px;
   padding: 10px 14px; font-size: 12px; font-weight: 500;
   letter-spacing: 0.2px; color: var(--t3); text-decoration: none;
-  border-radius: 8px; transition: all .15s; white-space: nowrap;
+  border-radius: 4px; transition: all .15s; white-space: nowrap;
 }
 .ni:hover  { color: var(--t1); background: var(--s2); }
 .ni.active { color: var(--orange); background: var(--c-gocap-bg); }
@@ -190,8 +270,13 @@ nav::-webkit-scrollbar { height: 0; }
 .mrow:last-child { border-bottom:none; }
 .mk { font-family:"DM Mono",monospace; color:var(--t3); font-size:10px; }
 .mv { font-weight:500; text-align:right; }
-.pp { color: var(--pos); }
-.pn { color: var(--neg); }
+.pp { color: var(--t2); }
+.pn { color: var(--t2); }
+/* Muted metric indicators — grey + arrow (financial dashboard style) */
+.metric-up { color: var(--t2); }
+.metric-up::after { content: ' ↑'; font-size: 0.8em; opacity: 0.85; }
+.metric-down { color: var(--t2); }
+.metric-down::after { content: ' ↓'; font-size: 0.8em; opacity: 0.85; }
 
 /* ── ERROR BANNER ── */
 .err-banner {
@@ -217,9 +302,9 @@ nav::-webkit-scrollbar { height: 0; }
 
 @media (max-width: 480px) {
   header { padding: 0 12px; height: 48px; }
-  .logo-text { font-size: 15px; }
-  .logo-tag { display: none; }
-  .s-opt { padding: 5px 10px; font-size: 9px; }
+  .logo-img { height: 36px; }
+  .logo-tag { font-size: 9px; letter-spacing: 1.5px; }
+  .season-select { padding: 5px 24px 5px 10px; font-size: 9px; min-width: 90px; }
   nav { padding: 0 8px; }
   .ni { padding: 8px 10px; font-size: 11px; }
   .theme-toggle { padding: 5px 9px; font-size: 10px; }

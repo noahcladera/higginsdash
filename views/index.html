@@ -67,22 +67,22 @@
 <body>
 <header>
   <a class="logo" href="/">
-    <div class="logo-ball"></div>
-    <span class="logo-text">higginstennis.nl<span class="logo-tag">OPS</span></span>
+    <img class="logo-img" src="/assets/logo.avif" alt="Higgins Tennis" />
+    <span class="logo-tag">OPS</span>
   </a>
   <div style="display:flex;align-items:center;gap:12px;">
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
     <div class="season-switcher" id="seasonSwitcher">
-      <div class="s-opt" data-s="Winter 2026">WINTER 2026</div>
-      <div class="s-sep"></div>
-      <div class="s-opt" data-s="Spring 2026">SPRING 2026</div>
+      <select class="season-select" id="seasonSelect" title="Select season">
+        <option>Loading…</option>
+      </select>
     </div>
   </div>
 </header>
 <nav>
   <a class="ni" href="/">Home</a>
   <a class="ni" href="/calendar">Calendar</a>
-  <a class="ni" href="/gocap">GoCAP</a>
+  <a class="ni" href="/gocap">Transportation</a>
   <a class="ni" href="/finance">Finance</a>
   <a class="ni" href="/coaches">Coaches</a>
   <a class="ni" href="/seasons">Seasons</a>
@@ -104,7 +104,7 @@
     <div class="sec-label" style="margin-bottom:18px">Modules</div>
     <div class="mods">
       <a href="/calendar" class="mod live"><span class="mi">📅</span><div class="mn">Calendar</div><div class="md">Week view, day view, list. Filter by coach or type.</div><div class="mbadge bl">LIVE</div></a>
-      <a href="/gocap"    class="mod live"><span class="mi">🚲</span><div class="mn">GoCAP</div><div class="md">Pickup routes, transit times, bakfiets schedule.</div><div class="mbadge bl">LIVE</div></a>
+      <a href="/gocap" class="mod live"><span class="mi">🚲</span><div class="mn">Transportation</div><div class="md">Pickup routes, transit times, bakfiets schedule.</div><div class="mbadge bl">LIVE</div></a>
       <a href="/coaches"  class="mod live"><span class="mi">👨‍🏫</span><div class="mn">Coaches</div><div class="md">Pay calculator, rates, workload per season.</div><div class="mbadge bl">LIVE</div></a>
       <a href="/finance"  class="mod"><span class="mi">💰</span><div class="mn">Finance</div><div class="md">P&L by class, location breakdown, season totals.</div><div class="mbadge bs">SOON</div></a>
       <a href="/seasons"  class="mod"><span class="mi">📈</span><div class="mn">Seasons</div><div class="md">Winter vs Spring comparison, enrollment trends.</div><div class="mbadge bs">SOON</div></a>
@@ -170,7 +170,8 @@ function renderStats() {
   document.getElementById('st-rev').textContent      = HT.eur(rev);
   const fillEl = document.getElementById('st-fill');
   fillEl.textContent  = fill + '%';
-  fillEl.style.color  = fill < 60 ? 'var(--neg)' : 'var(--pos)';
+  fillEl.className   = 'sv ' + (fill < 60 ? 'metric-down' : 'metric-up');
+  fillEl.style.color = '';
   document.getElementById('st-fill-note').textContent = totalPax + ' / ' + totalMax + ' spots';
   document.getElementById('st-hours').textContent = totalHours.toFixed(1);
 }
@@ -225,8 +226,9 @@ function renderSidebar() {
     .map(c => ({ name: c.program_name.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i,'').slice(0,32), pax: c.participants||0, max: c.max_participants, pct: Math.round((c.participants||0)/c.max_participants*100) }))
     .sort((a,b) => a.pct - b.pct).slice(0, 8);
   document.getElementById('fillRows').innerHTML = fillData.map(f => {
-    const col = f.pct < 50 ? 'var(--neg)' : f.pct < 75 ? 'var(--orange)' : 'var(--pos)';
-    return `<div class="fr-row"><div class="fr-name">${f.name}</div><div class="fr-bar-wrap"><div class="fr-bar" style="width:${f.pct}%;background:${col}"></div></div><div class="fr-pct" style="color:${col}">${f.pct}%</div></div>`;
+    const barBg = f.pct < 50 ? 'var(--b3)' : f.pct < 75 ? 'var(--t4)' : 'var(--t2)';
+    const pctClass = f.pct < 50 ? 'metric-down' : 'metric-up';
+    return `<div class="fr-row"><div class="fr-name">${f.name}</div><div class="fr-bar-wrap"><div class="fr-bar" style="width:${f.pct}%;background:${barBg}"></div></div><div class="fr-pct ${pctClass}">${f.pct}%</div></div>`;
   }).join('');
 }
 

@@ -23,6 +23,7 @@ const MIME = {
   '.ico':  'image/x-icon',
   '.png':  'image/png',
   '.svg':  'image/svg+xml',
+  '.avif': 'image/avif',
 };
 
 // ── static file server ───────────────────────────────────────────────────────
@@ -66,6 +67,22 @@ function handleAPI(req, res, pathname, query) {
   if (pathname === '/api/seasons') {
     const seasons = [...new Set(getClasses(DATA_PATH).map(c => c.season))].sort();
     return json(res, seasons);
+  }
+
+  // GET /api/coach-contacts — coach contact database (phone, email for sub requests)
+  if (pathname === '/api/coach-contacts') {
+    try {
+      const fp = path.join(__dirname, 'data', 'coaches.json');
+      const data = JSON.parse(fs.readFileSync(fp, 'utf8'));
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store, no-cache',
+      });
+      return res.end(JSON.stringify(data));
+    } catch (e) {
+      return json(res, {});
+    }
   }
 
   // GET /api/coaches?season=Winter+2026

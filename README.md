@@ -77,7 +77,7 @@ curl -X POST http://localhost:3000/api/reload
 
 - **Home** `/` — Command center with stats, week-at-a-glance, fill rates
 - **Calendar** `/calendar` — Week/day/list views, filter by coach or type
-- **GoCAP** `/gocap` — Pickup route cards with step-by-step timelines, schematic map
+- **Transportation** `/gocap` — Pickup route cards with step-by-step timelines, schematic map
 - **Coaches** `/coaches` — Pay calculator, rate sheet, per-class breakdown
 - **Finance** `/finance` — P&L table, revenue by location/type, sortable
 - **Seasons** `/seasons` — Winter vs Spring comparison across all metrics

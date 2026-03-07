@@ -32,8 +32,6 @@
 .pl-table tr:hover td{background:var(--s2);}
 .pl-table tr.cancelled td{opacity:.35;}
 .pl-table .mono{font-family:"DM Mono",monospace;font-size:11px;}
-.pl-table .pos{color:var(--pos);}
-.pl-table .neg{color:var(--neg);}
 .pl-table .warn{color:var(--orange);}
 .pl-table tfoot td{font-weight:700;border-top:2px solid var(--b3);border-bottom:none;font-family:"DM Mono",monospace;font-size:12px;padding:12px;}
 
@@ -81,21 +79,23 @@
 </head>
 <body>
 <header>
-  <a class="logo" href="/"><div class="logo-ball"></div>
-    <span class="logo-text">higginstennis.nl<span class="logo-tag">OPS</span></span></a>
+  <a class="logo" href="/">
+    <img class="logo-img" src="/assets/logo.avif" alt="Higgins Tennis" />
+    <span class="logo-tag">OPS</span>
+  </a>
   <div style="display:flex;align-items:center;gap:12px;">
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
     <div class="season-switcher" id="seasonSwitcher">
-      <div class="s-opt" data-s="Winter 2026">Winter 2026</div>
-      <div class="s-sep"></div>
-      <div class="s-opt" data-s="Spring 2026">Spring 2026</div>
+      <select class="season-select" id="seasonSelect" title="Select season">
+        <option>Loading…</option>
+      </select>
     </div>
   </div>
 </header>
 <nav>
   <a class="ni" href="/">Home</a>
   <a class="ni" href="/calendar">Calendar</a>
-  <a class="ni" href="/gocap">GoCAP</a>
+  <a class="ni" href="/gocap">Transportation</a>
   <a class="ni" href="/finance">Finance</a>
   <a class="ni" href="/coaches">Coaches</a>
   <a class="ni" href="/seasons">Seasons</a>
@@ -104,8 +104,8 @@
 <div class="page">
   <div class="main">
     <div class="kpis" id="kpis">
-      <div class="kpi"><div class="kpiv" id="kRev" style="color:var(--c-triaz)">—</div><div class="kpil">Total revenue</div></div>
-      <div class="kpi"><div class="kpiv" id="kExp" style="color:var(--neg)">—</div><div class="kpil">Total expenses</div></div>
+      <div class="kpi"><div class="kpiv" id="kRev">—</div><div class="kpil">Total revenue</div></div>
+      <div class="kpi"><div class="kpiv" id="kExp">—</div><div class="kpil">Total expenses</div></div>
       <div class="kpi"><div class="kpiv" id="kNet">—</div><div class="kpil">Net profit</div></div>
       <div class="kpi"><div class="kpiv" id="kMargin">—</div><div class="kpil">Margin</div></div>
     </div>
@@ -157,6 +157,20 @@
       <div class="chd"><span class="cht">Net / Revenue</span></div>
       <div id="marginRows"></div>
     </div>
+
+    <div class="sec-label">Revenue breakdown</div>
+    <div class="card">
+      <div class="chd"><span class="cht">Classes · Memberships · Other</span></div>
+      <div style="padding:14px 14px 10px;" id="revBreakdownChart"></div>
+      <div style="padding:8px 14px;font-size:10px;color:var(--t4);border-top:1px solid var(--b1)">Possible integration with Moneybird API</div>
+    </div>
+
+    <div class="sec-label">Costs breakdown</div>
+    <div class="card">
+      <div class="chd"><span class="cht">Material · Memberships · Court fees</span></div>
+      <div style="padding:14px 14px 10px;" id="costsChart"></div>
+      <div style="padding:8px 14px;font-size:10px;color:var(--t4);border-top:1px solid var(--b1)">Possible integration with Moneybird API</div>
+    </div>
   </div>
 </div>
 
@@ -196,6 +210,29 @@ function renderPie(containerId,dataMap,colorMap){
   el.innerHTML=`<div class="pie-wrap"><svg class="pie-svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${paths}<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" class="pie-center">${HT.eur(total)}</text></svg><div class="pie-legend">${legend}</div></div>`;
 }
 
+const REV_BREAKDOWN_COLORS={'Classes':'var(--c-triaz)','Memberships':'var(--c-school)','Other':'var(--c-gocap)'};
+const COSTS_COLORS={'Material':'var(--c-gocap)','Memberships':'var(--c-rand)','Court fees':'var(--c-school)'};
+function renderEmptyDonut(containerId,labels,colorMap,centerLabel){
+  const size=120,cx=size/2,cy=size/2,r=45,ir=28;
+  const el=document.getElementById(containerId);
+  let paths='';
+  let legend='';
+  if(labels.length){
+    const angleEach=(Math.PI*2)/labels.length;
+    let cumAngle=-Math.PI/2;
+    labels.forEach((name,i)=>{
+      const color=colorMap[name]||'var(--b2)';
+      paths+=`<path d="${arcPath(cx,cy,r,ir,cumAngle,cumAngle+angleEach)}" fill="${color}" opacity="0.6"/>`;
+      legend+=`<div class="pie-legend-row"><span class="pie-legend-dot" style="background:${color}"></span><span class="pie-legend-label">${name}</span><span class="pie-legend-val">—</span></div>`;
+      cumAngle+=angleEach;
+    });
+  }else{
+    paths=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--b2)" stroke-width="2" opacity="0.5"/><circle cx="${cx}" cy="${cy}" r="${ir}" fill="var(--s1)"/>`;
+    legend='<div class="pie-legend-row"><span class="pie-legend-dot" style="background:var(--b2)"></span><span class="pie-legend-label">No data</span><span class="pie-legend-val">—</span></div>';
+  }
+  el.innerHTML=`<div class="pie-wrap"><svg class="pie-svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${paths}<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" class="pie-center">${centerLabel||'—'}</text></svg><div class="pie-legend">${legend}</div></div>`;
+}
+
 async function load(){
   all=await HT.API.classes({season});
   render();
@@ -212,9 +249,11 @@ function render(){
   document.getElementById('kRev').textContent=HT.eur(totRev);
   document.getElementById('kExp').textContent=HT.eur(totExp);
   const netEl=document.getElementById('kNet');
-  netEl.textContent=HT.eur(totNet); netEl.style.color=totNet>=0?'var(--pos)':'var(--neg)';
+  netEl.textContent=HT.eur(totNet);
+  netEl.className='kpiv '+(totNet>=0?'metric-up':'metric-down');
   const mEl=document.getElementById('kMargin');
-  mEl.textContent=margin+'%'; mEl.style.color=margin>=30?'var(--pos)':margin>=15?'var(--orange)':'var(--neg)';
+  mEl.textContent=margin+'%';
+  mEl.className='kpiv '+(margin>=30?'metric-up':margin>=15?'metric-up':'metric-down');
 
   const totalStudents=active.reduce((s,c)=>s+(c.participants||0),0);
   const classCount=active.length||1;
@@ -238,7 +277,7 @@ function render(){
     sumRev+=rev; sumExp+=exp; sumNet+=net;
     const fill=c.max_participants>0?Math.round((c.participants||0)/c.max_participants*100):null;
     const fillStr=fill!=null?fill+'%':'—';
-    const fillColor=fill==null?'var(--t4)':fill<50?'var(--neg)':fill<75?'var(--orange)':'var(--pos)';
+    const fillClass=fill==null?'':fill<50?'metric-down':fill<75?'metric-down':'metric-up';
     const tcol=TYPE_COLORS[c.type]||'var(--t3)';
     const cleanName=c.program_name.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\S*\s+[\d:\/]+-[\d:]+\s*/i,'');
     return `<tr>
@@ -246,17 +285,17 @@ function render(){
       <td><span class="type-pill" style="background:${tcol}22;color:${tcol};border:1px solid ${tcol}44">${c.type}</span></td>
       <td class="mono">${rev?HT.eur(rev):'—'}</td>
       <td class="mono">${exp?HT.eur(exp):'—'}</td>
-      <td class="mono ${net>0?'pos':net<0?'neg':''}">${net?HT.eur(net):'—'}</td>
+      <td class="mono ${net>0?'metric-up':net<0?'metric-down':''}">${net?HT.eur(net):'—'}</td>
       <td class="mono">${c.weeks||'—'}</td>
-      <td class="mono" style="color:${fillColor}">${fillStr}</td>
+      <td class="mono ${fillClass}">${fillStr}</td>
     </tr>`;
   }).join('');
 
   document.getElementById('plFoot').innerHTML=`<tr>
     <td colspan="2">TOTALS (${rows.length} classes with data)</td>
-    <td class="pos">${HT.eur(sumRev)}</td>
-    <td class="neg">${HT.eur(sumExp)}</td>
-    <td class="${sumNet>=0?'pos':'neg'}">${HT.eur(sumNet)}</td>
+    <td class="mono">${HT.eur(sumRev)}</td>
+    <td class="mono">${HT.eur(sumExp)}</td>
+    <td class="mono ${sumNet>=0?'metric-up':'metric-down'}">${HT.eur(sumNet)}</td>
     <td colspan="2"></td>
   </tr>`;
 
@@ -275,9 +314,13 @@ function render(){
   active.forEach(c=>{ if(!mMap[c.type])mMap[c.type]={rev:0,exp:0}; mMap[c.type].rev+=c.session_cost||0; mMap[c.type].exp+=c.expenses||0; });
   document.getElementById('marginRows').innerHTML=Object.entries(mMap).map(([t,{rev,exp}])=>{
     const m=rev>0?Math.round((rev-exp)/rev*100):null;
-    const col=m==null?'var(--t4)':m>=30?'var(--pos)':m>=0?'var(--orange)':'var(--neg)';
-    return `<div class="crow"><div class="cname">${t}</div><div class="cval" style="color:${col}">${m!=null?m+'%':'—'}</div></div>`;
+    const mClass=m==null?'':m>=30||m>=0?'metric-up':'metric-down';
+    return `<div class="crow"><div class="cname">${t}</div><div class="cval ${mClass}">${m!=null?m+'%':'—'}</div></div>`;
   }).join('');
+
+  // Empty placeholder donuts (for future Moneybird / manual data)
+  renderEmptyDonut('revBreakdownChart',['Classes','Memberships','Other'],REV_BREAKDOWN_COLORS,'—');
+  renderEmptyDonut('costsChart',['Material','Memberships','Court fees'],COSTS_COLORS,'—');
 }
 
 function sortBy(key){ sortKey=key; sortDir*=-1; render(); }

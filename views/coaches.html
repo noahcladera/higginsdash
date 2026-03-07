@@ -87,21 +87,23 @@
 </head>
 <body>
 <header>
-  <a class="logo" href="/"><div class="logo-ball"></div>
-    <span class="logo-text">higginstennis.nl<span class="logo-tag">OPS</span></span></a>
+  <a class="logo" href="/">
+    <img class="logo-img" src="/assets/logo.avif" alt="Higgins Tennis" />
+    <span class="logo-tag">OPS</span>
+  </a>
   <div style="display:flex;align-items:center;gap:12px;">
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
     <div class="season-switcher" id="seasonSwitcher">
-      <div class="s-opt" data-s="Winter 2026">WINTER 2026</div>
-      <div class="s-sep"></div>
-      <div class="s-opt" data-s="Spring 2026">SPRING 2026</div>
+      <select class="season-select" id="seasonSelect" title="Select season">
+        <option>Loading…</option>
+      </select>
     </div>
   </div>
 </header>
 <nav>
   <a class="ni" href="/">Home</a>
   <a class="ni" href="/calendar">Calendar</a>
-  <a class="ni" href="/gocap">GoCAP</a>
+  <a class="ni" href="/gocap">Transportation</a>
   <a class="ni" href="/finance">Finance</a>
   <a class="ni" href="/coaches">Coaches</a>
   <a class="ni" href="/seasons">Seasons</a>
@@ -235,7 +237,7 @@ function renderDetail(){
       <div class="cs">${c.day} · ${c.start_time}–${c.end_time} · ${c.type}</div></div>
       <div class="cv muted">${payStr}</div>
       <div class="cv gold">${bonStr}</div>
-      <div class="cv green">${tot}</div>
+      <div class="cv">${tot}</div>
     </div>`;
   }).join('');
   const r=RATES[active]||{rate:'—'};
