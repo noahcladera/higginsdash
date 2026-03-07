@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Higgins Tennis — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.stats{display:grid;grid-template-columns:repeat(7,1fr);background:var(--b1);border-bottom:1px solid var(--b2);gap:1px;}
+@media(max-width:900px){.stats{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:500px){.stats{grid-template-columns:repeat(2,1fr);}}
+.sc{background:var(--s1);padding:20px 24px;}
+.sv{font-size:30px;font-weight:700;line-height:1;letter-spacing:-.5px;margin-bottom:5px;}
+.sl{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:1.5px;color:var(--t3);text-transform:uppercase;}
+.sn{font-size:10px;color:var(--t3);margin-top:4px;}
+
+.main{display:grid;grid-template-columns:1fr 340px;min-height:calc(100vh - 170px);}
+@media(max-width:960px){.main{grid-template-columns:1fr;}}
+.lcol{padding:28px 32px;border-right:1px solid var(--b1);}
+.side{padding:24px 22px;background:var(--s0);display:flex;flex-direction:column;gap:18px;}
+.slbl{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:2.5px;color:var(--t4);text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--b1);}
+
+.mods{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:32px;}
+@media(max-width:700px){.mods{grid-template-columns:repeat(2,1fr);}}
+.mod{background:var(--s1);border:1px solid var(--b2);border-radius:7px;padding:18px 16px 14px;text-decoration:none;color:var(--t1);transition:all .18s;display:block;position:relative;overflow:hidden;}
+.mod:hover{background:var(--s2);border-color:var(--b3);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.3);}
+.mod.live{border-color:rgba(245,160,32,.18);}
+.mod.live:hover{border-color:var(--orange);box-shadow:0 6px 24px rgba(245,160,32,.12);}
+.mi{font-size:20px;margin-bottom:9px;display:block;}
+.mn{font-size:13px;font-weight:700;color:var(--t2);margin-bottom:3px;}
+.mod.live .mn{color:var(--orange);}
+.md{font-size:10px;color:var(--t3);line-height:1.55;}
+.mbadge{position:absolute;top:11px;right:11px;font-family:"DM Mono",monospace;font-size:8px;letter-spacing:1px;padding:2px 6px;border-radius:2px;}
+.bl{background:rgba(245,160,32,.1);color:var(--orange);border:1px solid rgba(245,160,32,.25);}
+.bs{background:var(--b1);color:var(--t4);}
+
+.wrows{display:flex;flex-direction:column;gap:4px;}
+.wr{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--s1);border:1px solid var(--b1);border-radius:5px;cursor:pointer;transition:all .12s;text-decoration:none;color:inherit;}
+.wr:hover{background:var(--s2);border-color:var(--b2);}
+.wdn{font-family:"DM Mono",monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;width:32px;color:var(--t4);flex-shrink:0;}
+.wdn.on{color:var(--t2);}
+.wps{display:flex;gap:4px;flex-wrap:wrap;flex:1;}
+.wp{font-size:9px;padding:2px 7px;border-radius:2px;font-weight:500;white-space:nowrap;}
+.wct{font-family:"DM Mono",monospace;font-size:10px;color:var(--t4);margin-left:auto;white-space:nowrap;flex-shrink:0;}
+
+.lrow{display:flex;align-items:center;gap:10px;padding:10px 15px;border-bottom:1px solid var(--b1);}
+.lrow:last-child{border-bottom:none;}
+.ldot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.lname{font-size:12px;font-weight:500;color:var(--t2);flex:1;}
+.lcnt{font-family:"DM Mono",monospace;font-size:10px;color:var(--t4);}
+
+.fr-row{display:flex;align-items:center;gap:10px;padding:8px 15px;border-bottom:1px solid var(--b1);}
+.fr-row:last-child{border-bottom:none;}
+.fr-name{font-size:11px;color:var(--t2);flex:1;}
+.fr-bar-wrap{width:80px;height:5px;background:var(--b2);border-radius:2px;overflow:hidden;}
+.fr-bar{height:100%;border-radius:2px;}
+.fr-pct{font-family:"DM Mono",monospace;font-size:10px;min-width:32px;text-align:right;}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="/">
+    <div class="logo-ball"></div>
+    <span class="logo-text">higginstennis.nl<span class="logo-tag">OPS</span></span>
+  </a>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
+    <div class="season-switcher" id="seasonSwitcher">
+      <div class="s-opt" data-s="Winter 2026">WINTER 2026</div>
+      <div class="s-sep"></div>
+      <div class="s-opt" data-s="Spring 2026">SPRING 2026</div>
+    </div>
+  </div>
+</header>
+<nav>
+  <a class="ni" href="/">Home</a>
+  <a class="ni" href="/calendar">Calendar</a>
+  <a class="ni" href="/gocap">GoCAP</a>
+  <a class="ni" href="/finance">Finance</a>
+  <a class="ni" href="/coaches">Coaches</a>
+  <a class="ni" href="/seasons">Seasons</a>
+</nav>
+
+<!-- Stats strip -->
+<div class="stats" id="statsStrip">
+  <div class="sc"><div class="sv" id="st-classes"><span class="spinner"></span></div><div class="sl">Classes</div></div>
+  <div class="sc"><div class="sv" id="st-students">—</div><div class="sl">Students</div></div>
+  <div class="sc"><div class="sv" id="st-coaches">—</div><div class="sl">Coaches</div></div>
+  <div class="sc"><div class="sv" id="st-locs">—</div><div class="sl">Locations</div></div>
+  <div class="sc"><div class="sv" id="st-rev" style="color:var(--c-triaz)">—</div><div class="sl">Revenue</div></div>
+  <div class="sc"><div class="sv" id="st-fill">—</div><div class="sl">Fill Rate</div><div class="sn" id="st-fill-note"></div></div>
+  <div class="sc"><div class="sv" id="st-hours">—</div><div class="sl">Hours / Week</div></div>
+</div>
+
+<div class="main">
+  <div class="lcol">
+    <div class="sec-label" style="margin-bottom:18px">Modules</div>
+    <div class="mods">
+      <a href="/calendar" class="mod live"><span class="mi">📅</span><div class="mn">Calendar</div><div class="md">Week view, day view, list. Filter by coach or type.</div><div class="mbadge bl">LIVE</div></a>
+      <a href="/gocap"    class="mod live"><span class="mi">🚲</span><div class="mn">GoCAP</div><div class="md">Pickup routes, transit times, bakfiets schedule.</div><div class="mbadge bl">LIVE</div></a>
+      <a href="/coaches"  class="mod live"><span class="mi">👨‍🏫</span><div class="mn">Coaches</div><div class="md">Pay calculator, rates, workload per season.</div><div class="mbadge bl">LIVE</div></a>
+      <a href="/finance"  class="mod"><span class="mi">💰</span><div class="mn">Finance</div><div class="md">P&L by class, location breakdown, season totals.</div><div class="mbadge bs">SOON</div></a>
+      <a href="/seasons"  class="mod"><span class="mi">📈</span><div class="mn">Seasons</div><div class="md">Winter vs Spring comparison, enrollment trends.</div><div class="mbadge bs">SOON</div></a>
+      <div class="mod" style="opacity:.3;cursor:default"><span class="mi">⚙️</span><div class="mn">Settings</div><div class="md">Manage CSV, rates, school calendar sync.</div><div class="mbadge bs">SOON</div></div>
+    </div>
+
+    <div class="sec-label">Week at a Glance</div>
+    <div class="wrows" id="weekGlance"></div>
+  </div>
+
+  <div class="side">
+    <div class="slbl">Locations</div>
+    <div class="card" id="locCard"><div class="chd"><span class="cht">By location</span></div><div id="locRows"></div></div>
+
+    <div class="slbl">Coach Workload</div>
+    <div class="card" id="coachCard"><div class="chd"><span class="cht">Classes this season</span></div><div id="coachRows"></div></div>
+
+    <div class="slbl">Fill Rate (lowest first)</div>
+    <div class="card"><div class="chd"><span class="cht">Enrollment</span></div><div id="fillRows"></div></div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 0;">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--t4)">LAST LOADED FROM CSV</div>
+      <button onclick="reloadCSV()" style="margin-left:auto;font-family:'DM Mono',monospace;font-size:9px;padding:4px 10px;background:var(--s2);border:1px solid var(--b3);color:var(--t3);border-radius:3px;cursor:pointer;">↻ RELOAD</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/shared.js"></script>
+<script>
+const HT = window.HT;
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const DSHORT = { Monday:'MON',Tuesday:'TUE',Wednesday:'WED',Thursday:'THU',Friday:'FRI',Saturday:'SAT',Sunday:'SUN' };
+const TODAY_DAY = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
+
+let season = HT.getSeason();
+let allClasses = [];
+
+async function load() {
+  try {
+    allClasses = await HT.API.classes({ season });
+    renderStats();
+    renderWeek();
+    renderSidebar();
+  } catch(e) {
+    HT.showError('Could not load data from server: ' + e.message);
+  }
+}
+
+function renderStats() {
+  const active = allClasses.filter(c => !c.cancelled);
+  const totalPax = active.reduce((s,c) => s + (c.participants||0), 0);
+  const totalMax = active.reduce((s,c) => s + (c.max_participants||0), 0);
+  const fill = totalMax > 0 ? Math.round(totalPax/totalMax*100) : 0;
+  const coaches = [...new Set(active.flatMap(c => c.coaches).filter(Boolean))];
+  const locs    = [...new Set(active.map(c => c.location))];
+  const rev     = active.reduce((s,c) => s + (c.session_cost||0), 0);
+  const totalHours = HT.effectiveCourtHours(active);
+
+  document.getElementById('st-classes').textContent  = active.length;
+  document.getElementById('st-students').textContent = totalPax;
+  document.getElementById('st-coaches').textContent  = coaches.length;
+  document.getElementById('st-locs').textContent     = locs.length;
+  document.getElementById('st-rev').textContent      = HT.eur(rev);
+  const fillEl = document.getElementById('st-fill');
+  fillEl.textContent  = fill + '%';
+  fillEl.style.color  = fill < 60 ? '#f87171' : 'var(--c-triaz)';
+  document.getElementById('st-fill-note').textContent = totalPax + ' / ' + totalMax + ' spots';
+  document.getElementById('st-hours').textContent = totalHours.toFixed(1);
+}
+
+function renderWeek() {
+  const byDay = {};
+  DAYS.forEach(d => byDay[d] = []);
+  allClasses.filter(c => !c.cancelled).forEach(c => { if (byDay[c.day]) byDay[c.day].push(c); });
+
+  const html = DAYS.map(day => {
+    const cls = byDay[day];
+    if (!cls.length) return '';
+    const isToday = day === TODAY_DAY;
+    const pills = cls.map(c => `<span class="wp ${HT.colorClass(c)}">${c.start_time} ${c.program_name.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i,'').slice(0,28)}</span>`).join('');
+    return `<a class="wr" href="/calendar?day=${day}">
+      <div class="wdn ${isToday?'on':''}">${DSHORT[day]}</div>
+      <div class="wps">${pills}</div>
+      <div class="wct">${cls.length} class${cls.length!==1?'es':''}</div>
+    </a>`;
+  }).join('');
+  document.getElementById('weekGlance').innerHTML = html || '<div style="color:var(--t4);font-size:11px;padding:12px">No classes this season</div>';
+}
+
+function renderSidebar() {
+  const active = allClasses.filter(c => !c.cancelled);
+
+  // Locations
+  const locMap = {};
+  active.forEach(c => { locMap[c.location] = (locMap[c.location]||0) + 1; });
+  const locColors = { Triaz:'var(--c-triaz)', Randwijck:'var(--c-rand)', 'AICS South Campus':'var(--c-school)', AJErnstraat:'var(--c-triaz)', VU:'var(--c-school)' };
+  document.getElementById('locRows').innerHTML = Object.entries(locMap).sort((a,b)=>b[1]-a[1])
+    .map(([l,n]) => `<div class="lrow"><div class="ldot" style="background:${locColors[l]||'var(--t4)'}"></div><div class="lname">${l}</div><div class="lcnt">${n} class${n!==1?'es':''}</div></div>`).join('');
+
+  // Coach workload (merge overlapping classes — coach can't be in 2 places)
+  const coachMap = {};
+  active.forEach(c => {
+    c.coaches.filter(Boolean).forEach(n => {
+      coachMap[n] = coachMap[n] || [];
+      coachMap[n].push(c);
+    });
+  });
+  const coachStats = Object.entries(coachMap).map(([n, cls]) => {
+    const { hours, blockCount } = HT.coachEffectiveWorkload(cls);
+    return [n, blockCount, hours];
+  }).sort((a, b) => b[1] - a[1]);
+  document.getElementById('coachRows').innerHTML = coachStats
+    .map(([n, cnt, hrs]) => `<div class="lrow"><div class="ldot" style="background:var(--orange)"></div><div class="lname">${n}</div><div class="lcnt">${cnt} class${cnt!==1?'es':''} / ${hrs.toFixed(1)}h</div></div>`).join('');
+
+  // Fill rate (lowest first)
+  const fillData = active
+    .filter(c => c.max_participants > 0)
+    .map(c => ({ name: c.program_name.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i,'').slice(0,32), pax: c.participants||0, max: c.max_participants, pct: Math.round((c.participants||0)/c.max_participants*100) }))
+    .sort((a,b) => a.pct - b.pct).slice(0, 8);
+  document.getElementById('fillRows').innerHTML = fillData.map(f => {
+    const col = f.pct < 50 ? '#f87171' : f.pct < 75 ? 'var(--orange)' : 'var(--c-triaz)';
+    return `<div class="fr-row"><div class="fr-name">${f.name}</div><div class="fr-bar-wrap"><div class="fr-bar" style="width:${f.pct}%;background:${col}"></div></div><div class="fr-pct" style="color:${col}">${f.pct}%</div></div>`;
+  }).join('');
+}
+
+async function reloadCSV() {
+  try {
+    const r = await HT.API.reload();
+    if (r.ok) { allClasses = []; await load(); }
+  } catch(e) { HT.showError('Reload failed: ' + e.message); }
+}
+
+// Season switcher
+HT.initSeasonSwitcher(s => { season = s; load(); });
+
+load();
+</script>
+</body>
+</html>

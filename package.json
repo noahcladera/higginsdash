@@ -1,0 +1,17 @@
+{
+  "name": "higgins-tennis-ops",
+  "version": "1.0.0",
+  "description": "Higgins Tennis Amsterdam — Operations Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

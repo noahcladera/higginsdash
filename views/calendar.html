@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Higgins Tennis — Calendar</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 20px;background:var(--s1);border-bottom:1px solid var(--b1);}
+.fl{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:1px;color:var(--t3);text-transform:uppercase;}
+select{background:var(--s2);border:1px solid var(--b2);color:var(--t1);font-family:"DM Sans",sans-serif;font-size:12px;padding:5px 9px;border-radius:3px;cursor:pointer;}
+select:focus{outline:none;border-color:var(--orange);}
+input[type="search"]{background:var(--s2);border:1px solid var(--b2);color:var(--t1);font-size:12px;padding:5px 10px;border-radius:3px;width:140px;transition:border-color .15s;}
+input[type="search"]:focus{outline:none;border-color:var(--orange);}
+input[type="search"]::placeholder{color:var(--t4);}
+.sep{width:1px;height:22px;background:var(--b2);}
+.btn-grp{display:flex;gap:3px;}
+.vbtn{padding:5px 13px;background:var(--s2);border:1px solid var(--b2);color:var(--t3);font-family:"DM Mono",monospace;font-size:10px;letter-spacing:1px;cursor:pointer;border-radius:3px;transition:all .15s;}
+.vbtn:hover{color:var(--t2);}
+.vbtn.active{background:var(--orange);color:#000;border-color:var(--orange);font-weight:700;}
+.stats-strip{display:flex;gap:16px;padding:6px 20px;background:var(--s0);border-bottom:1px solid var(--b1);font-family:"DM Mono",monospace;font-size:10px;color:var(--t3);}
+.stats-strip span{color:var(--t2);}
+.daynav{display:none;align-items:center;gap:10px;padding:7px 20px;background:var(--s2);border-bottom:1px solid var(--b1);}
+.daynav-btn{background:none;border:1px solid var(--b3);color:var(--t3);font-family:"DM Mono",monospace;font-size:12px;padding:4px 14px;cursor:pointer;border-radius:3px;transition:all .15s;}
+.daynav-btn:hover{color:var(--t2);border-color:var(--t3);}
+.daynav-lbl{font-size:14px;font-weight:600;flex:1;text-align:center;letter-spacing:1px;}
+.legend{display:flex;gap:18px;padding:7px 20px;background:var(--s1);border-bottom:1px solid var(--b1);flex-wrap:wrap;}
+.leg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t3);}
+.leg-dot{width:9px;height:9px;border-radius:2px;}
+
+.cal-outer{overflow-x:auto;overflow-y:auto;position:relative;max-height:calc(100vh - 220px);}
+.cal-grid{display:grid;background:var(--bg);transition:opacity .15s;}
+.cal-time-head{background:var(--s2);border-bottom:1px solid var(--b2);border-right:1px solid var(--b1);width:52px;}
+.cal-day-head{padding:9px 6px;text-align:center;background:var(--s2);border-bottom:1px solid var(--b2);border-right:1px solid var(--b1);}
+.cal-day-head.today{background:rgba(245,160,32,.08);border-bottom-color:var(--orange);}
+.cal-day-head .dn{font-size:13px;font-weight:700;letter-spacing:1px;}
+.cal-day-head .dc{font-family:"DM Mono",monospace;font-size:9px;color:var(--t3);margin-top:3px;}
+.time-cell{font-family:"DM Mono",monospace;font-size:9px;color:var(--t4);padding:4px 5px 0;height:54px;border-right:1px solid var(--b1);border-bottom:1px solid var(--b1);width:52px;background:var(--s2);}
+.day-col{position:relative;border-right:1px solid var(--b1);}
+.day-col.today{background:rgba(245,160,32,.02);}
+.time-slot{height:54px;border-bottom:1px solid var(--b1);}
+.time-slot:nth-child(2n){background:rgba(255,255,255,.02);}
+.ev-layer{position:absolute;top:0;left:0;right:0;bottom:0;padding:1px 2px;}
+.ev{position:absolute;border-radius:3px;padding:4px 6px;overflow:hidden;cursor:pointer;transition:filter .12s,transform .1s;border-width:1px;border-style:solid;border-left-width:3px;}
+.ev:hover{filter:brightness(1.35);z-index:20;}
+.ev.cancelled{opacity:.4;}
+.ev.cancelled .ev-name{text-decoration:line-through;}
+.ev.triaz{background:var(--c-triaz-bg);border-color:var(--c-triaz-bd);border-left-color:var(--c-triaz);}
+.ev.randwijck{background:var(--c-rand-bg);border-color:var(--c-rand-bd);border-left-color:var(--c-rand);}
+.ev.school{background:var(--c-school-bg);border-color:var(--c-school-bd);border-left-color:var(--c-school);}
+.ev.gocap{background:var(--c-gocap-bg);border-color:var(--c-gocap-bd);border-left-color:var(--c-gocap);}
+.ev-name{font-weight:600;font-size:10px;line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.ev-coach{font-family:"DM Mono",monospace;font-size:9px;color:var(--t3);margin-top:1px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.ev-time{font-family:"DM Mono",monospace;font-size:8px;opacity:.55;margin-top:1px;}
+.ev-fill{font-size:8px;margin-top:2px;padding:1px 4px;background:var(--s2);border-radius:2px;display:inline-block;}
+
+.now-line{position:absolute;left:52px;right:0;height:2px;background:var(--orange);z-index:15;pointer-events:none;box-shadow:0 0 6px var(--orange);}
+
+/* Coach Schedule (Gantt) view */
+.sched-outer{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 220px);}
+.sched-grid{display:grid;background:var(--bg);min-width:max-content;}
+.sched-time-head{background:var(--s2);border-bottom:1px solid var(--b2);border-right:1px solid var(--b1);padding:6px 8px;font-family:"DM Mono",monospace;font-size:9px;color:var(--t4);text-align:center;}
+.sched-name-cell{background:var(--s2);border-bottom:1px solid var(--b1);border-right:1px solid var(--b1);padding:4px 10px;font-weight:600;font-size:11px;min-width:140px;position:sticky;left:0;z-index:2;display:flex;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sched-timeline-cell{position:relative;border-bottom:1px solid var(--b1);border-right:1px solid var(--b1);min-width:24px;height:36px;}
+.sched-row{display:contents;}
+.sched-bar{position:absolute;top:2px;bottom:2px;border-radius:2px;padding:2px 4px;overflow:hidden;cursor:pointer;font-size:9px;font-weight:500;border-left:2px solid;transition:filter .12s;}
+.sched-bar:hover{filter:brightness(1.3);z-index:5;}
+.sched-bar.triaz{background:var(--c-triaz-bg);border-left-color:var(--c-triaz);}
+.sched-bar.randwijck{background:var(--c-rand-bg);border-left-color:var(--c-rand);}
+.sched-bar.school{background:var(--c-school-bg);border-left-color:var(--c-school);}
+.sched-bar.gocap{background:var(--c-gocap-bg);border-left-color:var(--c-gocap);}
+.sched-bar.cancelled{opacity:.4;}
+.sched-day-tab{display:flex;gap:4px;padding:6px 20px;background:var(--s1);border-bottom:1px solid var(--b1);flex-wrap:wrap;}
+.sched-day-tab button{padding:4px 10px;font-size:10px;font-family:"DM Mono",monospace;background:var(--s2);border:1px solid var(--b2);color:var(--t3);border-radius:3px;cursor:pointer;transition:all .15s;}
+.sched-day-tab button:hover{color:var(--t2);}
+.sched-day-tab button.on{background:var(--orange);color:#000;border-color:var(--orange);}
+
+/* Hover popover */
+.popover{position:fixed;z-index:1000;background:var(--s1);border:1px solid var(--b2);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.4);padding:10px 12px;min-width:200px;max-width:280px;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .1s,visibility .1s;}
+.popover.visible{opacity:1;visibility:visible;pointer-events:auto;}
+.popover-title{font-weight:600;font-size:12px;margin-bottom:6px;line-height:1.3;}
+.popover-row{font-size:11px;color:var(--t3);margin-top:4px;}
+.popover-tag{display:inline-block;margin:2px 4px 2px 0;padding:2px 6px;background:var(--s2);border-radius:3px;font-size:10px;cursor:pointer;transition:background .15s;}
+.popover-tag:hover{background:var(--orange);color:#000;}
+.popover-fill{height:4px;background:var(--b2);border-radius:2px;margin-top:4px;overflow:hidden;}
+.popover-fill-bar{height:100%;border-radius:2px;background:var(--c-triaz);}
+
+.list-wrap{padding:20px 24px;transition:opacity .15s;}
+.list-day{margin-bottom:22px;}
+.list-dtitle{font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--orange);border-bottom:1px solid var(--b2);padding-bottom:6px;margin-bottom:8px;}
+.list-ev{display:grid;grid-template-columns:80px 1fr 120px 90px 60px;gap:10px;align-items:center;padding:9px 14px;border:1px solid var(--b1);border-radius:3px;margin-bottom:4px;background:var(--s1);border-left:3px solid;cursor:pointer;transition:background .12s;}
+.list-ev:hover{background:var(--s2);}
+.list-ev.cancelled{opacity:.5;}
+.list-ev.triaz{border-left-color:var(--c-triaz);}
+.list-ev.randwijck{border-left-color:var(--c-rand);}
+.list-ev.school{border-left-color:var(--c-school);}
+.list-ev.gocap{border-left-color:var(--c-gocap);}
+.lt{font-family:"DM Mono",monospace;font-size:10px;color:var(--t3);line-height:1.5;}
+.ln{font-weight:500;font-size:12px;}
+.ls{font-size:10px;color:var(--t3);margin-top:2px;}
+.lc{font-family:"DM Mono",monospace;font-size:10px;color:var(--t3);}
+.lloc{font-size:10px;font-weight:600;}
+.lloc.triaz{color:var(--c-triaz);}
+.lloc.randwijck{color:var(--c-rand);}
+.lloc.school{color:var(--c-school);}
+.lloc.gocap{color:var(--c-gocap);}
+.lkids{font-family:"DM Mono",monospace;font-size:10px;text-align:center;padding:2px 7px;background:var(--s2);border:1px solid var(--b2);border-radius:12px;}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="/">
+    <div class="logo-ball"></div>
+    <span class="logo-text">higginstennis.nl<span class="logo-tag">OPS</span></span>
+  </a>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
+    <div class="season-switcher" id="seasonSwitcher">
+      <div class="s-opt" data-s="Winter 2026">WINTER 2026</div>
+      <div class="s-sep"></div>
+      <div class="s-opt" data-s="Spring 2026">SPRING 2026</div>
+    </div>
+  </div>
+</header>
+<nav>
+  <a class="ni" href="/">Home</a>
+  <a class="ni" href="/calendar">Calendar</a>
+  <a class="ni" href="/gocap">GoCAP</a>
+  <a class="ni" href="/finance">Finance</a>
+  <a class="ni" href="/coaches">Coaches</a>
+  <a class="ni" href="/seasons">Seasons</a>
+</nav>
+
+<div class="toolbar">
+  <span class="fl">Coach</span>
+  <select id="sCoach" onchange="applyFilters()"><option value="">All Coaches</option></select>
+  <span class="fl">Type</span>
+  <select id="sType" onchange="applyFilters()">
+    <option value="">All Types</option>
+    <option>GoCAP</option><option>Club</option><option>School</option><option>Private</option>
+  </select>
+  <span class="fl">Location</span>
+  <select id="sLoc" onchange="applyFilters()"><option value="">All Locations</option></select>
+  <div class="sep"></div>
+  <input type="search" id="sSearch" placeholder="Search classes…" oninput="debouncedSearch()">
+  <div class="sep"></div>
+  <div class="btn-grp">
+    <button class="vbtn" data-v="day">DAY</button>
+    <button class="vbtn" data-v="3day">3 DAYS</button>
+    <button class="vbtn active" data-v="week">WEEK</button>
+    <button class="vbtn" data-v="list">LIST</button>
+    <button class="vbtn" data-v="schedule">SCHEDULE</button>
+  </div>
+</div>
+
+<div class="stats-strip" id="statsStrip">
+  <span id="stClasses">0</span> classes · <span id="stHours">0</span>h · <span id="stCoaches">0</span> coaches · <span id="stStudents">0 / 0</span> spots
+</div>
+
+<div class="daynav" id="dayNav">
+  <button class="daynav-btn" onclick="shiftDay(-1)">◀</button>
+  <div class="daynav-lbl" id="dayNavLbl">—</div>
+  <button class="daynav-btn" onclick="shiftDay(1)">▶</button>
+</div>
+
+<div class="sched-day-tab" id="schedDayTab" style="display:none">
+  <button data-day="">All Days</button>
+  <button data-day="Monday">Mon</button>
+  <button data-day="Tuesday">Tue</button>
+  <button data-day="Wednesday">Wed</button>
+  <button data-day="Thursday">Thu</button>
+  <button data-day="Friday">Fri</button>
+  <button data-day="Saturday">Sat</button>
+  <button data-day="Sunday">Sun</button>
+</div>
+
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:var(--c-triaz)"></div>Triaz — grass</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c-rand)"></div>Randwijck — clay</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c-school)"></div>School on-campus</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c-gocap)"></div>GoCAP pickup</div>
+</div>
+
+<div id="calView"><div class="cal-outer" id="calOuter"><div class="cal-grid" id="calGrid"></div><div class="now-line" id="nowLine" style="display:none"></div></div></div>
+<div id="schedView" class="sched-outer hidden"><div class="sched-grid" id="schedGrid"></div></div>
+<div id="listView" class="list-wrap hidden"></div>
+
+<div class="popover" id="popover">
+  <div class="popover-title" id="popTitle"></div>
+  <div class="popover-row" id="popTime"></div>
+  <div class="popover-row" id="popLoc"></div>
+  <div class="popover-row" id="popCoaches"></div>
+  <div class="popover-row" id="popAge"></div>
+  <div class="popover-fill" id="popFillWrap"><div class="popover-fill-bar" id="popFillBar" style="width:0%"></div></div>
+</div>
+
+<div class="mo" id="mo" onclick="if(event.target===this)closeMo()">
+  <div class="mdl">
+    <button class="mclose" onclick="closeMo()">✕</button>
+    <div class="mtitle" id="moTitle"></div>
+    <div id="moBody"></div>
+  </div>
+</div>
+
+<script src="/js/shared.js"></script>
+<script>
+const HT = window.HT;
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const DSHORT = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+const SH = 9, EH = 21, SLOTH = 54;
+const TODAY = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
+
+let season = HT.getSeason();
+let all = [], filtered = [];
+let view = 'week', dayOff = 0;
+let schedDay = TODAY;
+let searchDebounce = null;
+let popoverHideTimer = null;
+
+function isCancelled(c) {
+  return c.cancelled || (c.notes && c.notes.toLowerCase().includes('cancelled'));
+}
+
+function activeForStats(arr) {
+  return arr.filter(c => !isCancelled(c));
+}
+
+async function loadData() {
+  try {
+    all = await HT.API.classes({ season });
+    const coaches = [...new Set(all.flatMap(c => c.coaches).filter(Boolean))].sort();
+    const locs = [...new Set(all.map(c => c.location).filter(Boolean))].sort();
+    document.getElementById('sCoach').innerHTML = '<option value="">All Coaches</option>' + coaches.map(c => `<option value="${c}">${c}</option>`).join('');
+    document.getElementById('sLoc').innerHTML = '<option value="">All Locations</option>' + locs.map(l => `<option value="${l}">${l}</option>`).join('');
+    applyFilters();
+  } catch (e) { HT.showError(e.message); }
+}
+
+function applyFilters() {
+  const coach = document.getElementById('sCoach').value;
+  const type = document.getElementById('sType').value;
+  const loc = document.getElementById('sLoc').value;
+  const q = (document.getElementById('sSearch').value || '').trim().toLowerCase();
+  filtered = all.filter(c => {
+    if (coach && !c.coaches.includes(coach)) return false;
+    if (type && c.type !== type) return false;
+    if (loc && c.location !== loc) return false;
+    if (q && !(c.program_name || '').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  renderStats();
+  render();
+}
+
+function debouncedSearch() {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(applyFilters, 200);
+}
+
+function renderStats() {
+  const active = activeForStats(filtered);
+  const totalHours = HT.effectiveCourtHours(active);
+  const coaches = [...new Set(active.flatMap(c => c.coaches).filter(Boolean))];
+  const pax = active.reduce((s, c) => s + (c.participants || 0), 0);
+  const max = active.reduce((s, c) => s + (c.max_participants || 0), 0);
+  document.getElementById('stClasses').textContent = active.length;
+  document.getElementById('stHours').textContent = totalHours.toFixed(1);
+  document.getElementById('stCoaches').textContent = coaches.length;
+  document.getElementById('stStudents').textContent = pax + ' / ' + max;
+}
+
+function setView(v) {
+  view = v;
+  dayOff = 0;
+  document.querySelectorAll('.vbtn').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+  document.getElementById('dayNav').style.display = (v === 'day' || v === '3day') ? 'flex' : 'none';
+  document.getElementById('schedDayTab').style.display = v === 'schedule' ? 'flex' : 'none';
+  document.getElementById('calView').classList.toggle('hidden', v === 'list' || v === 'schedule');
+  document.getElementById('schedView').classList.toggle('hidden', v !== 'schedule');
+  document.getElementById('listView').classList.toggle('hidden', v !== 'list');
+  render();
+}
+
+function shiftDay(d) { dayOff += d; render(); }
+
+function render() {
+  if (view === 'list') renderList();
+  else if (view === 'schedule') renderSchedule();
+  else renderCal();
+}
+
+function computeOverlapSlots(evs) {
+  if (!evs.length) return new Map();
+  const assigned = new Map();
+  const sorted = [...evs].sort((a, b) => HT.t2m(a.start_time) - HT.t2m(b.start_time) || HT.t2m(b.end_time) - HT.t2m(a.end_time));
+  const eMap = new Map(sorted.map(e => [e.id, e]));
+  function overlaps(a, b) { return HT.t2m(a.start_time) < HT.t2m(b.end_time) && HT.t2m(b.start_time) < HT.t2m(a.end_time); }
+
+  const groups = [];
+  sorted.forEach(e => {
+    const hits = [];
+    for (let i = 0; i < groups.length; i++) {
+      if (groups[i].some(o => overlaps(o, e))) hits.push(i);
+    }
+    if (hits.length === 0) {
+      groups.push([e]);
+    } else if (hits.length === 1) {
+      groups[hits[0]].push(e);
+    } else {
+      const merged = [e];
+      for (const i of hits) merged.push(...groups[i]);
+      for (let i = hits.length - 1; i >= 0; i--) groups.splice(hits[i], 1);
+      groups.push(merged);
+    }
+  });
+
+  groups.forEach(grp => {
+    grp.sort((a, b) => HT.t2m(a.start_time) - HT.t2m(b.start_time) || HT.t2m(b.end_time) - HT.t2m(a.end_time));
+    const cols = [];
+    grp.forEach(e => {
+      let c = 0;
+      while (cols[c] && cols[c].some(id => { const o = eMap.get(id); return o && overlaps(o, e); })) c++;
+      if (!cols[c]) cols[c] = [];
+      cols[c].push(e.id);
+    });
+    const total = cols.length;
+    grp.forEach(e => {
+      assigned.set(e.id, { slot: cols.findIndex(col => col.includes(e.id)), total });
+    });
+  });
+  return assigned;
+}
+
+function renderCal() {
+  const grid = document.getElementById('calGrid');
+  const hours = []; for (let h = SH; h <= EH; h++) hours.push(h);
+
+  let days;
+  if (view === 'day') {
+    const i = ((dayOff % 7) + 7) % 7;
+    days = [DAYS[i]];
+    document.getElementById('dayNavLbl').textContent = DAYS[i];
+  } else if (view === '3day') {
+    const s = ((dayOff % 7) + 7) % 7;
+    days = [DAYS[s], DAYS[(s + 1) % 7], DAYS[(s + 2) % 7]];
+    document.getElementById('dayNavLbl').textContent = days.join(' · ');
+  } else days = DAYS;
+
+  const minW = view === 'day' ? 300 : view === '3day' ? 200 : 130;
+  grid.style.cssText = `display:grid;grid-template-columns:52px repeat(${days.length},minmax(${minW}px,1fr));grid-template-rows:auto repeat(${hours.length},${SLOTH}px);`;
+  grid.innerHTML = '';
+
+  const byDay = {}; DAYS.forEach(d => byDay[d] = []);
+  filtered.forEach(e => { if (byDay[e.day]) byDay[e.day].push(e); });
+
+  const tl = document.createElement('div'); tl.className = 'cal-time-head'; tl.style.gridArea = '1/1'; grid.appendChild(tl);
+
+  days.forEach((d, ci) => {
+    const h = document.createElement('div');
+    h.className = 'cal-day-head' + (d === TODAY ? ' today' : '');
+    h.style.gridArea = `1/${ci + 2}`;
+    h.innerHTML = `<div class="dn">${DSHORT[DAYS.indexOf(d)]}</div><div class="dc">${byDay[d].length} class${byDay[d].length !== 1 ? 'es' : ''}</div>`;
+    grid.appendChild(h);
+  });
+
+  hours.forEach((h, ri) => {
+    const tc = document.createElement('div'); tc.className = 'time-cell';
+    tc.style.gridArea = `${ri + 2}/1`; tc.textContent = `${h}:00`; grid.appendChild(tc);
+  });
+
+  days.forEach((day, ci) => {
+    const col = document.createElement('div');
+    col.className = 'day-col' + (day === TODAY ? ' today' : '');
+    col.style.gridArea = `2/${ci + 2}/span ${hours.length}`;
+    col.style.height = `${hours.length * SLOTH}px`;
+    hours.forEach(() => { const s = document.createElement('div'); s.className = 'time-slot'; col.appendChild(s); });
+
+    const layer = document.createElement('div'); layer.className = 'ev-layer';
+    const evs = byDay[day];
+    const slotMap = computeOverlapSlots(evs);
+
+    evs.forEach(e => {
+      const top = ((HT.t2m(e.start_time) - SH * 60) / 60) * SLOTH;
+      const height = Math.max(((HT.t2m(e.end_time) - HT.t2m(e.start_time)) / 60) * SLOTH, 28);
+      const info = slotMap.get(e.id) || { slot: 0, total: 1 };
+      const cw = 100 / info.total, lp = info.slot * cw;
+
+      const div = document.createElement('div');
+      div.className = `ev ${HT.colorClass(e)}${isCancelled(e) ? ' cancelled' : ''}`;
+      div.style.cssText = `top:${top}px;height:${height - 1}px;left:calc(${lp}% + 1px);width:calc(${cw}% - 4px);`;
+      div.dataset.id = e.id;
+
+      let inner = '';
+      const name = (e.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim();
+      if (height >= 80) {
+        inner = `<div class="ev-name">${name}</div><div class="ev-coach">${e.coaches.filter(Boolean).join(', ')}</div><div class="ev-time">${e.start_time}–${e.end_time}</div><div class="ev-fill">${e.participants || 0}/${e.max_participants || '?'}</div>`;
+      } else if (height >= 54) {
+        inner = `<div class="ev-name">${name}</div><div class="ev-coach">${e.coaches.filter(Boolean).join(', ')}</div><div class="ev-time">${e.start_time}–${e.end_time}</div>`;
+      } else if (height >= 36) {
+        inner = `<div class="ev-name">${name}</div><div class="ev-coach">${e.coaches.filter(Boolean).join(', ')}</div>`;
+      } else {
+        inner = `<div class="ev-name">${name}</div>`;
+      }
+      div.innerHTML = inner;
+
+      div.onclick = (ev) => { ev.stopPropagation(); openMo(e.id); };
+      div.onmouseenter = (ev) => showPopover(ev);
+      div.onmouseleave = () => hidePopover();
+
+      layer.appendChild(div);
+    });
+    col.appendChild(layer); grid.appendChild(col);
+  });
+
+  updateNowLine();
+  scrollToNow();
+}
+
+function showPopover(ev, e) {
+  const id = parseInt(ev.currentTarget?.dataset?.id, 10);
+  const c = all.find(x => x.id === id); if (!c) return;
+  clearTimeout(popoverHideTimer);
+  const pop = document.getElementById('popover');
+  document.getElementById('popTitle').textContent = (c.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim();
+  document.getElementById('popTime').textContent = `${c.day} · ${c.start_time}–${c.end_time}`;
+  document.getElementById('popLoc').innerHTML = `<span class="popover-tag" onclick="setLocFilter('${(c.location||'').replace(/'/g,"\\'")}')">${c.location || '—'}</span>`;
+  document.getElementById('popCoaches').innerHTML = (c.coaches || []).filter(Boolean).map(n => `<span class="popover-tag" onclick="setCoachFilter('${n}')">${n}</span>`).join('') || '—';
+  document.getElementById('popAge').textContent = 'Ages ' + (c.age_group || '—');
+  const pct = c.max_participants ? Math.round((c.participants || 0) / c.max_participants * 100) : 0;
+  document.getElementById('popFillBar').style.width = pct + '%';
+  document.getElementById('popFillWrap').style.display = c.max_participants ? 'block' : 'none';
+
+  const rect = ev.currentTarget.getBoundingClientRect();
+  let left = rect.left + rect.width / 2 - 120;
+  left = Math.max(8, Math.min(left, window.innerWidth - 260));
+  pop.style.left = left + 'px';
+  const topSpace = rect.top;
+  if (topSpace < 180) {
+    pop.style.top = (rect.bottom + 8) + 'px';
+    pop.style.transform = 'none';
+  } else {
+    pop.style.top = (rect.top - 8) + 'px';
+    pop.style.transform = 'translateY(-100%)';
+  }
+  pop.classList.add('visible');
+  pop.onmouseenter = () => clearTimeout(popoverHideTimer);
+  pop.onmouseleave = () => { popoverHideTimer = setTimeout(hidePopover, 150); };
+}
+function hidePopover(immediate) {
+  clearTimeout(popoverHideTimer);
+  if (immediate) {
+    document.getElementById('popover').classList.remove('visible');
+  } else {
+    popoverHideTimer = setTimeout(() => document.getElementById('popover').classList.remove('visible'), 150);
+  }
+}
+function setCoachFilter(name) { document.getElementById('sCoach').value = name; applyFilters(); hidePopover(true); }
+function setLocFilter(loc) { document.getElementById('sLoc').value = loc; applyFilters(); hidePopover(true); }
+
+function updateNowLine() {
+  const nl = document.getElementById('nowLine');
+  if (view === 'list' || view === 'schedule') { nl.style.display = 'none'; return; }
+  const now = new Date();
+  const minOfDay = now.getHours() * 60 + now.getMinutes();
+  if (minOfDay < SH * 60 || minOfDay > EH * 60) { nl.style.display = 'none'; return; }
+  const top = ((minOfDay - SH * 60) / 60) * SLOTH;
+  nl.style.display = 'block';
+  nl.style.top = (52 + top) + 'px';
+}
+function scrollToNow() {
+  if (view === 'list' || view === 'schedule') return;
+  const now = new Date();
+  const minOfDay = now.getHours() * 60 + now.getMinutes();
+  if (minOfDay < SH * 60 || minOfDay > EH * 60) return;
+  const outer = document.getElementById('calOuter');
+  const top = ((minOfDay - SH * 60) / 60) * SLOTH;
+  outer.scrollTop = Math.max(0, 52 + top - outer.clientHeight / 3);
+}
+setInterval(updateNowLine, 60000);
+
+function renderSchedule() {
+  const grid = document.getElementById('schedGrid');
+  const coaches = [...new Set(filtered.flatMap(c => c.coaches).filter(Boolean))].sort();
+  const dayFilter = schedDay || null;
+  const evs = dayFilter ? filtered.filter(c => c.day === dayFilter) : filtered;
+
+  const rows = [];
+  if (dayFilter) {
+    coaches.forEach(n => {
+      const cls = evs.filter(c => c.coaches.includes(n));
+      if (cls.length) rows.push({ label: n, classes: cls });
+    });
+  } else {
+    coaches.forEach(n => {
+      const coachEvs = evs.filter(c => c.coaches.includes(n));
+      const days = [...new Set(coachEvs.map(c => c.day))];
+      days.sort((a, b) => DAYS.indexOf(a) - DAYS.indexOf(b));
+      days.forEach(d => {
+        const cls = coachEvs.filter(c => c.day === d);
+        if (cls.length) rows.push({ label: `${n} · ${d.slice(0, 3)}`, classes: cls });
+      });
+    });
+  }
+
+  const hours = []; for (let h = SH; h <= EH; h++) hours.push(h);
+  const totalMins = (EH - SH) * 60;
+
+  grid.style.cssText = `display:grid;grid-template-columns:140px 1fr;grid-template-rows:auto repeat(${rows.length}, 32px);min-width:600px;`;
+  grid.innerHTML = '';
+
+  const blank = document.createElement('div');
+  blank.className = 'sched-time-head';
+  blank.style.gridColumn = '1';
+  grid.appendChild(blank);
+  const timeHead = document.createElement('div');
+  timeHead.className = 'sched-time-head';
+  timeHead.style.cssText = 'grid-column:2;display:flex;';
+  hours.forEach(h => {
+    const th = document.createElement('span');
+    th.style.cssText = `flex:1;text-align:center;font-size:9px;min-width:0;`;
+    th.textContent = h + ':00';
+    timeHead.appendChild(th);
+  });
+  grid.appendChild(timeHead);
+
+  rows.forEach((row, ri) => {
+    const nameCell = document.createElement('div');
+    nameCell.className = 'sched-name-cell';
+    nameCell.textContent = row.label;
+    nameCell.style.gridArea = `${ri + 2} / 1`;
+    grid.appendChild(nameCell);
+
+    const timelineCell = document.createElement('div');
+    timelineCell.style.cssText = `grid-area:${ri + 2}/2;position:relative;height:32px;min-height:32px;border-bottom:1px solid var(--b1);`;
+    grid.appendChild(timelineCell);
+
+    row.classes.forEach(c => {
+      const startM = HT.t2m(c.start_time), endM = HT.t2m(c.end_time);
+      const left = ((startM - SH * 60) / totalMins) * 100;
+      const w = Math.max(((endM - startM) / totalMins) * 100, 1.5);
+
+      const bar = document.createElement('div');
+      bar.className = `sched-bar ${HT.colorClass(c)}${isCancelled(c) ? ' cancelled' : ''}`;
+      bar.style.cssText = `left:${left}%;width:${w}%;`;
+      const name = (c.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim();
+      bar.textContent = name.slice(0, 16) + ' ' + (c.start_time || '');
+      bar.title = `${name} · ${c.start_time}–${c.end_time} · ${c.location}`;
+      bar.onclick = () => openMo(c.id);
+      bar.onmouseenter = (ev) => showPopover(ev);
+      bar.onmouseleave = hidePopover;
+      bar.dataset.id = c.id;
+      timelineCell.appendChild(bar);
+    });
+  });
+
+  if (!rows.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--t3)">No classes match the current filter</div>';
+  }
+}
+
+document.getElementById('schedDayTab').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#schedDayTab button').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  schedDay = btn.dataset.day || '';
+  renderSchedule();
+});
+document.querySelectorAll('#schedDayTab button').forEach(b => {
+  b.classList.toggle('on', b.dataset.day === schedDay);
+});
+
+function renderList() {
+  const wrap = document.getElementById('listView');
+  const active = activeForStats(filtered);
+  if (!filtered.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:60px;color:var(--t3)">No classes match the current filter</div>';
+    return;
+  }
+  const byDay = {}; DAYS.forEach(d => byDay[d] = []);
+  filtered.forEach(e => { if (byDay[e.day]) byDay[e.day].push(e); });
+  let html = '';
+  DAYS.forEach(d => {
+    if (!byDay[d].length) return;
+    const sorted = byDay[d].sort((a, b) => HT.t2m(a.start_time) - HT.t2m(b.start_time));
+    html += `<div class="list-day"><div class="list-dtitle">${d}</div>`;
+    sorted.forEach(e => {
+      const coaches = e.coaches.filter(Boolean).join(' + ');
+      const fill = e.max_participants ? `${e.participants}/${e.max_participants}` : e.participants;
+      const cc = HT.colorClass(e);
+      html += `<div class="list-ev ${cc}${isCancelled(e) ? ' cancelled' : ''}" onclick="openMo(${e.id})">
+        <div class="lt">${e.start_time}<br>${e.end_time}</div>
+        <div><div class="ln">${e.program_name.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '')}</div><div class="ls">${e.location} · Ages ${e.age_group || '—'}</div></div>
+        <div class="lc">${coaches || '—'}</div>
+        <div class="lloc ${cc}">${e.location ? e.location.split(' ')[0] : '—'}</div>
+        <div class="lkids">${fill || '—'}</div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  wrap.innerHTML = html;
+}
+
+function openMo(id) {
+  const e = all.find(x => x.id === id); if (!e) return;
+  hidePopover();
+  const coaches = e.coaches.filter(Boolean).join(', ');
+  const p = e.net_profit;
+  document.getElementById('moTitle').textContent = (e.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim();
+  document.getElementById('moBody').innerHTML = `
+    <div class="mrow"><span class="mk">Day & Time</span><span class="mv">${e.day} · ${e.start_time}–${e.end_time}</span></div>
+    <div class="mrow"><span class="mk">Location</span><span class="mv">${e.location || '—'}</span></div>
+    <div class="mrow"><span class="mk">Type</span><span class="mv">${e.type || '—'}</span></div>
+    <div class="mrow"><span class="mk">Age Group</span><span class="mv">${e.age_group || '—'}</span></div>
+    <div class="mrow"><span class="mk">Coaches</span><span class="mv">${coaches || '—'}</span></div>
+    <div class="mrow"><span class="mk">Participants</span><span class="mv">${e.participants ?? '—'} / ${e.max_participants ?? '?'}</span></div>
+    <div class="mrow"><span class="mk">Season</span><span class="mv">${e.season || '—'}</span></div>
+    <div class="mrow"><span class="mk">Weeks</span><span class="mv">${e.weeks ?? '—'}</span></div>
+    <div class="mrow"><span class="mk">Cost / Class</span><span class="mv">${HT.eur(e.cost_per_class)}</span></div>
+    <div class="mrow"><span class="mk">Session Revenue</span><span class="mv">${HT.eur(e.session_cost)}</span></div>
+    <div class="mrow"><span class="mk">Expenses</span><span class="mv">${HT.eur(e.expenses)}</span></div>
+    <div class="mrow"><span class="mk">Net Profit</span><span class="mv ${(p != null && p >= 0) ? 'pp' : 'pn'}">${HT.eur(p)}</span></div>
+    ${e.notes ? `<div class="mrow"><span class="mk">Notes</span><span class="mv" style="font-size:11px;max-width:240px;text-align:right">${e.notes}</span></div>` : ''}
+  `;
+  document.getElementById('mo').classList.add('open');
+}
+function closeMo() { document.getElementById('mo').classList.remove('open'); }
+
+document.querySelectorAll('.vbtn').forEach(b => {
+  b.addEventListener('click', () => setView(b.dataset.v));
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'Escape') { closeMo(); hidePopover(true); return; }
+  if (e.key === '/') { e.preventDefault(); document.getElementById('sSearch').focus(); return; }
+  const vmap = { d: 'day', '3': '3day', w: 'week', l: 'list', s: 'schedule' };
+  if (vmap[e.key?.toLowerCase()]) { setView(vmap[e.key.toLowerCase()]); return; }
+  if (e.key === 'ArrowLeft') { shiftDay(-1); return; }
+  if (e.key === 'ArrowRight') { shiftDay(1); return; }
+  if (e.key === 't' || e.key === 'T') { dayOff = DAYS.indexOf(TODAY); render(); }
+});
+
+HT.initSeasonSwitcher(s => { season = s; loadData(); });
+loadData();
+</script>
+</body>
+</html>

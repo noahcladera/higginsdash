@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Higgins Tennis — GoCAP Logistics Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/main.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+/* ── Layout ── */
+.page{display:grid;grid-template-columns:1fr 380px;min-height:calc(100vh - 102px);gap:0;}
+@media(max-width:1100px){.page{grid-template-columns:1fr;}}
+
+/* ── Status Strip ── */
+.status-strip{
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+  padding:10px 24px;background:var(--s1);border-bottom:1px solid var(--b2);
+  font-family:"DM Mono",monospace;font-size:11px;
+}
+.status-clock{font-size:18px;font-weight:700;color:var(--c-gocap);letter-spacing:2px;}
+.status-counts{display:flex;gap:12px;color:var(--t3);}
+.status-counts span{color:var(--t2);}
+.status-next{flex:1;min-width:200px;color:var(--t3);}
+.status-next strong{color:var(--c-gocap);}
+.status-pills{display:flex;gap:6px;flex-wrap:wrap;}
+.status-pill{padding:3px 10px;border-radius:3px;font-size:9px;letter-spacing:1px;}
+.status-pill.idle{background:var(--b2);color:var(--t4);}
+.status-pill.enroute{background:var(--c-gocap-solid);color:var(--c-gocap);border:1px solid var(--c-gocap-bd);}
+.status-pill.atschool{background:var(--c-school-solid);color:var(--c-school);border:1px solid var(--c-school-bd);}
+.status-pill.inclass{background:var(--c-triaz-solid);color:var(--c-triaz);border:1px solid var(--c-triaz-bd);}
+.status-pill.returning{background:var(--c-gocap-solid);color:var(--c-gocap);border:1px solid var(--c-gocap-bd);}
+.status-pill.done{background:var(--b1);color:var(--t4);}
+.status-pill.pulse{animation:pulse 1.5s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.status-legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:9px;color:var(--t4);}
+.leg-item{display:flex;align-items:center;gap:4px;}
+.leg-dot{width:6px;height:6px;border-radius:1px;}
+.leg-dot.idle{background:var(--t4);}
+.leg-dot.enroute{background:var(--c-gocap);}
+.leg-dot.atschool{background:var(--c-school);}
+.leg-dot.inclass{background:var(--c-triaz);}
+.leg-dot.returning{background:var(--c-gocap);}
+.leg-dot.done{background:var(--b2);}
+.leg-dot.travel{background:var(--c-gocap);}
+.leg-dot.pickup{background:var(--c-school);}
+.leg-dot.class{background:var(--c-triaz);}
+
+/* ── Main area ── */
+.main{padding:20px 24px;border-right:1px solid var(--b1);overflow-y:auto;}
+.side{padding:20px;background:var(--s0);display:flex;flex-direction:column;gap:16px;overflow-y:auto;}
+
+/* ── Day tabs ── */
+.day-tabs{display:flex;gap:4px;margin-bottom:18px;flex-wrap:wrap;}
+.dtab{font-family:"DM Mono",monospace;font-size:10px;letter-spacing:1px;padding:5px 12px;background:var(--s2);border:1px solid var(--b2);color:var(--t3);cursor:pointer;border-radius:3px;transition:all .15s;}
+.dtab:hover{color:var(--t2);}
+.dtab.on{background:var(--c-gocap-solid);border-color:var(--c-gocap-bd);color:var(--c-gocap);}
+
+/* ── Dispatch Board ── */
+.dispatch-list{display:flex;flex-direction:column;gap:8px;}
+.dcard{background:var(--s1);border:1px solid var(--b2);border-radius:6px;overflow:hidden;transition:border-color .15s;}
+.dcard:hover{border-color:var(--b3);}
+.dcard.status-idle{border-left:3px solid var(--t4);}
+.dcard.status-enroute{border-left:3px solid var(--c-gocap);}
+.dcard.status-atschool{border-left:3px solid var(--c-school);}
+.dcard.status-inclass{border-left:3px solid var(--c-triaz);}
+.dcard.status-returning{border-left:3px solid var(--c-gocap);}
+.dcard.status-done{background:var(--b1);}
+.dcard-head{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;}
+.dstatus{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:1px;min-width:80px;padding:4px 8px;border-radius:2px;text-align:center;font-weight:700;}
+.dstatus.idle{background:var(--b2);color:var(--t4);}
+.dstatus.enroute{background:var(--c-gocap-solid);color:var(--c-gocap);}
+.dstatus.atschool{background:var(--c-school-solid);color:var(--c-school);}
+.dstatus.inclass{background:var(--c-triaz-solid);color:var(--c-triaz);}
+.dstatus.returning{background:var(--c-gocap-solid);color:var(--c-gocap);}
+.dstatus.done{background:var(--b1);color:var(--t4);}
+.dtime{font-family:"DM Mono",monospace;font-size:13px;font-weight:700;min-width:52px;color:var(--c-gocap);}
+.dinfo{flex:1;}
+.dname{font-size:13px;font-weight:600;color:var(--t1);}
+.dsub{font-size:10px;color:var(--t3);margin-top:2px;}
+.dtags{display:flex;gap:5px;align-items:center;}
+.dtag{font-family:"DM Mono",monospace;font-size:9px;padding:2px 7px;border-radius:2px;background:var(--c-gocap-solid);border:1px solid var(--c-gocap-bd);color:var(--c-gocap);}
+.dtag.blue{background:var(--c-school-solid);border-color:var(--c-school-bd);color:var(--c-school);}
+.dtag.bike{background:var(--b2);border-color:var(--b3);color:var(--t2);}
+.gantt-bike-row .gantt-label{font-weight:600;color:var(--t1);}
+.dchevron{font-size:10px;color:var(--t4);transition:transform .2s;}
+.dcard.open .dchevron{transform:rotate(90deg);}
+.dprogress{height:4px;background:var(--b2);border-radius:0 0 6px 6px;overflow:hidden;}
+.dprogress-bar{height:100%;border-radius:0 0 6px 6px;transition:width .5s;}
+.dtimeline{display:none;padding:12px 14px 14px;border-top:1px solid var(--b1);}
+.dcard.open .dtimeline{display:block;}
+.tl{display:flex;flex-direction:column;gap:0;}
+.tl-row{display:flex;align-items:flex-start;gap:10px;padding:6px 0;}
+.tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;border:2px solid;}
+.tl-line-wrap{display:flex;flex-direction:column;align-items:center;gap:0;}
+.tl-line{width:2px;flex:1;background:var(--b3);min-height:12px;}
+.tl-time{font-family:"DM Mono",monospace;font-size:10px;color:var(--t4);min-width:44px;padding-top:2px;}
+.tl-label{font-size:12px;color:var(--t2);padding-top:1px;}
+.tl-sub{font-size:10px;color:var(--t3);}
+
+/* ── Gantt ── */
+.gantt-wrap{margin-top:24px;}
+.gantt{display:grid;grid-template-columns:100px 1fr;gap:8px;font-family:"DM Mono",monospace;font-size:10px;}
+.gantt-header{display:contents;}
+.gantt-header > div{padding:4px 0;color:var(--t4);}
+.gantt-row{display:contents;}
+.gantt-label{padding:6px 0;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gantt-track{position:relative;height:28px;background:var(--b1);border-radius:3px;margin:4px 0;}
+.gantt-bar{position:absolute;top:2px;bottom:2px;border-radius:2px;}
+.gantt-bar-group{position:absolute;top:0;bottom:0;display:flex;align-items:stretch;}
+.gantt-bar-label{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font-size:9px;font-weight:600;color:rgba(255,255,255,.95);text-shadow:0 1px 1px rgba(0,0,0,.3);white-space:nowrap;overflow:hidden;}
+.gantt-now{position:absolute;top:0;bottom:0;width:2px;background:var(--c-gocap);z-index:2;border-radius:1px;}
+.gantt-bar.travel{background:var(--c-gocap);}
+.gantt-bar.pickup{background:var(--c-school);}
+.gantt-bar.class{background:var(--c-triaz);}
+.gantt-bar.return{background:var(--c-gocap);}
+.gantt-time-axis{display:grid;grid-template-columns:repeat(12,1fr);gap:0;padding:4px 0;color:var(--t4);font-size:9px;text-align:center;}
+.gantt-time-axis span{grid-column:span 1;}
+
+/* ── Map ── */
+.map-wrap{background:var(--s1);border:1px solid var(--b2);border-radius:7px;overflow:hidden;cursor:pointer;}
+.map-wrap:hover{border-color:var(--c-gocap);}
+.map-sub{font-family:"DM Mono",monospace;font-size:8px;color:var(--t4);padding:5px 14px;border-top:1px solid var(--b1);}
+#routeMap{width:100%;display:block;}
+.route-line{transition:opacity .3s;}
+.route-line.dim{opacity:.2;}
+.route-line.active{opacity:1;stroke-width:3;}
+.node-pulse{animation:nodePulse 2s ease-in-out infinite;}
+@keyframes nodePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.9;transform:scale(1.08)}}
+.bakfiets-icon{animation:moveBakfiets 3s linear infinite;}
+@keyframes moveBakfiets{0%{opacity:0;transform:translate(0,0)}5%{opacity:1}95%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
+
+/* ── Map Modal ── */
+.map-modal{display:none;position:fixed;inset:0;z-index:300;background:var(--bg);flex-direction:column;align-items:stretch;}
+.map-modal.open{display:flex;}
+.map-modal-close{position:absolute;top:16px;right:20px;z-index:400;width:44px;height:44px;border:1px solid var(--b2);background:var(--s1);color:var(--t2);font-size:22px;line-height:1;cursor:pointer;border-radius:8px;transition:all .15s;}
+.map-modal-close:hover{background:var(--b3);color:var(--t1);border-color:var(--b3);}
+.map-modal-title{position:absolute;top:20px;left:20px;z-index:400;font-family:DM Mono,monospace;font-size:12px;font-weight:600;color:var(--t2);letter-spacing:1px;}
+.map-modal-controls{position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:400;display:flex;align-items:center;gap:12px;padding:8px 16px;background:rgba(0,0,0,.8);border-radius:8px;font-family:DM Mono,monospace;}
+.map-play-btn{background:var(--c-gocap);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:1px;}
+.map-play-btn:hover{opacity:.9;}
+.map-play-btn.playing{background:var(--c-school);}
+.map-time-label{font-size:11px;color:var(--t3);min-width:60px;text-align:center;}
+.map-modal-inner{flex:1;min-height:0;width:100%;}
+.map-modal-legend{position:absolute;bottom:20px;left:20px;z-index:400;display:flex;gap:16px;padding:10px 14px;background:rgba(0,0,0,.8);border-radius:8px;font-size:11px;color:var(--t3);font-family:DM Mono,monospace;}
+.map-legend-item{display:flex;align-items:center;gap:8px;}
+.map-legend-dot{width:10px;height:10px;border-radius:2px;}
+.bakfiets-marker{width:32px;height:32px;background:var(--c-gocap);border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.5);}
+.bakfiets-marker.b2{background:var(--c-school);}
+
+/* ── Sidebar ── */
+.sec-label{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:2.5px;color:var(--t4);text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--b1);}
+.card{background:var(--s1);border:1px solid var(--b2);border-radius:7px;overflow:hidden;}
+.chd{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;background:var(--s2);border-bottom:1px solid var(--b2);}
+.cht{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:1.5px;color:var(--t3);text-transform:uppercase;}
+.crow{display:flex;align-items:center;gap:10px;padding:10px 15px;border-bottom:1px solid var(--b1);}
+.crow:last-child{border-bottom:none;}
+.cname{font-size:12px;color:var(--t2);flex:1;}
+.cval{font-family:"DM Mono",monospace;font-size:11px;color:var(--t3);}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="/"><div class="logo-ball"></div>
+    <span class="logo-text">higginstennis.nl<span class="logo-tag">OPS</span></span></a>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
+    <div class="season-switcher" id="seasonSwitcher">
+      <div class="s-opt" data-s="Winter 2026">WINTER 2026</div>
+      <div class="s-sep"></div>
+      <div class="s-opt" data-s="Spring 2026">SPRING 2026</div>
+    </div>
+  </div>
+</header>
+<nav>
+  <a class="ni" href="/">Home</a>
+  <a class="ni" href="/calendar">Calendar</a>
+  <a class="ni" href="/gocap">GoCAP</a>
+  <a class="ni" href="/finance">Finance</a>
+  <a class="ni" href="/coaches">Coaches</a>
+  <a class="ni" href="/seasons">Seasons</a>
+</nav>
+
+<div class="status-strip" id="statusStrip">
+  <div class="status-clock" id="liveClock">--:--:--</div>
+  <div class="status-counts">
+    <span id="runCount">0</span> runs today ·
+    <span id="kidsCount">0</span> kids ·
+    <span id="coachCount">0</span> coaches
+  </div>
+  <div class="status-next" id="statusNext">—</div>
+  <div class="status-pills" id="statusPills"></div>
+  <div class="status-legend">
+    <span class="leg-item"><span class="leg-dot idle"></span>Idle</span>
+    <span class="leg-item"><span class="leg-dot enroute"></span>En route</span>
+    <span class="leg-item"><span class="leg-dot atschool"></span>At school</span>
+    <span class="leg-item"><span class="leg-dot returning"></span>Returning</span>
+    <span class="leg-item"><span class="leg-dot inclass"></span>In class</span>
+    <span class="leg-item"><span class="leg-dot done"></span>Done</span>
+    <span class="leg-item"><span class="leg-dot travel"></span>Travel</span>
+    <span class="leg-item"><span class="leg-dot pickup"></span>Pickup</span>
+    <span class="leg-item"><span class="leg-dot class"></span>Class</span>
+  </div>
+</div>
+
+<div class="page">
+  <div class="main">
+    <div class="day-tabs" id="dayTabs">
+      <div class="dtab" data-d="ALL">ALL DAYS</div>
+      <div class="dtab" data-d="Monday">MON</div>
+      <div class="dtab" data-d="Tuesday">TUE</div>
+      <div class="dtab" data-d="Wednesday">WED</div>
+      <div class="dtab" data-d="Thursday">THU</div>
+      <div class="dtab" data-d="Friday">FRI</div>
+      <div class="dtab" data-d="Saturday">SAT</div>
+      <div class="dtab" data-d="Sunday">SUN</div>
+    </div>
+
+    <div class="sec-label">Dispatch Board</div>
+    <div class="dispatch-list" id="dispatchList"></div>
+
+    <div class="gantt-wrap">
+      <div class="sec-label">Day Timeline</div>
+      <div class="gantt" id="gantt"></div>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="map-wrap">
+      <svg id="routeMap" viewBox="0 0 700 390" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="mG" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 Z" fill="#f5a020"/></marker>
+          <marker id="mB" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 Z" fill="#5ac8fa"/></marker>
+          <marker id="mGr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 Z" fill="#34c759"/></marker>
+        </defs>
+        <rect width="700" height="390" fill="#0a0a0a"/>
+        <g id="routeLines">
+          <line class="route-line" data-route="ifs" x1="310" y1="190" x2="430" y2="55" stroke="#f5a020" stroke-width="2" stroke-dasharray="8,5" opacity=".7" marker-end="url(#mG)"/>
+          <line class="route-line" data-route="bsa" x1="310" y1="190" x2="530" y2="140" stroke="#5ac8fa" stroke-width="2" stroke-dasharray="8,5" opacity=".6" marker-end="url(#mB)"/>
+          <line class="route-line" data-route="amity" x1="310" y1="190" x2="390" y2="280" stroke="#5ac8fa" stroke-width="2" stroke-dasharray="8,5" opacity=".6" marker-end="url(#mB)"/>
+          <line class="route-line" data-route="vu" x1="310" y1="190" x2="170" y2="300" stroke="#f5a020" stroke-width="2" stroke-dasharray="8,5" opacity=".7" marker-end="url(#mG)"/>
+          <line class="route-line" data-route="aics" x1="310" y1="190" x2="200" y2="340" stroke="#f5a020" stroke-width="2" stroke-dasharray="8,5" opacity=".7" marker-end="url(#mG)"/>
+          <line class="route-line" data-route="randwijck" x1="310" y1="190" x2="80" y2="345" stroke="#34c759" stroke-width="2.5" stroke-dasharray="10,5" opacity=".75" marker-end="url(#mGr)"/>
+          <line class="route-line" data-route="kindercampus" x1="310" y1="190" x2="250" y2="50" stroke="#f5a020" stroke-width="2" stroke-dasharray="8,5" opacity=".7" marker-end="url(#mG)"/>
+        </g>
+        <g id="mapNodes">
+          <g class="map-node" data-node="ifs"><circle cx="430" cy="55" r="12" fill="#1a1a1a" stroke="#5ac8fa" stroke-width="2"/><circle cx="430" cy="55" r="5" fill="#5ac8fa"/><text x="446" y="51" fill="#5ac8fa" font-family="DM Mono,monospace" font-size="11" font-weight="bold">IFS</text><text x="446" y="63" fill="#6e6e73" font-family="DM Mono,monospace" font-size="9">Lycée Français</text></g>
+          <g class="map-node" data-node="bsa"><circle cx="530" cy="140" r="12" fill="#1a1a1a" stroke="#5ac8fa" stroke-width="2"/><circle cx="530" cy="140" r="5" fill="#5ac8fa"/><text x="546" y="136" fill="#5ac8fa" font-family="DM Mono,monospace" font-size="11" font-weight="bold">BSA</text><text x="546" y="148" fill="#6e6e73" font-family="DM Mono,monospace" font-size="9">British School</text></g>
+          <g class="map-node" data-node="triaz"><circle cx="310" cy="190" r="22" fill="#0d1f14" stroke="#34c759" stroke-width="1.5"/><circle cx="310" cy="190" r="14" fill="#1a1a1a" stroke="#34c759" stroke-width="2.5"/><circle cx="310" cy="190" r="6" fill="#34c759"/><text x="329" y="185" fill="#34c759" font-family="DM Mono,monospace" font-size="12" font-weight="bold">TRIAZ</text><text x="329" y="198" fill="#6e6e73" font-family="DM Mono,monospace" font-size="9">GoCAP BASE</text></g>
+          <g class="map-node" data-node="amity"><circle cx="390" cy="280" r="12" fill="#1a1a1a" stroke="#5ac8fa" stroke-width="2"/><circle cx="390" cy="280" r="5" fill="#5ac8fa"/><text x="406" y="276" fill="#5ac8fa" font-family="DM Mono,monospace" font-size="11" font-weight="bold">AMITY</text><text x="406" y="289" fill="#6e6e73" font-family="DM Mono,monospace" font-size="9">International</text></g>
+          <g class="map-node" data-node="vu"><circle cx="170" cy="300" r="12" fill="#1a1a1a" stroke="#5ac8fa" stroke-width="2"/><circle cx="170" cy="300" r="5" fill="#5ac8fa"/><text x="107" y="296" fill="#5ac8fa" font-family="DM Mono,monospace" font-size="11" font-weight="bold" text-anchor="end">VU</text><text x="153" y="309" fill="#6e6e73" font-family="DM Mono,monospace" font-size="9" text-anchor="end">Campus</text></g>
+          <g class="map-node" data-node="aics"><circle cx="200" cy="340" r="12" fill="#1a1a1a" stroke="#5ac8fa" stroke-width="2"/><circle cx="200" cy="340" r="5" fill="#5ac8fa"/><text x="185" y="329" fill="#5ac8fa" font-family="DM Mono,monospace" font-size="11" font-weight="bold" text-anchor="end">AICS</text><text x="185" y="341" fill="#6e6e73" font-family="DM Mono,monospace" font-size="9" text-anchor="end">South Campus</text></g>
+          <g class="map-node" data-node="randwijck"><circle cx="80" cy="345" r="14" fill="#2a1515" stroke="#ff6b6b" stroke-width="2.5"/><circle cx="80" cy="345" r="6" fill="#ff6b6b"/><text x="97" y="339" fill="#ff6b6b" font-family="DM Mono,monospace" font-size="11" font-weight="bold">RANDWIJCK</text><text x="97" y="352" fill="#6e6e73" font-family="DM Mono,monospace" font-size="9">Amstelveen</text></g>
+          <g class="map-node" data-node="kindercampus"><circle cx="250" cy="50" r="12" fill="#1a1a1a" stroke="#5ac8fa" stroke-width="2"/><circle cx="250" cy="50" r="5" fill="#5ac8fa"/><text x="266" y="46" fill="#5ac8fa" font-family="DM Mono,monospace" font-size="10" font-weight="bold">KINDERCAMPUS</text><text x="266" y="58" fill="#6e6e73" font-family="DM Mono,monospace" font-size="9">Zuidas</text></g>
+        </g>
+        <text x="18" y="22" fill="#a1a1a6" font-family="DM Mono,monospace" font-size="9" font-weight="bold" letter-spacing="2">AMSTERDAM-ZUID — 2 BAKFIETS</text>
+        <line x1="400" y1="15" x2="420" y2="15" stroke="#f5a020" stroke-width="2" stroke-dasharray="5,3"/><circle cx="422" cy="15" r="3" fill="#f5a020"/>
+        <text x="428" y="19" fill="#a1a1a6" font-family="DM Mono,monospace" font-size="8">15 min</text>
+        <line x1="475" y1="15" x2="495" y2="15" stroke="#5ac8fa" stroke-width="2" stroke-dasharray="5,3"/><circle cx="497" cy="15" r="3" fill="#5ac8fa"/>
+        <text x="503" y="19" fill="#a1a1a6" font-family="DM Mono,monospace" font-size="8">30 min</text>
+        <line x1="548" y1="15" x2="568" y2="15" stroke="#34c759" stroke-width="2.5" stroke-dasharray="6,3"/><circle cx="570" cy="15" r="3" fill="#34c759"/>
+        <text x="576" y="19" fill="#a1a1a6" font-family="DM Mono,monospace" font-size="8">Randwijck</text>
+        <text x="677" y="26" fill="#3a3a3c" font-family="DM Mono,monospace" font-size="11" font-weight="bold" text-anchor="middle">N</text>
+        <line x1="677" y1="30" x2="677" y2="42" stroke="#3a3a3c" stroke-width="1.5"/>
+        <polygon points="677,30 674,39 677,37 680,39" fill="#3a3a3c"/>
+        <text x="490" y="378" fill="#2a2a2a" font-family="DM Mono,monospace" font-size="9" letter-spacing="2">AMSTERDAM-ZUID</text>
+        <text x="50" y="378" fill="#2a2a2a" font-family="DM Mono,monospace" font-size="8">AMSTELVEEN</text>
+      </svg>
+      <div class="map-sub">Click to open full map — static map, press Play to animate</div>
+    </div>
+
+    <div class="map-modal" id="mapModal">
+      <button class="map-modal-close" id="mapModalClose" title="Close (Esc)">×</button>
+      <div class="map-modal-title">GoCAP Live Map — Amsterdam / Amstelveen</div>
+      <div class="map-modal-controls">
+        <button class="map-play-btn" id="mapPlayBtn" title="Play bakfiets animation">Play</button>
+        <span class="map-time-label" id="mapTimeLabel">—</span>
+      </div>
+      <div class="map-modal-legend">
+        <span class="map-legend-item"><span class="map-legend-dot" style="background:#34c759"></span>15 min</span>
+        <span class="map-legend-item"><span class="map-legend-dot" style="background:#5ac8fa"></span>30 min</span>
+        <span class="map-legend-item"><span class="map-legend-dot" style="background:#ff6b6b"></span>Randwijck</span>
+      </div>
+      <div id="liveMap" class="map-modal-inner"></div>
+    </div>
+
+    <div class="sec-label">Transit Times from Triaz</div>
+    <div class="card">
+      <div class="chd"><span class="cht">School → Triaz</span></div>
+      <div class="crow"><div class="cname">IFS / Lycée Français</div><div class="cval">15 min 🚲</div></div>
+      <div class="crow"><div class="cname">AICS South Campus</div><div class="cval">15 min 🚲</div></div>
+      <div class="crow"><div class="cname">VU Campus</div><div class="cval">15 min 🚲</div></div>
+      <div class="crow"><div class="cname">BSA British School</div><div class="cval">30 min 🚲</div></div>
+      <div class="crow"><div class="cname">Amity International</div><div class="cval">30 min 🚲</div></div>
+      <div class="crow"><div class="cname">Kindercampus Zuidas</div><div class="cval">15 min 🚲</div></div>
+      <div class="crow"><div class="cname">Triaz → Randwijck</div><div class="cval">15 min 🚲</div></div>
+    </div>
+
+    <div class="sec-label">Coach Assignments</div>
+    <div class="card" id="coachCard">
+      <div class="chd"><span class="cht" id="coachCardLabel">—</span></div>
+      <div id="coachRows"></div>
+    </div>
+
+    <div class="sec-label">2 Bakfiets — Schedule</div>
+    <div class="card" id="bakfietsCard">
+      <div class="chd"><span class="cht">Bakfiets 1 & 2</span></div>
+      <div id="bakfietsRows"></div>
+    </div>
+
+    <div class="card">
+      <div class="chd"><span class="cht">Ops Notes</span></div>
+      <div class="crow" style="flex-direction:column;align-items:flex-start;gap:3px;"><div class="cname" style="font-size:11px;">Pickup window = 15 min at school gate</div></div>
+      <div class="crow" style="flex-direction:column;align-items:flex-start;gap:3px;"><div class="cname" style="font-size:11px;">Depart Triaz before school end</div></div>
+      <div class="crow" style="flex-direction:column;align-items:flex-start;gap:3px;"><div class="cname" style="font-size:11px;">BSA/Amity: 30 min travel → depart 45 min early</div></div>
+      <div class="crow" style="flex-direction:column;align-items:flex-start;gap:3px;"><div class="cname" style="font-size:11px;">Randwijck runs: bakfiets via Amstelveenseweg</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/shared.js"></script>
+<script>
+const HT = window.HT;
+const TRANSIT = { IFS:15, Lycée:15, AICS:15, VU:15, BSA:30, Amity:30, Kindercampus:15, Randwijck:15 };
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const TODAY = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
+const GANTT_START = 10 * 60;
+const GANTT_END = 19 * 60;
+
+const LOCATIONS = {
+  triaz:      { lat: 52.3306, lng: 4.8819, name: 'Club S.V. Triaz', addr: 'Van Heenvlietlaan 6, Amsterdam', transit: 0 },
+  randwijck: { lat: 52.3194, lng: 4.8592, name: 'Tennispark Randwijck', addr: 'Barend van Dorenweerdelaan 16, Amstelveen', transit: 15 },
+  ifs:       { lat: 52.3482, lng: 4.8755, name: 'IFS / Lycée Français', addr: 'Anthonie van Dijckstraat 1, Amsterdam', transit: 15 },
+  bsa:       { lat: 52.3540, lng: 4.8620, name: 'British School of Amsterdam', addr: 'Havenstraat 6, Amsterdam', transit: 30 },
+  aics:      { lat: 52.3335, lng: 4.8750, name: 'AICS South Campus', addr: 'AJ Ernststraat 1179, Amsterdam', transit: 15 },
+  amity:     { lat: 52.3127, lng: 4.8491, name: 'Amity International School', addr: 'Amsterdamseweg 204, Amstelveen', transit: 30 },
+  kindercampus: { lat: 52.3365, lng: 4.8775, name: 'Kindercampus Zuidas', addr: 'Nadia & Lili Boulangerplantsoen 700, Amsterdam', transit: 15 },
+  vu:        { lat: 52.3345, lng: 4.8650, name: 'VU Campus', addr: 'De Boelelaan, Amsterdam', transit: 15 }
+};
+
+const ROAD_ROUTES = {
+  randwijck: [
+    [52.3306, 4.8819], [52.3280, 4.8780], [52.3250, 4.8720], [52.3220, 4.8660], [52.3194, 4.8592]
+  ],
+  ifs: [
+    [52.3306, 4.8819], [52.3340, 4.8800], [52.3380, 4.8785], [52.3420, 4.8770], [52.3460, 4.8760], [52.3482, 4.8755]
+  ],
+  bsa: [
+    [52.3306, 4.8819], [52.3340, 4.8800], [52.3380, 4.8760], [52.3420, 4.8720], [52.3460, 4.8680], [52.3500, 4.8650], [52.3540, 4.8620]
+  ],
+  aics: [
+    [52.3306, 4.8819], [52.3315, 4.8795], [52.3325, 4.8775], [52.3335, 4.8750]
+  ],
+  amity: [
+    [52.3306, 4.8819], [52.3260, 4.8750], [52.3220, 4.8680], [52.3180, 4.8610], [52.3150, 4.8550], [52.3127, 4.8491]
+  ],
+  kindercampus: [
+    [52.3306, 4.8819], [52.3325, 4.8825], [52.3340, 4.8795], [52.3355, 4.8785], [52.3365, 4.8775]
+  ],
+  vu: [
+    [52.3306, 4.8819], [52.3315, 4.8770], [52.3325, 4.8720], [52.3335, 4.8685], [52.3345, 4.8650]
+  ]
+};
+
+let liveMap = null, liveMapMarkers = {}, liveMapRoutes = {}, liveMapBakfiets = [null, null];
+let mapPlayAnimating = false, mapPlaySimTime = 0, mapPlayInterval = null;
+
+function interpolateAlongRoute(routePoints, t) {
+  if (!routePoints || routePoints.length < 2) return routePoints?.[0] || [0, 0];
+  t = Math.max(0, Math.min(1, t));
+  const segs = [];
+  let total = 0;
+  for (let i = 0; i < routePoints.length - 1; i++) {
+    const a = routePoints[i], b = routePoints[i + 1];
+    const d = Math.sqrt(Math.pow(b[0] - a[0], 2) + Math.pow(b[1] - a[1], 2));
+    segs.push({ a, b, len: d });
+    total += d;
+  }
+  if (total <= 0) return routePoints[0];
+  let acc = 0;
+  for (const s of segs) {
+    const next = acc + s.len / total;
+    if (t <= next) {
+      const u = (t - acc) / (s.len / total);
+      return [s.a[0] + (s.b[0] - s.a[0]) * u, s.a[1] + (s.b[1] - s.a[1]) * u];
+    }
+    acc = next;
+  }
+  return routePoints[routePoints.length - 1];
+}
+
+function getTransit(name) {
+  const s = (name || '').toLowerCase();
+  if (s.includes('ifs') || s.includes('lycée') || s.includes('french')) return 15;
+  if (s.includes('aics')) return 15;
+  if (s.includes('vu')) return 15;
+  if (s.includes('bsa') || s.includes('british')) return 30;
+  if (s.includes('amity')) return 30;
+  if (s.includes('kindercampus')) return 15;
+  if (s.includes('randwijck')) return 15;
+  return 15;
+}
+
+function getSchoolKey(name, location) {
+  const s = (name + ' ' + (location || '')).toLowerCase();
+  if (s.includes('ifs') || s.includes('french')) return 'ifs';
+  if (s.includes('bsa') || s.includes('british')) return 'bsa';
+  if (s.includes('amity')) return 'amity';
+  if (s.includes('vu')) return 'vu';
+  if (s.includes('kindercampus')) return 'kindercampus';
+  if (s.includes('aics')) return 'aics';
+  if (s.includes('randwijck')) return 'randwijck';
+  return 'aics';
+}
+
+function isRandwijckRun(run) {
+  return (run.location || '').toLowerCase().includes('randwijck');
+}
+
+function getBakfietsAvailableAt(run) {
+  const tl = computeTimeline(run);
+  if (isRandwijckRun(run)) return tl.classEnd;
+  return tl.departSchool + tl.transit;
+}
+
+function assignBakfiets(runs) {
+  const dayRuns = [...runs].filter(r => r.day === (dayFilter === 'ALL' ? getDayOfWeek() : dayFilter));
+  const sorted = dayRuns.sort((a, b) => computeTimeline(a).departTriaz - computeTimeline(b).departTriaz);
+  let b1Available = 0, b2Available = 0;
+  const assignments = { 1: [], 2: [] };
+  const conflicts = [];
+  for (const run of sorted) {
+    const tl = computeTimeline(run);
+    const departAt = tl.departTriaz;
+    const availableAt = getBakfietsAvailableAt(run);
+    const b1Free = b1Available <= departAt;
+    const b2Free = b2Available <= departAt;
+    if (b1Free && (!b2Free || b1Available <= b2Available)) {
+      assignments[1].push({ run, availableAt });
+      b1Available = availableAt;
+    } else if (b2Free) {
+      assignments[2].push({ run, availableAt });
+      b2Available = availableAt;
+    } else {
+      conflicts.push(run);
+    }
+  }
+  return { assignments, conflicts };
+}
+
+function t2m(t) { if (!t) return 0; const [h,m] = t.split(':').map(Number); return h * 60 + (m || 0); }
+function minsToT(m) { return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); }
+
+function computeTimeline(run) {
+  const transit = getTransit(run.program_name + ' ' + run.location);
+  const classStart = t2m(run.start_time);
+  const classEnd = t2m(run.end_time);
+  const arriveSchool = classStart - transit;
+  const departTriaz = arriveSchool - 15;
+  const departSchool = arriveSchool + 15;
+  return { departTriaz, arriveSchool, departSchool, classStart, classEnd, transit };
+}
+
+function getStatus(run, nowMin, currentDay) {
+  const runDayIdx = DAYS.indexOf(run.day);
+  const todayIdx = DAYS.indexOf(currentDay);
+  if (runDayIdx < todayIdx) return 'done';
+  if (runDayIdx > todayIdx) return 'idle';
+  const tl = computeTimeline(run);
+  if (nowMin < tl.departTriaz) return 'idle';
+  if (nowMin < tl.arriveSchool) return 'enroute';
+  if (nowMin < tl.departSchool) return 'atschool';
+  if (nowMin < tl.classStart) return 'returning';
+  if (nowMin < tl.classEnd) return 'inclass';
+  return 'done';
+}
+
+function getProgressPct(run, nowMin, currentDay) {
+  if (DAYS.indexOf(run.day) < DAYS.indexOf(currentDay)) return 100;
+  if (DAYS.indexOf(run.day) > DAYS.indexOf(currentDay)) return 0;
+  const tl = computeTimeline(run);
+  const total = tl.classEnd - tl.departTriaz;
+  const elapsed = nowMin - tl.departTriaz;
+  if (elapsed <= 0) return 0;
+  if (elapsed >= total) return 100;
+  return Math.round((elapsed / total) * 100);
+}
+
+function getNowMin() {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+}
+
+function getDayOfWeek() {
+  return DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
+}
+
+let season = HT.getSeason(), all = [], dayFilter = TODAY;
+
+async function load() {
+  all = (await HT.API.classes({ season })).filter(c => c.type === 'GoCAP' && !c.cancelled);
+  document.querySelectorAll('.dtab').forEach(t => t.classList.toggle('on', t.dataset.d === dayFilter));
+  render();
+}
+
+function updateStatus() {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  const currentDay = getDayOfWeek();
+  const todayRuns = all.filter(c => c.day === currentDay);
+  const filtered = dayFilter === 'ALL' ? all : all.filter(c => c.day === dayFilter);
+
+  document.getElementById('liveClock').textContent = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  const runsToday = todayRuns.length;
+  const kidsToday = todayRuns.reduce((s, c) => s + (c.participants || 0), 0);
+  const coachesToday = [...new Set(todayRuns.flatMap(c => c.coaches).filter(Boolean))].length;
+
+  document.getElementById('runCount').textContent = runsToday;
+  document.getElementById('kidsCount').textContent = kidsToday;
+  document.getElementById('coachCount').textContent = coachesToday;
+
+  const statusCounts = { idle: 0, enroute: 0, atschool: 0, returning: 0, inclass: 0, done: 0 };
+  let nextRun = null;
+  let nextMins = Infinity;
+
+  filtered.forEach(run => {
+    const st = getStatus(run, nowMin, currentDay);
+    statusCounts[st]++;
+    if (run.day === currentDay && st === 'idle') {
+      const tl = computeTimeline(run);
+      const mins = tl.departTriaz - nowMin;
+      if (mins > 0 && mins < nextMins) { nextMins = mins; nextRun = run; }
+    }
+  });
+
+  document.getElementById('statusNext').innerHTML = nextRun
+    ? `NEXT: <strong>${nextRun.program_name.slice(0,35)}</strong> departs in ${Math.ceil(nextMins)} min`
+    : `—`;
+
+  document.getElementById('statusPills').innerHTML = [
+    ['idle', statusCounts.idle, 'IDLE'],
+    ['enroute', statusCounts.enroute, 'EN ROUTE'],
+    ['atschool', statusCounts.atschool, 'AT SCHOOL'],
+    ['returning', statusCounts.returning, 'RETURNING'],
+    ['inclass', statusCounts.inclass, 'IN CLASS'],
+    ['done', statusCounts.done, 'DONE'],
+  ].map(([cls, n, lbl]) => `<span class="status-pill ${cls} ${['enroute','atschool','returning','inclass'].includes(cls) && n > 0 ? 'pulse' : ''}">${n} ${lbl}</span>`).join('');
+
+  const { assignments, conflicts } = assignBakfiets(filtered);
+  updateDispatchCards(filtered, nowMin, currentDay, assignments);
+  updateGantt(filtered, nowMin, assignments);
+  updateMap(filtered, nowMin, currentDay, assignments);
+  updateSidebar(filtered, currentDay, assignments, conflicts);
+}
+
+function updateDispatchCards(runs, nowMin, currentDay, assignments) {
+  const runToBike = {};
+  [1, 2].forEach(b => (assignments[b] || []).forEach(({ run }) => { runToBike[run.id] = b; }));
+  const sorted = [...runs].sort((a, b) => {
+    const di = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
+    return di || t2m(a.start_time) - t2m(b.start_time);
+  });
+
+  document.getElementById('dispatchList').innerHTML = sorted.map(c => {
+    const st = getStatus(c, nowMin, currentDay);
+    const transit = getTransit(c.program_name + ' ' + c.location);
+    const tl = computeTimeline(c);
+    const coaches = c.coaches.filter(Boolean).join(', ');
+    const distTag = transit === 15 ? '15 min' : '30 min';
+    const progress = getProgressPct(c, nowMin, currentDay);
+
+    const tlSteps = [
+      { t: minsToT(tl.departTriaz), label: 'Depart Triaz', sub: 'Head to school', dot: '#34c759' },
+      { t: minsToT(tl.arriveSchool), label: `Arrive ${(c.location || '').split(' ')[0]}`, sub: 'School gate', dot: '#5ac8fa' },
+      { t: minsToT(tl.departSchool), label: 'Depart school', sub: 'Kids loaded', dot: '#5ac8fa' },
+      { t: c.start_time, label: 'Arrive court', sub: 'Class starts', dot: '#34c759' },
+      { t: c.end_time, label: 'Class ends', sub: '', dot: '#2d2d2d' },
+    ];
+
+    const tlHTML = tlSteps.map((s, i) => `
+      <div class="tl-row">
+        <div class="tl-time">${s.t}</div>
+        <div class="tl-line-wrap">
+          <div class="tl-dot" style="background:${s.dot};border-color:${s.dot}"></div>
+          ${i < tlSteps.length - 1 ? '<div class="tl-line"></div>' : ''}
+        </div>
+        <div><div class="tl-label">${s.label}</div>${s.sub ? `<div class="tl-sub">${s.sub}</div>` : ''}</div>
+      </div>`).join('');
+
+    const statusLabel = { idle: 'IDLE', enroute: 'EN ROUTE', atschool: 'AT SCHOOL', returning: 'RETURNING', inclass: 'IN CLASS', done: 'DONE' }[st];
+    const bikeTag = runToBike[c.id] ? `<span class="dtag bike">B${runToBike[c.id]}</span>` : '';
+    return `<div class="dcard status-${st}" id="dc${c.id}">
+      <div class="dcard-head" onclick="toggle(${c.id})">
+        <div class="dstatus ${st}">${statusLabel}</div>
+        <div class="dtime">${c.start_time}</div>
+        <div class="dinfo">
+          <div class="dname">${c.program_name}</div>
+          <div class="dsub">${c.day} · ${coaches} · ${c.location}</div>
+        </div>
+        <div class="dtags">
+          ${bikeTag}
+          <span class="dtag">${distTag}</span>
+          <span class="dtag blue">${c.participants || '?'} kids</span>
+        </div>
+        <span class="dchevron">▶</span>
+      </div>
+      <div class="dprogress"><div class="dprogress-bar" style="width:${progress}%;background:${st==='done'?'var(--t4)':st==='inclass'?'var(--c-triaz)':st==='atschool'?'var(--c-school)':'var(--c-gocap)'}"></div></div>
+      <div class="dtimeline"><div class="tl">${tlHTML}</div></div>
+    </div>`;
+  }).join('') || `<div style="padding:32px;text-align:center;color:var(--t4);font-family:'DM Mono',monospace;font-size:10px">No GoCAP runs for this day</div>`;
+}
+
+function updateGantt(runs, nowMin, assignments) {
+  const total = GANTT_END - GANTT_START;
+  const hourCount = Math.floor(GANTT_END / 60) - Math.floor(GANTT_START / 60) + 1;
+
+  let html = '<div class="gantt-header">';
+  html += '<div></div><div class="gantt-time-axis" style="grid-template-columns:repeat(' + hourCount + ',1fr)">';
+  for (let h = Math.floor(GANTT_START / 60); h <= Math.floor(GANTT_END / 60); h++) {
+    html += `<span>${h}:00</span>`;
+  }
+  html += '</div></div>';
+
+  const barEnd = (run) => Math.min(getBakfietsAvailableAt(run), GANTT_END);
+
+  [1, 2].forEach(bikeNum => {
+    const bikeRuns = (assignments[bikeNum] || []).map(({ run }) => run);
+    html += `<div class="gantt-row gantt-bike-row">
+      <div class="gantt-label">Bakfiets ${bikeNum}</div>
+      <div class="gantt-track">`;
+    const nowLeft = ((nowMin - GANTT_START) / total) * 100;
+    if (nowMin >= GANTT_START && nowMin <= GANTT_END) {
+      html += `<div class="gantt-now" style="left:${nowLeft}%"></div>`;
+    }
+    bikeRuns.forEach(run => {
+      const tl = computeTimeline(run);
+      const start = Math.max(tl.departTriaz, GANTT_START);
+      const end = barEnd(run);
+      if (start >= end) return;
+      const barDuration = end - start;
+      const left = ((start - GANTT_START) / total) * 100;
+      const width = (barDuration / total) * 100;
+      const travel1 = ((tl.arriveSchool - tl.departTriaz) / barDuration) * 100;
+      const pickup = ((tl.departSchool - tl.arriveSchool) / barDuration) * 100;
+      const travel2 = ((tl.classStart - tl.departSchool) / barDuration) * 100;
+      const cls = ((tl.classEnd - tl.classStart) / barDuration) * 100;
+      const ret = isRandwijckRun(run) ? 0 : (tl.transit / barDuration) * 100;
+      const label = width >= 12 ? (run.start_time || (run.program_name || '').slice(0, 14)) : '';
+      html += `<div class="gantt-bar-group" style="left:${left}%;width:${width}%;">`;
+      html += `<div class="gantt-bar travel" style="left:0;width:${travel1}%;"></div>
+        <div class="gantt-bar pickup" style="left:${travel1}%;width:${pickup}%;"></div>
+        <div class="gantt-bar travel" style="left:${travel1 + pickup}%;width:${travel2}%;"></div>
+        <div class="gantt-bar class" style="left:${travel1 + pickup + travel2}%;width:${cls}%;"></div>`;
+      if (ret > 0) {
+        html += `<div class="gantt-bar return" style="left:${travel1 + pickup + travel2 + cls}%;width:${ret}%;"></div>`;
+      }
+      if (label) html += `<div class="gantt-bar-label">${label}</div>`;
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+
+  document.getElementById('gantt').innerHTML = html || '<div style="padding:20px;color:var(--t4);font-size:10px">No runs for this day</div>';
+}
+
+function updateMap(runs, nowMin, currentDay, assignments) {
+  const activeSchools = new Set();
+  const activeRoutes = new Set();
+
+  runs.forEach(run => {
+    const st = getStatus(run, nowMin, currentDay);
+    const key = getSchoolKey(run.program_name, run.location);
+    if (st === 'enroute' || st === 'atschool') { activeRoutes.add(key); activeSchools.add(key); }
+    if (st === 'returning' || st === 'inclass') activeRoutes.add(key);
+  });
+
+  document.querySelectorAll('.route-line').forEach(el => {
+    const route = el.dataset.route;
+    el.classList.toggle('dim', !activeRoutes.has(route) && runs.some(r => getSchoolKey(r.program_name, r.location) === route));
+    el.classList.toggle('active', activeRoutes.has(route));
+  });
+
+  document.querySelectorAll('.map-node').forEach(el => {
+    const node = el.dataset.node;
+    el.classList.toggle('node-pulse', activeSchools.has(node) || (node === 'triaz' && runs.some(r => getStatus(r, nowMin, currentDay) === 'inclass')));
+  });
+  if (mapModalOpen && liveMap && !mapPlayAnimating) {
+    updateLiveMap(runs, nowMin, currentDay, assignments);
+    const label = document.getElementById('mapTimeLabel');
+    if (label) label.textContent = 'Live ' + minsToT(Math.round(nowMin));
+  }
+}
+
+function initLiveMap() {
+  if (liveMap) return;
+  const triaz = LOCATIONS.triaz;
+  liveMap = L.map('liveMap', {
+    dragging: false,
+    zoomControl: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    touchZoom: false,
+    attributionControl: false
+  }).setView([triaz.lat, triaz.lng], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap, &copy; CARTO',
+    maxZoom: 19
+  }).addTo(liveMap);
+
+  const schoolKeys = ['triaz','randwijck','ifs','bsa','aics','amity','kindercampus','vu'];
+  const colors = { triaz: '#34c759', randwijck: '#ff6b6b', ifs: '#f5a020', bsa: '#5ac8fa', aics: '#f5a020', amity: '#5ac8fa', kindercampus: '#f5a020', vu: '#f5a020' };
+  schoolKeys.forEach(key => {
+    const loc = LOCATIONS[key];
+    const color = colors[key] || '#5ac8fa';
+    const m = L.circleMarker([loc.lat, loc.lng], {
+      radius: key === 'triaz' ? 12 : 8,
+      fillColor: color,
+      color: '#fff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.9
+    }).addTo(liveMap);
+    const popup = key === 'triaz'
+      ? `<div style="font-family:DM Mono,monospace;font-size:11px"><strong>${loc.name}</strong><br>${loc.addr}<br>GoCAP Base — 2 Bakfiets</div>`
+      : `<div style="font-family:DM Mono,monospace;font-size:11px"><strong>${loc.name}</strong><br>${loc.addr}<br>${loc.transit} min from Triaz</div>`;
+    m.bindPopup(popup);
+    liveMapMarkers[key] = m;
+  });
+
+  const routeKeys = ['randwijck','ifs','bsa','aics','amity','kindercampus','vu'];
+  routeKeys.forEach(key => {
+    const loc = LOCATIONS[key];
+    const color = key === 'randwijck' ? '#34c759' : (loc.transit === 30 ? '#5ac8fa' : '#f5a020');
+    const pts = ROAD_ROUTES[key] || [[triaz.lat, triaz.lng], [loc.lat, loc.lng]];
+    const line = L.polyline(pts, {
+      color, weight: 3, opacity: 0.4, dashArray: '8, 8'
+    }).addTo(liveMap);
+    liveMapRoutes[key] = line;
+  });
+
+  [1, 2].forEach(i => {
+    const div = document.createElement('div');
+    div.className = 'bakfiets-marker' + (i === 2 ? ' b2' : '');
+    div.innerHTML = '🚲';
+    div.dataset.bike = i;
+    const m = L.marker([triaz.lat, triaz.lng], { icon: L.divIcon({ html: div, className: '', iconSize: [32, 32], iconAnchor: [16, 16] }) }).addTo(liveMap);
+    liveMapBakfiets[i - 1] = m;
+  });
+}
+
+function updateLiveMap(runs, nowMin, currentDay, assignments) {
+  if (!liveMap || !liveMapRoutes) return;
+  const activeRoutes = new Set();
+  runs.forEach(run => {
+    const st = getStatus(run, nowMin, currentDay);
+    const key = getSchoolKey(run.program_name, run.location);
+    if (['enroute','atschool','returning','inclass'].includes(st)) activeRoutes.add(key);
+  });
+  Object.keys(liveMapRoutes).forEach(key => {
+    const line = liveMapRoutes[key];
+    const active = activeRoutes.has(key);
+    line.setStyle({ opacity: active ? 1 : 0.25, weight: active ? 4 : 2 });
+  });
+
+  const triaz = LOCATIONS.triaz;
+  [1, 2].forEach(bikeNum => {
+    const marker = liveMapBakfiets[bikeNum - 1];
+    const list = assignments[bikeNum] || [];
+    const busyRun = list.find(({ run, availableAt }) => {
+      const tl = computeTimeline(run);
+      return nowMin >= tl.departTriaz && nowMin < availableAt;
+    });
+    if (!busyRun) {
+      marker.setLatLng([triaz.lat, triaz.lng]);
+      marker.getTooltip()?.setContent('Bakfiets ' + bikeNum + ' — Free');
+      if (!marker.getTooltip()) marker.bindTooltip('Bakfiets ' + bikeNum + ' — Free', { permanent: false, direction: 'top' });
+      return;
+    }
+    const run = busyRun.run;
+    const st = getStatus(run, nowMin, currentDay);
+    const key = getSchoolKey(run.program_name, run.location);
+    const school = LOCATIONS[key] || LOCATIONS.aics;
+    const tl = computeTimeline(run);
+    const dest = isRandwijckRun(run) ? LOCATIONS.randwijck : LOCATIONS.triaz;
+    let lat, lng, tooltip = run.program_name?.slice(0, 25) + ' — ' + st.toUpperCase();
+    const route = ROAD_ROUTES[key];
+    if (st === 'idle' || st === 'done') {
+      lat = triaz.lat; lng = triaz.lng;
+    } else if (st === 'enroute') {
+      const elapsed = nowMin - tl.departTriaz;
+      const total = tl.arriveSchool - tl.departTriaz;
+      const t = total > 0 ? Math.min(1, elapsed / total) : 0;
+      if (route) {
+        [lat, lng] = interpolateAlongRoute(route, t);
+      } else {
+        lat = triaz.lat + (school.lat - triaz.lat) * t;
+        lng = triaz.lng + (school.lng - triaz.lng) * t;
+      }
+    } else if (st === 'atschool') {
+      lat = school.lat; lng = school.lng;
+    } else if (st === 'returning') {
+      const elapsed = nowMin - tl.departSchool;
+      const total = tl.classStart - tl.departSchool;
+      const t = total > 0 ? Math.min(1, elapsed / total) : 0;
+      if (route) {
+        const rev = [...route].reverse().map(p => [p[0], p[1]]);
+        [lat, lng] = interpolateAlongRoute(rev, t);
+      } else {
+        lat = school.lat + (dest.lat - school.lat) * t;
+        lng = school.lng + (dest.lng - school.lng) * t;
+      }
+    } else {
+      lat = dest.lat;
+      lng = dest.lng;
+    }
+    marker.setLatLng([lat, lng]);
+    marker.getTooltip()?.setContent(tooltip);
+    if (!marker.getTooltip()) marker.bindTooltip(tooltip, { permanent: false, direction: 'top' });
+  });
+}
+
+let mapModalOpen = false;
+
+function updateSidebar(runs, currentDay, assignments, conflicts) {
+  const dayRuns = runs.filter(c => c.day === (dayFilter === 'ALL' ? currentDay : dayFilter));
+  document.getElementById('coachCardLabel').textContent = (dayFilter === 'ALL' ? currentDay : dayFilter).toUpperCase() + ' — COACHES';
+
+  const coachMap = {};
+  dayRuns.forEach(c => c.coaches.filter(Boolean).forEach(n => { coachMap[n] = (coachMap[n] || []).concat(c); }));
+  document.getElementById('coachRows').innerHTML = Object.entries(coachMap).length
+    ? Object.entries(coachMap).sort((a, b) => b[1].length - a[1].length).map(([name, list]) =>
+        `<div class="crow"><div class="cname">${name}</div><div class="cval">${list.length} run${list.length !== 1 ? 's' : ''}</div></div>`).join('')
+    : '<div class="crow"><div class="cname" style="color:var(--t4)">No runs</div></div>';
+
+  const nowMin = getNowMin();
+  let bakfietsHtml = '';
+  [1, 2].forEach(b => {
+    const list = assignments[b] || [];
+    const busyRun = list.find(({ run, availableAt }) => {
+      const t = computeTimeline(run);
+      return nowMin >= t.departTriaz && nowMin < availableAt;
+    });
+    const status = list.length === 0 ? 'Free' : (busyRun ? `Busy until ${minsToT(busyRun.availableAt)}` : 'Free');
+    bakfietsHtml += `<div class="crow"><div class="cname"><strong>Bakfiets ${b}</strong></div><div class="cval" style="color:${busyRun ? 'var(--c-gocap)' : 'var(--c-triaz)'}">${status}</div></div>`;
+    list.forEach(({ run, availableAt }) => {
+      bakfietsHtml += `<div class="crow" style="padding-left:20px"><div class="cname" style="font-size:10px">${run.start_time} ${run.program_name.slice(0,22)}${run.program_name.length > 22 ? '…' : ''}</div><div class="cval" style="font-size:9px">avail ${minsToT(availableAt)}</div></div>`;
+    });
+  });
+  if (conflicts.length) {
+    bakfietsHtml += `<div class="crow"><div class="cname" style="font-size:10px;color:var(--c-rand)">Conflict: ${conflicts.length} run(s) need 3rd bike</div></div>`;
+  }
+  document.getElementById('bakfietsRows').innerHTML = bakfietsHtml || '<div class="crow"><div class="cname" style="color:var(--t4)">No runs today</div></div>';
+}
+
+function render() {
+  const nowMin = getNowMin();
+  const currentDay = getDayOfWeek();
+  const filtered = dayFilter === 'ALL' ? all : all.filter(c => c.day === dayFilter);
+  updateStatus();
+}
+
+function toggle(id) {
+  const el = document.getElementById('dc' + id);
+  if (el) el.classList.toggle('open');
+}
+
+document.getElementById('dayTabs').addEventListener('click', e => {
+  const t = e.target.closest('.dtab');
+  if (!t) return;
+  document.querySelectorAll('.dtab').forEach(x => x.classList.remove('on'));
+  t.classList.add('on');
+  dayFilter = t.dataset.d;
+  render();
+});
+
+document.querySelector('.map-wrap').addEventListener('click', () => {
+  mapModalOpen = true;
+  mapPlayAnimating = false;
+  if (mapPlayInterval) clearInterval(mapPlayInterval);
+  mapPlayInterval = null;
+  document.getElementById('mapModal').classList.add('open');
+  document.getElementById('mapPlayBtn').textContent = 'Play';
+  document.getElementById('mapPlayBtn').classList.remove('playing');
+  initLiveMap();
+  setTimeout(() => liveMap.invalidateSize(), 50);
+  const filtered = dayFilter === 'ALL' ? all : all.filter(c => c.day === dayFilter);
+  const { assignments } = assignBakfiets(filtered);
+  const nowMin = getNowMin();
+  updateLiveMap(filtered, nowMin, getDayOfWeek(), assignments);
+  document.getElementById('mapTimeLabel').textContent = 'Live ' + minsToT(Math.round(nowMin));
+});
+
+document.getElementById('mapModalClose').addEventListener('click', () => {
+  mapModalOpen = false;
+  mapPlayAnimating = false;
+  if (mapPlayInterval) clearInterval(mapPlayInterval);
+  mapPlayInterval = null;
+  document.getElementById('mapModal').classList.remove('open');
+});
+
+document.getElementById('mapPlayBtn').addEventListener('click', () => {
+  if (mapPlayAnimating) {
+    mapPlayAnimating = false;
+    if (mapPlayInterval) clearInterval(mapPlayInterval);
+    mapPlayInterval = null;
+    document.getElementById('mapPlayBtn').textContent = 'Play';
+    document.getElementById('mapPlayBtn').classList.remove('playing');
+    return;
+  }
+  const filtered = dayFilter === 'ALL' ? all : all.filter(c => c.day === dayFilter);
+  const { assignments } = assignBakfiets(filtered);
+  const currentDay = dayFilter === 'ALL' ? getDayOfWeek() : dayFilter;
+  let startMin = GANTT_START, endMin = GANTT_END;
+  [1, 2].forEach(b => {
+    (assignments[b] || []).forEach(({ run, availableAt }) => {
+      const tl = computeTimeline(run);
+      startMin = Math.min(startMin, tl.departTriaz);
+      endMin = Math.max(endMin, availableAt);
+    });
+  });
+  mapPlaySimTime = startMin;
+  mapPlayAnimating = true;
+  document.getElementById('mapPlayBtn').textContent = 'Pause';
+  document.getElementById('mapPlayBtn').classList.add('playing');
+  document.getElementById('mapTimeLabel').textContent = minsToT(Math.round(mapPlaySimTime));
+  updateLiveMap(filtered, mapPlaySimTime, currentDay, assignments);
+  mapPlayInterval = setInterval(() => {
+    mapPlaySimTime += 5;
+    if (mapPlaySimTime >= endMin) {
+      mapPlaySimTime = startMin;
+    }
+    updateLiveMap(filtered, mapPlaySimTime, currentDay, assignments);
+    document.getElementById('mapTimeLabel').textContent = minsToT(Math.round(mapPlaySimTime));
+  }, 1000);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && mapModalOpen) {
+    mapModalOpen = false;
+    document.getElementById('mapModal').classList.remove('open');
+  }
+});
+
+HT.initSeasonSwitcher(s => { season = s; load(); });
+load();
+setInterval(updateStatus, 1000);
+</script>
+</body>
+</html>
