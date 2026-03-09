@@ -116,6 +116,13 @@
 .gantt-time-axis{display:grid;grid-template-columns:repeat(12,1fr);gap:0;padding:4px 0;color:var(--t4);font-size:9px;text-align:center;}
 .gantt-time-axis span{grid-column:span 1;}
 
+/* ── Main time scrubber ── */
+.main-time-controls{display:flex;align-items:center;gap:12px;margin:16px 0;padding:10px 0;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);}
+.main-time-scrubber{flex:1;min-width:120px;height:6px;-webkit-appearance:none;appearance:none;background:var(--b2);border-radius:3px;accent-color:var(--c-gocap);}
+.main-time-scrubber::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;background:var(--c-gocap);border-radius:50%;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);}
+.main-time-scrubber::-moz-range-thumb{width:22px;height:22px;background:var(--c-gocap);border-radius:50%;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);}
+.main-time-label{font-size:13px;color:var(--t2);min-width:55px;text-align:right;font-family:"DM Mono",monospace;font-weight:600;}
+
 /* ── Map ── */
 .map-open-btn:hover{border-color:var(--c-gocap);}
 
@@ -124,21 +131,34 @@
 .map-modal.open{display:flex;}
 .map-modal-close{position:absolute;top:16px;right:20px;z-index:400;width:44px;height:44px;border:1px solid var(--b2);background:var(--s1);color:var(--t2);font-size:22px;line-height:1;cursor:pointer;border-radius:8px;transition:all .15s;}
 .map-modal-close:hover{background:var(--b3);color:var(--t1);border-color:var(--b3);}
-.map-modal-title{position:absolute;top:20px;left:20px;z-index:400;font-size:12px;font-weight:600;color:var(--t2);}
-.map-modal-controls{position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:400;display:flex;align-items:center;gap:12px;padding:8px 16px;background:rgba(0,0,0,.8);border-radius:8px;font-family:DM Mono,monospace;}
+.map-modal-header{display:flex;flex-direction:row;align-items:center;gap:16px;padding:16px 70px 12px 20px;background:var(--s1);border-bottom:1px solid var(--b2);flex-shrink:0;}
+.map-modal-title{font-size:12px;font-weight:600;color:var(--t2);flex-shrink:0;min-width:140px;}
+.map-modal-day-row{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;flex:1;}
+.map-modal-day-row .dtab{font-size:10px;padding:5px 10px;}
+.map-modal-map-wrap{flex:1;min-height:0;width:100%;position:relative;display:flex;}
+.map-modal-inner{flex:1;min-height:0;width:100%;position:relative;background:var(--bg);}
+#liveMap.leaflet-container{background:var(--bg) !important;}
+.map-modal-footer{display:flex;align-items:center;gap:16px;padding:16px 20px;background:var(--s1);border-top:1px solid var(--b2);flex-shrink:0;}
+.map-modal-controls{display:flex;align-items:center;gap:12px;flex:1;min-width:0;font-family:DM Mono,monospace;}
 .map-play-btn{background:var(--c-gocap);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:1px;}
 .map-play-btn:hover{opacity:.9;}
 .map-play-btn.playing{background:var(--c-school);}
-.map-scrubber{flex:1;min-width:80px;height:4px;-webkit-appearance:none;appearance:none;background:var(--b2);border-radius:2px;accent-color:var(--c-gocap);}
-.map-scrubber::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;background:var(--c-gocap);border-radius:50%;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);}
-.map-scrubber::-moz-range-thumb{width:14px;height:14px;background:var(--c-gocap);border-radius:50%;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);}
-.map-time-label{font-size:11px;color:var(--t3);min-width:60px;text-align:center;}
-.map-modal-inner{flex:1;min-height:0;width:100%;}
-.map-modal-legend{position:absolute;bottom:20px;left:20px;z-index:400;display:flex;gap:16px;padding:10px 14px;background:rgba(0,0,0,.8);border-radius:8px;font-size:11px;color:var(--t3);font-family:DM Mono,monospace;}
+.map-scrubber-wrap{position:relative;flex:1;min-width:120px;}
+.map-scrubber{width:100%;height:8px;-webkit-appearance:none;appearance:none;background:var(--b2);border-radius:4px;accent-color:var(--c-gocap);}
+.map-scrubber::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;background:var(--c-gocap);border-radius:50%;cursor:pointer;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+.map-scrubber::-moz-range-thumb{width:20px;height:20px;background:var(--c-gocap);border-radius:50%;cursor:pointer;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+.map-time-label{font-size:12px;color:var(--t2);min-width:55px;text-align:right;font-weight:600;}
+.map-scrubber-popover{position:fixed;pointer-events:none;z-index:500;top:50%;left:50%;transform:translate(-50%,-50%);font-family:"DM Mono",monospace;font-size:56px;font-weight:700;color:var(--c-gocap);text-shadow:0 2px 16px rgba(0,0,0,.9),0 0 40px rgba(52,199,89,.3);opacity:0;transition:opacity .08s;}
+.map-scrubber-popover.visible{opacity:1;}
+.map-time-overlay{position:absolute;top:20px;right:70px;z-index:400;font-family:"DM Mono",monospace;font-size:32px;font-weight:700;color:var(--t2);opacity:.25;pointer-events:none;letter-spacing:2px;}
+.map-modal-legend{display:flex;gap:16px;align-items:center;font-size:11px;color:var(--t3);font-family:DM Mono,monospace;}
 .map-legend-item{display:flex;align-items:center;gap:8px;}
 .map-legend-dot{width:10px;height:10px;border-radius:2px;}
-.bakfiets-marker{width:32px;height:32px;background:var(--c-gocap);border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.5);}
-.bakfiets-marker.b2{background:var(--c-school);}
+.leaflet-tooltip.school-label{background:transparent;border:none;color:#fff;font-family:"DM Mono",monospace;font-size:10px;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.8);box-shadow:none;padding:0 4px;}
+.bakfiets-marker{width:56px;height:56px;background:var(--c-gocap);border:4px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 0 6px rgba(52,199,89,.4),0 4px 20px rgba(0,0,0,.5);animation:bakfiets-pulse 2s ease-in-out infinite;}
+.bakfiets-marker.b2{background:var(--c-school);box-shadow:0 0 0 6px rgba(90,200,250,.3),0 4px 20px rgba(0,0,0,.5);}
+.bakfiets-marker.combined{width:72px;height:72px;font-size:28px;background:linear-gradient(135deg,var(--c-gocap),var(--c-school));box-shadow:0 0 0 8px rgba(52,199,89,.4),0 4px 24px rgba(0,0,0,.6);}
+@keyframes bakfiets-pulse{0%,100%{box-shadow:0 0 0 6px rgba(52,199,89,.4),0 4px 20px rgba(0,0,0,.5);}50%{box-shadow:0 0 0 12px rgba(52,199,89,.2),0 4px 20px rgba(0,0,0,.5);}}
 
 /* ── Sidebar ── */
 .card{background:var(--s1);border:1px solid var(--b2);border-radius:8px;overflow:hidden;}
@@ -177,13 +197,16 @@
   .gantt-wrap{margin-top:16px;}
   .gantt-time-axis{font-size:8px;}
   .map-modal-close{top:12px;right:12px;width:38px;height:38px;font-size:18px;}
-  .map-modal-title{top:14px;left:14px;font-size:10px;}
-  .map-modal-controls{top:14px;padding:6px 12px;gap:8px;}
+  .map-modal-header{padding:12px 55px 10px 14px;gap:12px;}
+  .map-modal-title{font-size:10px;}
+  .map-modal-footer{padding:12px 16px;gap:12px;}
+  .map-modal-controls{padding:0;gap:8px;}
   .map-play-btn{padding:5px 10px;font-size:10px;}
   .map-time-label{font-size:10px;min-width:50px;}
-  .map-modal-legend{bottom:12px;left:12px;font-size:9px;padding:8px 10px;gap:10px;}
+  .map-scrubber-popover{font-size:40px;}
+  .map-modal-legend{font-size:9px;gap:10px;}
   .map-legend-dot{width:8px;height:8px;}
-  .bakfiets-marker{width:26px;height:26px;font-size:12px;border-width:2px;}
+  .bakfiets-marker{width:44px;height:44px;font-size:22px;border-width:3px;}
 }
 </style>
 </head>
@@ -249,6 +272,11 @@
     <div class="sec-label">Dispatch Board</div>
     <div class="dispatch-list" id="dispatchList"></div>
 
+    <div class="main-time-controls">
+      <input type="range" id="mainTimeScrubber" min="660" max="1080" value="660" step="1" class="main-time-scrubber">
+      <span class="main-time-label" id="mainTimeLabel">11:00</span>
+    </div>
+
     <div class="gantt-wrap">
       <div class="sec-label">Day Timeline</div>
       <div class="gantt" id="gantt"></div>
@@ -265,18 +293,37 @@
 
     <div class="map-modal" id="mapModal">
       <button class="map-modal-close" id="mapModalClose" title="Close (Esc)">×</button>
-      <div class="map-modal-title">Transportation Route Map</div>
-      <div class="map-modal-controls">
-        <button class="map-play-btn" id="mapPlayBtn" title="Play bakfiets animation">Play</button>
-        <input type="range" id="mapScrubber" min="600" max="1140" value="600" step="5" class="map-scrubber">
-        <span class="map-time-label" id="mapTimeLabel">—</span>
+      <div class="map-modal-header">
+        <div class="map-modal-title">Transportation Route Map</div>
+        <div class="map-modal-day-row" id="mapDayTabs">
+          <div class="dtab" data-d="Monday">MON</div>
+          <div class="dtab" data-d="Tuesday">TUE</div>
+          <div class="dtab" data-d="Wednesday">WED</div>
+          <div class="dtab" data-d="Thursday">THU</div>
+          <div class="dtab" data-d="Friday">FRI</div>
+          <div class="dtab" data-d="Saturday">SAT</div>
+          <div class="dtab" data-d="Sunday">SUN</div>
+        </div>
       </div>
-      <div class="map-modal-legend">
-        <span class="map-legend-item"><span class="map-legend-dot" style="background:#34c759"></span>15 min</span>
-        <span class="map-legend-item"><span class="map-legend-dot" style="background:#5ac8fa"></span>30 min</span>
-        <span class="map-legend-item"><span class="map-legend-dot" style="background:#ff6b6b"></span>Randwijck</span>
+      <div class="map-modal-map-wrap">
+        <div id="liveMap" class="map-modal-inner"></div>
+        <div class="map-time-overlay" id="mapTimeOverlay">11:00</div>
       </div>
-      <div id="liveMap" class="map-modal-inner"></div>
+      <div class="map-modal-footer">
+        <div class="map-modal-controls">
+          <button class="map-play-btn" id="mapPlayBtn" title="Play bakfiets animation">Play</button>
+          <div class="map-scrubber-wrap">
+            <input type="range" id="mapScrubber" min="660" max="1080" value="660" step="1" class="map-scrubber">
+            <div class="map-scrubber-popover" id="mapScrubberPopover">11:00</div>
+          </div>
+          <span class="map-time-label" id="mapTimeLabel">11:00</span>
+        </div>
+        <div class="map-modal-legend">
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#34c759"></span>15 min</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#5ac8fa"></span>30 min</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#ff6b6b"></span>Randwijck</span>
+        </div>
+      </div>
     </div>
 
     <div class="sec-label">Transit Times from Triaz</div>
@@ -284,7 +331,7 @@
       <div class="chd"><span class="cht">School → Triaz</span></div>
       <div class="crow"><div class="cname">IFS / Lycée Français</div><div class="cval">15 min 🚲</div></div>
       <div class="crow"><div class="cname">AICS South Campus</div><div class="cval">15 min 🚲</div></div>
-      <div class="crow"><div class="cname">VU Campus</div><div class="cval">15 min 🚲</div></div>
+      <div class="crow"><div class="cname">VU Sportcentrum Uilenstede</div><div class="cval">15 min 🚲</div></div>
       <div class="crow"><div class="cname">BSA British School</div><div class="cval">30 min 🚲</div></div>
       <div class="crow"><div class="cname">Amity International</div><div class="cval">30 min 🚲</div></div>
       <div class="crow"><div class="cname">Kindercampus Zuidas</div><div class="cval">15 min 🚲</div></div>
@@ -320,8 +367,8 @@ const HT = window.HT;
 const TRANSIT = { IFS:15, Lycée:15, AICS:15, VU:15, BSA:30, Amity:30, Kindercampus:15, Randwijck:15 };
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const TODAY = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
-const GANTT_START = 10 * 60;
-const GANTT_END = 19 * 60;
+const GANTT_START = 11 * 60;
+const GANTT_END = 18 * 60;
 
 const LOCATIONS = {
   triaz:      { lat: 52.3306, lng: 4.8819, name: 'Club S.V. Triaz', addr: 'Van Heenvlietlaan 6, Amsterdam', transit: 0 },
@@ -331,47 +378,40 @@ const LOCATIONS = {
   aics:      { lat: 52.3335, lng: 4.8750, name: 'AICS South Campus', addr: 'AJ Ernststraat 1179, Amsterdam', transit: 15 },
   amity:     { lat: 52.3127, lng: 4.8491, name: 'Amity International School', addr: 'Amsterdamseweg 204, Amstelveen', transit: 30 },
   kindercampus: { lat: 52.3365, lng: 4.8775, name: 'Kindercampus Zuidas', addr: 'Nadia & Lili Boulangerplantsoen 700, Amsterdam', transit: 15 },
-  vu:        { lat: 52.3345, lng: 4.8650, name: 'VU Campus', addr: 'De Boelelaan, Amsterdam', transit: 15 }
+  vu:        { lat: 52.3388, lng: 4.8571, name: 'VU Sportcentrum Uilenstede', addr: 'Uilenstede 174, Amstelveen', transit: 15 }
+};
+
+const TRIAZ_PT = [52.330, 4.882];
+const SCHEMATIC = {
+  triaz:       [52.330, 4.882],
+  bsa:         [52.347, 4.818],
+  ifs:         [52.345, 4.938],
+  aics:        [52.338, 4.842],
+  kindercampus:[52.336, 4.948],
+  vu:          [52.320, 4.812],
+  randwijck:   [52.315, 4.878],
+  amity:       [52.312, 4.818]
 };
 
 const ROAD_ROUTES = {
-  randwijck: [
-    [52.3306, 4.8819], [52.3280, 4.8780], [52.3250, 4.8720], [52.3220, 4.8660], [52.3194, 4.8592]
-  ],
-  ifs: [
-    [52.3306, 4.8819], [52.3340, 4.8800], [52.3380, 4.8785], [52.3420, 4.8770], [52.3460, 4.8760], [52.3482, 4.8755]
-  ],
-  bsa: [
-    [52.3306, 4.8819], [52.3340, 4.8800], [52.3380, 4.8760], [52.3420, 4.8720], [52.3460, 4.8680], [52.3500, 4.8650], [52.3540, 4.8620]
-  ],
-  aics: [
-    [52.3306, 4.8819], [52.3315, 4.8795], [52.3325, 4.8775], [52.3335, 4.8750]
-  ],
-  amity: [
-    [52.3306, 4.8819], [52.3260, 4.8750], [52.3220, 4.8680], [52.3180, 4.8610], [52.3150, 4.8550], [52.3127, 4.8491]
-  ],
-  kindercampus: [
-    [52.3306, 4.8819], [52.3325, 4.8825], [52.3340, 4.8795], [52.3355, 4.8785], [52.3365, 4.8775]
-  ],
-  vu: [
-    [52.3306, 4.8819], [52.3315, 4.8770], [52.3325, 4.8720], [52.3335, 4.8685], [52.3345, 4.8650]
-  ]
+  randwijck: [TRIAZ_PT, SCHEMATIC.randwijck],
+  ifs: [TRIAZ_PT, SCHEMATIC.ifs],
+  bsa: [TRIAZ_PT, SCHEMATIC.bsa],
+  aics: [TRIAZ_PT, SCHEMATIC.aics],
+  amity: [TRIAZ_PT, SCHEMATIC.amity],
+  kindercampus: [TRIAZ_PT, SCHEMATIC.kindercampus],
+  vu: [TRIAZ_PT, SCHEMATIC.vu]
 };
 
 let liveMap = null, liveMapMarkers = {}, liveMapRoutes = {}, liveMapBakfiets = [null, null];
 let liveMapRoutePaths = {};
 let mapPlayAnimating = false, mapPlaySimTime = 0, mapPlayInterval = null;
+let mapDayFilter = null;
 
-async function fetchRoute(from, to) {
-  const url = `https://router.project-osrm.org/route/v1/cycling/${from[1]},${from[0]};${to[1]},${to[0]}?geometries=geojson&overview=full`;
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.routes?.[0]) {
-      return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-    }
-  } catch (e) {}
-  return [from, to];
+function setMapTimeDisplay(text) {
+  document.getElementById('mapTimeLabel').textContent = text;
+  const ov = document.getElementById('mapTimeOverlay');
+  if (ov) ov.textContent = text;
 }
 
 function interpolateAlongRoute(routePoints, t) {
@@ -456,7 +496,7 @@ function getBakfietsAvailableAt(run) {
 }
 
 function assignBakfiets(runs) {
-  const dayRuns = [...runs].filter(r => r.day === (dayFilter === 'ALL' ? getDayOfWeek() : dayFilter));
+  const dayRuns = [...runs];
   const sorted = dayRuns.sort((a, b) => computeTimeline(a).departTriaz - computeTimeline(b).departTriaz);
   let b1Available = 0, b2Available = 0;
   const assignments = { 1: [], 2: [] };
@@ -529,6 +569,11 @@ function getDayOfWeek() {
 }
 
 let season = HT.getSeason(), all = [], dayFilter = TODAY;
+let simTime = GANTT_START;
+
+function getEffectiveNowMin() {
+  return simTime;
+}
 
 async function load() {
   all = (await HT.API.classes({ season })).filter(c => c.type === 'GoCAP' && !c.cancelled);
@@ -538,12 +583,12 @@ async function load() {
 
 function updateStatus() {
   const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  const nowMin = getEffectiveNowMin();
   const currentDay = getDayOfWeek();
   const todayRuns = all.filter(c => c.day === currentDay);
   const filtered = dayFilter === 'ALL' ? all : all.filter(c => c.day === dayFilter);
 
-  document.getElementById('liveClock').textContent = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  document.getElementById('liveClock').textContent = minsToT(Math.round(nowMin));
 
   const runsToday = todayRuns.length;
   const kidsToday = todayRuns.reduce((s, c) => s + (c.participants || 0), 0);
@@ -585,6 +630,13 @@ function updateStatus() {
   updateGantt(filtered, nowMin, assignments);
   updateMap(filtered, nowMin, currentDay, assignments);
   updateSidebar(filtered, currentDay, assignments, conflicts);
+
+  const scrubber = document.getElementById('mainTimeScrubber');
+  const label = document.getElementById('mainTimeLabel');
+  if (scrubber && label) {
+    scrubber.value = simTime;
+    label.textContent = minsToT(Math.round(nowMin));
+  }
 }
 
 function updateDispatchCards(runs, nowMin, currentDay, assignments) {
@@ -706,13 +758,13 @@ function updateGantt(runs, nowMin, assignments) {
 function updateMap(runs, nowMin, currentDay, assignments) {
   if (mapModalOpen && liveMap && !mapPlayAnimating) {
     updateLiveMap(runs, nowMin, currentDay, assignments);
-    const label = document.getElementById('mapTimeLabel');
-    if (label) label.textContent = 'Live ' + minsToT(Math.round(nowMin));
+    setMapTimeDisplay(minsToT(Math.round(nowMin)));
   }
 }
 
 function getMapTimeRange() {
-  const filtered = dayFilter === 'ALL' ? all : all.filter(c => c.day === dayFilter);
+  const day = (mapModalOpen && mapDayFilter) ? mapDayFilter : dayFilter;
+  const filtered = day === 'ALL' ? all : all.filter(c => c.day === day);
   const { assignments } = assignBakfiets(filtered);
   let startMin = GANTT_START, endMin = GANTT_END;
   [1, 2].forEach(b => {
@@ -725,7 +777,7 @@ function getMapTimeRange() {
   return { startMin, endMin, filtered, assignments };
 }
 
-async function openMap() {
+function openMap() {
   mapModalOpen = true;
   mapPlayAnimating = false;
   if (mapPlayInterval) clearInterval(mapPlayInterval);
@@ -733,20 +785,23 @@ async function openMap() {
   document.getElementById('mapModal').classList.add('open');
   document.getElementById('mapPlayBtn').textContent = 'Play';
   document.getElementById('mapPlayBtn').classList.remove('playing');
-  await initLiveMap();
+  initLiveMap();
   setTimeout(() => liveMap && liveMap.invalidateSize(), 50);
-  const { startMin, endMin, filtered, assignments } = getMapTimeRange();
-  const nowMin = getNowMin();
+  mapDayFilter = dayFilter;
+  document.querySelectorAll('#mapDayTabs .dtab').forEach(t => t.classList.toggle('on', t.dataset.d === mapDayFilter));
+  const { filtered, assignments } = getMapTimeRange();
+  const nowMin = getEffectiveNowMin();
   const scrubber = document.getElementById('mapScrubber');
-  scrubber.min = startMin;
-  scrubber.max = endMin;
-  scrubber.value = Math.min(endMin, Math.max(startMin, nowMin));
-  mapPlaySimTime = parseInt(scrubber.value, 10);
-  updateLiveMap(filtered, mapPlaySimTime, getDayOfWeek(), assignments);
-  document.getElementById('mapTimeLabel').textContent = minsToT(Math.round(mapPlaySimTime));
+  scrubber.min = GANTT_START;
+  scrubber.max = GANTT_END;
+  mapPlaySimTime = Math.min(GANTT_END, Math.max(GANTT_START, nowMin));
+  scrubber.value = mapPlaySimTime;
+  const currentDay = mapDayFilter === 'ALL' ? getDayOfWeek() : mapDayFilter;
+  updateLiveMap(filtered, mapPlaySimTime, currentDay, assignments);
+  setMapTimeDisplay(minsToT(Math.round(mapPlaySimTime)));
 }
 
-async function initLiveMap() {
+function initLiveMap() {
   if (liveMap) return;
   const triaz = LOCATIONS.triaz;
   liveMap = L.map('liveMap', {
@@ -758,18 +813,19 @@ async function initLiveMap() {
     keyboard: false,
     touchZoom: false,
     attributionControl: false
-  }).setView([triaz.lat, triaz.lng], 13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap, &copy; CARTO',
-    maxZoom: 19
-  }).addTo(liveMap);
+  }).setView([TRIAZ_PT[0], TRIAZ_PT[1]], 14);
 
   const schoolKeys = ['triaz','randwijck','ifs','bsa','aics','amity','kindercampus','vu'];
   const colors = { triaz: '#34c759', randwijck: '#ff6b6b', ifs: '#f5a020', bsa: '#5ac8fa', aics: '#f5a020', amity: '#5ac8fa', kindercampus: '#f5a020', vu: '#f5a020' };
+  const labels = { triaz: 'TRIAZ', randwijck: 'Randwijck', ifs: 'IFS', bsa: 'BSA', aics: 'AICS', amity: 'Amity', kindercampus: 'Kinder', vu: 'VU' };
+  const allPts = Object.values(SCHEMATIC);
+  const bounds = L.latLngBounds(allPts.map(p => [p[0], p[1]]));
+  liveMap.fitBounds(bounds.pad(0.05));
   schoolKeys.forEach(key => {
+    const sc = SCHEMATIC[key];
     const loc = LOCATIONS[key];
     const color = colors[key] || '#5ac8fa';
-    const m = L.circleMarker([loc.lat, loc.lng], {
+    const m = L.circleMarker([sc[0], sc[1]], {
       radius: key === 'triaz' ? 12 : 8,
       fillColor: color,
       color: '#fff',
@@ -781,19 +837,18 @@ async function initLiveMap() {
       ? `<div style="font-family:DM Mono,monospace;font-size:11px"><strong>${loc.name}</strong><br>${loc.addr}<br>GoCAP Base — 2 Bakfiets</div>`
       : `<div style="font-family:DM Mono,monospace;font-size:11px"><strong>${loc.name}</strong><br>${loc.addr}<br>${loc.transit} min from Triaz</div>`;
     m.bindPopup(popup);
+    m.bindTooltip(labels[key], { permanent: true, direction: 'right', className: 'school-label' });
     liveMapMarkers[key] = m;
   });
 
   const routeKeys = ['randwijck','ifs','bsa','aics','amity','kindercampus','vu'];
-  const from = [triaz.lat, triaz.lng];
   for (const key of routeKeys) {
-    const loc = LOCATIONS[key];
-    const to = [loc.lat, loc.lng];
-    const pts = await fetchRoute(from, to);
+    const pts = ROAD_ROUTES[key] || [];
     liveMapRoutePaths[key] = pts;
+    const loc = LOCATIONS[key];
     const color = key === 'randwijck' ? '#34c759' : (loc.transit === 30 ? '#5ac8fa' : '#f5a020');
     const line = L.polyline(pts, {
-      color, weight: 3, opacity: 0.4, dashArray: '8, 8'
+      color, weight: 6, opacity: 0.35, dashArray: '12, 8'
     }).addTo(liveMap);
     liveMapRoutes[key] = line;
   }
@@ -803,7 +858,7 @@ async function initLiveMap() {
     div.className = 'bakfiets-marker' + (i === 2 ? ' b2' : '');
     div.innerHTML = '🚲';
     div.dataset.bike = i;
-    const m = L.marker([triaz.lat, triaz.lng], { icon: L.divIcon({ html: div, className: '', iconSize: [32, 32], iconAnchor: [16, 16] }) }).addTo(liveMap);
+    const m = L.marker([triaz.lat, triaz.lng], { icon: L.divIcon({ html: div, className: '', iconSize: [56, 56], iconAnchor: [28, 28] }), zIndexOffset: 1000 }).addTo(liveMap);
     liveMapBakfiets[i - 1] = m;
   });
 }
@@ -819,33 +874,31 @@ function updateLiveMap(runs, nowMin, currentDay, assignments) {
   Object.keys(liveMapRoutes).forEach(key => {
     const line = liveMapRoutes[key];
     const active = activeRoutes.has(key);
-    line.setStyle({ opacity: active ? 1 : 0.25, weight: active ? 4 : 2 });
+    line.setStyle({ opacity: active ? 0.95 : 0.2, weight: active ? 10 : 5 });
   });
 
-  const triaz = LOCATIONS.triaz;
+  const triazSc = SCHEMATIC.triaz;
+  const bikePositions = [];
   [1, 2].forEach(bikeNum => {
-    const marker = liveMapBakfiets[bikeNum - 1];
     const list = assignments[bikeNum] || [];
     const busyRun = list.find(({ run, availableAt }) => {
       const tl = computeTimeline(run);
       return nowMin >= tl.departTriaz && nowMin < availableAt;
     });
     if (!busyRun) {
-      marker.setLatLng([triaz.lat, triaz.lng]);
-      marker.getTooltip()?.setContent('Bakfiets ' + bikeNum + ' — Free');
-      if (!marker.getTooltip()) marker.bindTooltip('Bakfiets ' + bikeNum + ' — Free', { permanent: false, direction: 'top' });
+      bikePositions.push({ bikeNum, lat: triazSc[0], lng: triazSc[1], tip: 'Bakfiets ' + bikeNum + ' — Free' });
       return;
     }
     const run = busyRun.run;
     const st = getStatus(run, nowMin, currentDay);
     const key = getSchoolKey(run.program_name, run.location);
-    const school = LOCATIONS[key] || LOCATIONS.aics;
+    const schoolSc = SCHEMATIC[key] || SCHEMATIC.aics;
     const tl = computeTimeline(run);
     const route = liveMapRoutePaths[key] || ROAD_ROUTES[key];
     const shortLoc = getShortLocation(run.location);
     let lat, lng, tooltip = run.program_name?.slice(0, 25) + ' — ' + st.toUpperCase();
     if (st === 'idle' || st === 'done') {
-      lat = triaz.lat; lng = triaz.lng;
+      lat = triazSc[0]; lng = triazSc[1];
       if (st === 'done' && nowMin >= tl.returnArrival && !isNonBaseRun(run)) tooltip = run.program_name?.slice(0, 25) + ' — Free';
     } else if (st === 'enroute') {
       const elapsed = nowMin - tl.departTriaz;
@@ -854,11 +907,11 @@ function updateLiveMap(runs, nowMin, currentDay, assignments) {
       if (route && route.length > 1) {
         [lat, lng] = interpolateAlongRoute(route, t);
       } else {
-        lat = triaz.lat + (school.lat - triaz.lat) * t;
-        lng = triaz.lng + (school.lng - triaz.lng) * t;
+        lat = triazSc[0] + (schoolSc[0] - triazSc[0]) * t;
+        lng = triazSc[1] + (schoolSc[1] - triazSc[1]) * t;
       }
     } else if (st === 'atschool') {
-      lat = school.lat; lng = school.lng;
+      lat = schoolSc[0]; lng = schoolSc[1];
     } else if (st === 'returning') {
       const elapsed = nowMin - tl.departSchool;
       const total = tl.returnArrival - tl.departSchool;
@@ -867,19 +920,43 @@ function updateLiveMap(runs, nowMin, currentDay, assignments) {
         const rev = [...route].reverse().map(p => [p[0], p[1]]);
         [lat, lng] = interpolateAlongRoute(rev, t);
       } else {
-        lat = school.lat + (triaz.lat - school.lat) * t;
-        lng = school.lng + (triaz.lng - school.lng) * t;
+        lat = schoolSc[0] + (triazSc[0] - schoolSc[0]) * t;
+        lng = schoolSc[1] + (triazSc[1] - schoolSc[1]) * t;
       }
     } else {
-      const court = getCourtLocation(run);
-      lat = court.lat;
-      lng = court.lng;
+      lat = schoolSc[0]; lng = schoolSc[1];
       tooltip = run.program_name?.slice(0, 25) + ' — ' + shortLoc;
     }
-    marker.setLatLng([lat, lng]);
-    marker.getTooltip()?.setContent(tooltip);
-    if (!marker.getTooltip()) marker.bindTooltip(tooltip, { permanent: false, direction: 'top' });
+    bikePositions.push({ bikeNum, lat, lng, tip: tooltip });
   });
+
+  const MERGE_THRESH = 0.002;
+  const p1 = bikePositions.find(p => p.bikeNum === 1);
+  const p2 = bikePositions.find(p => p.bikeNum === 2);
+  const close = p1 && p2 && Math.abs(p1.lat - p2.lat) < MERGE_THRESH && Math.abs(p1.lng - p2.lng) < MERGE_THRESH;
+
+  if (close) {
+    const m1 = liveMapBakfiets[0], m2 = liveMapBakfiets[1];
+    m1.setLatLng([p1.lat, p1.lng]);
+    const icon1 = m1.getIcon();
+    icon1.options.html = '<div class="bakfiets-marker combined">' + '🚲🚲' + '</div>';
+    m1.setIcon(icon1);
+    const combinedTip = p1.tip + '\n' + p2.tip;
+    if (m1.getTooltip()) m1.getTooltip().setContent(combinedTip);
+    else m1.bindTooltip(combinedTip, { permanent: false, direction: 'top' });
+    m2.setLatLng([-999, -999]);
+    if (m2.getTooltip()) m2.getTooltip().setContent('');
+  } else {
+    bikePositions.forEach(p => {
+      const marker = liveMapBakfiets[p.bikeNum - 1];
+      marker.setLatLng([p.lat, p.lng]);
+      const icon = marker.getIcon();
+      icon.options.html = '<div class="bakfiets-marker' + (p.bikeNum === 2 ? ' b2' : '') + '">🚲</div>';
+      marker.setIcon(icon);
+      if (marker.getTooltip()) marker.getTooltip().setContent(p.tip);
+      else marker.bindTooltip(p.tip, { permanent: false, direction: 'top' });
+    });
+  }
 }
 
 let mapModalOpen = false;
@@ -895,7 +972,7 @@ function updateSidebar(runs, currentDay, assignments, conflicts) {
         `<div class="crow"><div class="cname">${name}</div><div class="cval">${list.length} run${list.length !== 1 ? 's' : ''}</div></div>`).join('')
     : '<div class="crow"><div class="cname" style="color:var(--t4)">No runs</div></div>';
 
-  const nowMin = getNowMin();
+  const nowMin = getEffectiveNowMin();
   let bakfietsHtml = '';
   [1, 2].forEach(b => {
     const list = assignments[b] || [];
@@ -916,9 +993,6 @@ function updateSidebar(runs, currentDay, assignments, conflicts) {
 }
 
 function render() {
-  const nowMin = getNowMin();
-  const currentDay = getDayOfWeek();
-  const filtered = dayFilter === 'ALL' ? all : all.filter(c => c.day === dayFilter);
   updateStatus();
 }
 
@@ -936,6 +1010,10 @@ document.getElementById('dayTabs').addEventListener('click', e => {
   render();
 });
 
+document.getElementById('mainTimeScrubber').addEventListener('input', () => {
+  simTime = parseInt(document.getElementById('mainTimeScrubber').value, 10);
+  updateStatus();
+});
 
 document.getElementById('mapModalClose').addEventListener('click', () => {
   mapModalOpen = false;
@@ -943,6 +1021,30 @@ document.getElementById('mapModalClose').addEventListener('click', () => {
   if (mapPlayInterval) clearInterval(mapPlayInterval);
   mapPlayInterval = null;
   document.getElementById('mapModal').classList.remove('open');
+});
+
+document.getElementById('mapDayTabs').addEventListener('click', e => {
+  const t = e.target.closest('.dtab');
+  if (!t) return;
+  document.querySelectorAll('#mapDayTabs .dtab').forEach(x => x.classList.remove('on'));
+  t.classList.add('on');
+  mapDayFilter = t.dataset.d;
+  if (mapPlayAnimating) {
+    mapPlayAnimating = false;
+    if (mapPlayInterval) clearInterval(mapPlayInterval);
+    mapPlayInterval = null;
+    document.getElementById('mapPlayBtn').textContent = 'Play';
+    document.getElementById('mapPlayBtn').classList.remove('playing');
+  }
+  mapPlaySimTime = GANTT_START;
+  const scrubber = document.getElementById('mapScrubber');
+  scrubber.min = GANTT_START;
+  scrubber.max = GANTT_END;
+  scrubber.value = mapPlaySimTime;
+  const { filtered, assignments } = getMapTimeRange();
+  const currentDay = mapDayFilter === 'ALL' ? getDayOfWeek() : mapDayFilter;
+  updateLiveMap(filtered, mapPlaySimTime, currentDay, assignments);
+  setMapTimeDisplay(minsToT(Math.round(mapPlaySimTime)));
 });
 
 document.getElementById('mapPlayBtn').addEventListener('click', () => {
@@ -954,30 +1056,44 @@ document.getElementById('mapPlayBtn').addEventListener('click', () => {
     document.getElementById('mapPlayBtn').classList.remove('playing');
     return;
   }
-  const { startMin, endMin, filtered, assignments } = getMapTimeRange();
-  const currentDay = dayFilter === 'ALL' ? getDayOfWeek() : dayFilter;
+  const currentDay = mapDayFilter === 'ALL' ? getDayOfWeek() : mapDayFilter;
   const scrubber = document.getElementById('mapScrubber');
-  scrubber.min = startMin;
-  scrubber.max = endMin;
-  mapPlaySimTime = startMin;
-  scrubber.value = mapPlaySimTime;
   mapPlayAnimating = true;
   document.getElementById('mapPlayBtn').textContent = 'Pause';
   document.getElementById('mapPlayBtn').classList.add('playing');
-  document.getElementById('mapTimeLabel').textContent = minsToT(Math.round(mapPlaySimTime));
-  updateLiveMap(filtered, mapPlaySimTime, currentDay, assignments);
   mapPlayInterval = setInterval(() => {
-    mapPlaySimTime += 5;
-    if (mapPlaySimTime >= endMin) {
-      mapPlaySimTime = startMin;
+    mapPlaySimTime += 12;
+    if (mapPlaySimTime >= GANTT_END) {
+      mapPlaySimTime = GANTT_END;
+      mapPlayAnimating = false;
+      clearInterval(mapPlayInterval);
+      mapPlayInterval = null;
+      document.getElementById('mapPlayBtn').textContent = 'Play';
+      document.getElementById('mapPlayBtn').classList.remove('playing');
     }
     scrubber.value = mapPlaySimTime;
+    const { filtered, assignments } = getMapTimeRange();
     updateLiveMap(filtered, mapPlaySimTime, currentDay, assignments);
-    document.getElementById('mapTimeLabel').textContent = minsToT(Math.round(mapPlaySimTime));
-  }, 1000);
+    setMapTimeDisplay(minsToT(Math.round(mapPlaySimTime)));
+  }, 150);
 });
 
-document.getElementById('mapScrubber').addEventListener('input', () => {
+const mapScrubberEl = document.getElementById('mapScrubber');
+const mapScrubberPopoverEl = document.getElementById('mapScrubberPopover');
+
+function showMapScrubberPopover() {
+  if (mapScrubberPopoverEl) {
+    mapScrubberPopoverEl.textContent = minsToT(Math.round(parseInt(mapScrubberEl.value, 10)));
+    mapScrubberPopoverEl.classList.add('visible');
+  }
+}
+function hideMapScrubberPopover() {
+  if (mapScrubberPopoverEl) mapScrubberPopoverEl.classList.remove('visible');
+}
+
+mapScrubberEl.addEventListener('pointerdown', showMapScrubberPopover);
+mapScrubberEl.addEventListener('input', () => {
+  showMapScrubberPopover();
   if (mapPlayAnimating) {
     mapPlayAnimating = false;
     if (mapPlayInterval) clearInterval(mapPlayInterval);
@@ -985,13 +1101,15 @@ document.getElementById('mapScrubber').addEventListener('input', () => {
     document.getElementById('mapPlayBtn').textContent = 'Play';
     document.getElementById('mapPlayBtn').classList.remove('playing');
   }
-  const scrubber = document.getElementById('mapScrubber');
-  mapPlaySimTime = parseInt(scrubber.value, 10);
+  mapPlaySimTime = parseInt(mapScrubberEl.value, 10);
   const { filtered, assignments } = getMapTimeRange();
-  const currentDay = dayFilter === 'ALL' ? getDayOfWeek() : dayFilter;
+  const currentDay = mapDayFilter === 'ALL' ? getDayOfWeek() : mapDayFilter;
   updateLiveMap(filtered, mapPlaySimTime, currentDay, assignments);
-  document.getElementById('mapTimeLabel').textContent = minsToT(Math.round(mapPlaySimTime));
+  setMapTimeDisplay(minsToT(Math.round(mapPlaySimTime)));
 });
+document.addEventListener('pointerup', hideMapScrubberPopover);
+document.addEventListener('pointercancel', hideMapScrubberPopover);
+
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && mapModalOpen) {
@@ -1002,7 +1120,6 @@ document.addEventListener('keydown', e => {
 
 HT.initSeasonSwitcher(s => { season = s; load(); });
 load();
-setInterval(updateStatus, 1000);
 </script>
 </body>
 </html>
