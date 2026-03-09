@@ -1,7 +1,15 @@
 # Higgins Tennis — Ops Dashboard
 
-Local-first operations dashboard for Higgins Tennis Amsterdam.  
-**Zero npm dependencies** — runs on Node.js built-ins only.
+Local-first operations dashboard for Higgins Tennis Amsterdam. Manages class schedules, coach pay, transportation logistics, and finance across seasons.
+
+**Features:**
+- **Transportation (GoCAP)** — Bakfiets pickup route planning with schematic map, day-by-day timeline scrubber, and animated playback for quick day overviews
+- **Calendar** — Week/day/list views, filter by coach or class type
+- **Coaches** — Pay calculator, rate sheet, per-class breakdown
+- **Finance** — P&L table, revenue by location/type
+- **Seasons** — Winter vs Spring comparison across all metrics
+
+Runs on Node.js 18+ with minimal dependencies.
 
 ## Quick Start
 
@@ -77,7 +85,7 @@ curl -X POST http://localhost:3000/api/reload
 
 - **Home** `/` — Command center with stats, week-at-a-glance, fill rates
 - **Calendar** `/calendar` — Week/day/list views, filter by coach or type
-- **Transportation** `/gocap` — Pickup route cards with step-by-step timelines, schematic map
+- **Transportation** `/gocap` — Bakfiets dispatch board, day timeline scrubber (11:00–18:00), fullscreen schematic route map with animated playback and combined-bike indicators
 - **Coaches** `/coaches` — Pay calculator, rate sheet, per-class breakdown
 - **Finance** `/finance` — P&L table, revenue by location/type, sortable
 - **Seasons** `/seasons` — Winter vs Spring comparison across all metrics
