@@ -1,0 +1,1732 @@
+[
+  {
+    "class_name": "IFS Friday Age 8-12 30-3:40pm-5:30pm After school pickup 25/26",
+    "total_slots": 7,
+    "slots_available": 0,
+    "level": "Varies",
+    "court": "Club S.V. Triaz",
+    "session": "IFS 2025-2026",
+    "program": "S.V. Triaz International French School school pickup",
+    "coaches": [
+      "William Higgins",
+      "William Higgins",
+      "Noah Cladera",
+      "Heather Court-Coach"
+    ],
+    "students": [
+      {
+        "name": "Elisa Abida",
+        "age": "7Y 8mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1186,
+        "notes": "test 4a",
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Heni",
+          "email": "heni.abida@gmail.com",
+          "phone": "+31615475301"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Theodore Gallay",
+        "age": "9Y 0mo",
+        "level": "Beginner/Advanced Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1186,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Sandrine",
+          "email": "sdnpotie@hotmail.com",
+          "phone": "+31611399534"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Raphaël Bataille",
+        "age": "8Y 9mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1186,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Aurélia",
+          "email": "aureliapougin@gmail.com",
+          "phone": "+31625204742"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Théodore  Fiquet",
+        "age": "9Y 5mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1141,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Céline",
+          "email": "celine.borratmichaud@gmail.com",
+          "phone": "+33688428302"
+        },
+        "parent2": {
+          "name": "Etienne",
+          "email": "etienne.fiquet@free.fr",
+          "phone": "+33609236239"
+        }
+      },
+      {
+        "name": "Victor  Angevin",
+        "age": "9Y 8mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1186,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Eléonore",
+          "email": "eleonore.bouetard@hotmail.fr",
+          "phone": "+31625245167"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Sofia Martone buffa",
+        "age": "7Y 6mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1186,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Carolina",
+          "email": "carolina.buffa@gmail.com",
+          "phone": "+31615411542"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Emma Serizay",
+        "age": "7Y 7mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1145,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Laila",
+          "email": "laila.benomar@gmail.com",
+          "phone": "+310639382890"
+        },
+        "parent2": {
+          "name": "Matthieu",
+          "email": "mattserizay@gmail.com",
+          "phone": "+310683893819"
+        }
+      }
+    ]
+  },
+  {
+    "class_name": "Spring 1 Tue 8:00-9:00PM Private Group Triaz 2026",
+    "total_slots": 4,
+    "slots_available": 4,
+    "level": "Beginner/Advanced Beginner",
+    "court": "Club S.V. Triaz",
+    "session": "Adult Spring 2026",
+    "program": "S.V. Triaz Adult Classes",
+    "coaches": [
+      "Noah Cladera"
+    ],
+    "students": []
+  },
+  {
+    "class_name": "Spring 1 Tue 8:00-9:00PM Private Group Triaz 2026",
+    "total_slots": 4,
+    "slots_available": 4,
+    "level": "Beginner/Advanced Beginner",
+    "court": "Club S.V. Triaz",
+    "session": "Adult Spring 2026",
+    "program": "S.V. Triaz Adult Classes",
+    "coaches": [
+      "Noah Cladera"
+    ],
+    "students": []
+  },
+  {
+    "class_name": "Spring 1 Wed 6:30-8:00PM Beginner to Intermediate Triaz 2026",
+    "total_slots": 12,
+    "slots_available": 9,
+    "level": "Advanced Beginner to Advanced Intermediate",
+    "court": "Club S.V. Triaz",
+    "session": "Adult Spring 2026",
+    "program": "S.V. Triaz Adult Classes",
+    "coaches": [
+      "Ramzi  Chouikha",
+      "Ivan Figueroa",
+      "Noah Cladera"
+    ],
+    "students": [
+      {
+        "name": "Tautvydas Maciulis",
+        "age": "27Y 0mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 288,
+        "amount_paid": 288,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Tautvydas",
+          "email": "maciulis.tautvydas22@gmail.com",
+          "phone": "+31681740632"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Henning Tansjö",
+        "age": "30Y 1mo",
+        "level": "Beginner-Intermediate",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 288,
+        "amount_paid": 288,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Henning",
+          "email": "tansjo.henning@gmail.com",
+          "phone": "+31657507568"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Ira Shulha",
+        "age": "",
+        "level": "",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 288,
+        "amount_paid": 252,
+        "notes": "cannot attend class on  29/04",
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Ira",
+          "email": "iryna.rubinina@gmail.com",
+          "phone": "+31621594478"
+        },
+        "parent2": null
+      }
+    ]
+  },
+  {
+    "class_name": "Spring Ages 4-6 Sunday 9:45-10:30AM 2026",
+    "total_slots": 18,
+    "slots_available": 9,
+    "level": "Varies",
+    "court": "Club S.V. Triaz",
+    "session": "Youth Spring 2026",
+    "program": "S.V. Triaz Youth Classes",
+    "coaches": [
+      "William Higgins",
+      "Ramzi  Chouikha",
+      "Set Sjostrand",
+      "Banu Gulecyuz"
+    ],
+    "students": [
+      {
+        "name": "Myraya Mogre",
+        "age": "6Y 3mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Ayushi",
+          "email": "ayushi.91@gmail.com",
+          "phone": "+31613961664"
+        },
+        "parent2": {
+          "name": "Mihir",
+          "email": "Mogre.mihir@gmail.com",
+          "phone": "+31615564446"
+        }
+      },
+      {
+        "name": "Francesca Piccoli",
+        "age": "6Y 6mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 180,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Sophie",
+          "email": "Sophieinesjoos@gmail.com",
+          "phone": "+31687025384"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Hasung Yang",
+        "age": "5Y 10mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Yoonhae",
+          "email": "yoone703@gmail.com",
+          "phone": "+31627377150"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Harin Yang",
+        "age": "5Y 10mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Yoonhae",
+          "email": "yoone703@gmail.com",
+          "phone": "+31627377150"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Gavin Markus",
+        "age": "6Y 5mo",
+        "level": "",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Eric",
+          "email": "emarkus@gmail.com",
+          "phone": "+31613462963"
+        },
+        "parent2": null
+      },
+      {
+        "name": "ALASTAIR LI",
+        "age": "6Y 5mo",
+        "level": "",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "ALASTAIR",
+          "email": "KAYE0812@HOTMAIL.COM",
+          "phone": "+310629006894"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Giovanni Bina",
+        "age": "6Y 1mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Fabio",
+          "email": "fabio.bona@hotmail.com",
+          "phone": "+31631301232"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Marceau BOUGARD TESIC",
+        "age": "5Y 1mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Johana",
+          "email": "johana.tesic@gmail.com",
+          "phone": "+33687460713"
+        },
+        "parent2": null
+      },
+      {
+        "name": "rafael Breteau",
+        "age": "4Y 5mo",
+        "level": "Beginner",
+        "payment_mode": "-",
+        "status": "Pending",
+        "fee": 200,
+        "amount_paid": 0,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Maria",
+          "email": "boulosmaria@hotmail.com",
+          "phone": "+33613931207"
+        },
+        "parent2": null
+      }
+    ]
+  },
+  {
+    "class_name": "Spring Ages 4-6 Sunday 9:45-10:30AM 2026",
+    "total_slots": 18,
+    "slots_available": 9,
+    "level": "Varies",
+    "court": "Club S.V. Triaz",
+    "session": "Youth Spring 2026",
+    "program": "S.V. Triaz Youth Classes",
+    "coaches": [
+      "William Higgins",
+      "Ramzi  Chouikha",
+      "Set Sjostrand",
+      "Banu Gulecyuz"
+    ],
+    "students": [
+      {
+        "name": "Myraya Mogre",
+        "age": "6Y 3mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Ayushi",
+          "email": "ayushi.91@gmail.com",
+          "phone": "+31613961664"
+        },
+        "parent2": {
+          "name": "Mihir",
+          "email": "Mogre.mihir@gmail.com",
+          "phone": "+31615564446"
+        }
+      },
+      {
+        "name": "Francesca Piccoli",
+        "age": "6Y 6mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 180,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Sophie",
+          "email": "Sophieinesjoos@gmail.com",
+          "phone": "+31687025384"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Hasung Yang",
+        "age": "5Y 10mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Yoonhae",
+          "email": "yoone703@gmail.com",
+          "phone": "+31627377150"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Harin Yang",
+        "age": "5Y 10mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Yoonhae",
+          "email": "yoone703@gmail.com",
+          "phone": "+31627377150"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Gavin Markus",
+        "age": "6Y 5mo",
+        "level": "",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Eric",
+          "email": "emarkus@gmail.com",
+          "phone": "+31613462963"
+        },
+        "parent2": null
+      },
+      {
+        "name": "ALASTAIR LI",
+        "age": "6Y 5mo",
+        "level": "",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "ALASTAIR",
+          "email": "KAYE0812@HOTMAIL.COM",
+          "phone": "+310629006894"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Giovanni Bina",
+        "age": "6Y 1mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Fabio",
+          "email": "fabio.bona@hotmail.com",
+          "phone": "+31631301232"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Marceau BOUGARD TESIC",
+        "age": "5Y 1mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 200,
+        "amount_paid": 200,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Johana",
+          "email": "johana.tesic@gmail.com",
+          "phone": "+33687460713"
+        },
+        "parent2": null
+      },
+      {
+        "name": "rafael Breteau",
+        "age": "4Y 5mo",
+        "level": "Beginner",
+        "payment_mode": "-",
+        "status": "Pending",
+        "fee": 200,
+        "amount_paid": 0,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Maria",
+          "email": "boulosmaria@hotmail.com",
+          "phone": "+33613931207"
+        },
+        "parent2": null
+      }
+    ]
+  },
+  {
+    "class_name": "IFS Friday Age 8-12 30-3:40pm-5:30pm After school pickup 25/26",
+    "total_slots": 7,
+    "slots_available": 0,
+    "level": "Varies",
+    "court": "Club S.V. Triaz",
+    "session": "IFS 2025-2026",
+    "program": "S.V. Triaz International French School school pickup",
+    "coaches": [
+      "William Higgins",
+      "William Higgins",
+      "Noah Cladera",
+      "Heather Court-Coach"
+    ],
+    "students": [
+      {
+        "name": "Elisa Abida",
+        "age": "7Y 8mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1186,
+        "notes": "test 4a",
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Heni",
+          "email": "heni.abida@gmail.com",
+          "phone": "+31615475301"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Theodore Gallay",
+        "age": "9Y 0mo",
+        "level": "Beginner/Advanced Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1186,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Sandrine",
+          "email": "sdnpotie@hotmail.com",
+          "phone": "+31611399534"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Raphaël Bataille",
+        "age": "8Y 9mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1186,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Aurélia",
+          "email": "aureliapougin@gmail.com",
+          "phone": "+31625204742"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Théodore  Fiquet",
+        "age": "9Y 5mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1141,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Céline",
+          "email": "celine.borratmichaud@gmail.com",
+          "phone": "+33688428302"
+        },
+        "parent2": {
+          "name": "Etienne",
+          "email": "etienne.fiquet@free.fr",
+          "phone": "+33609236239"
+        }
+      },
+      {
+        "name": "Victor  Angevin",
+        "age": "9Y 8mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1186,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Eléonore",
+          "email": "eleonore.bouetard@hotmail.fr",
+          "phone": "+31625245167"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Sofia Martone buffa",
+        "age": "7Y 6mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1186,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Carolina",
+          "email": "carolina.buffa@gmail.com",
+          "phone": "+31615411542"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Emma Serizay",
+        "age": "7Y 7mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1186,
+        "amount_paid": 1145,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Laila",
+          "email": "laila.benomar@gmail.com",
+          "phone": "+310639382890"
+        },
+        "parent2": {
+          "name": "Matthieu",
+          "email": "mattserizay@gmail.com",
+          "phone": "+310683893819"
+        }
+      }
+    ]
+  },
+  {
+    "class_name": "IFS Friday ages 5-7 3:30-3:40pm-5:00pm Ages 5-7 After school pickup 25/26",
+    "total_slots": 5,
+    "slots_available": 0,
+    "level": "Varies",
+    "court": "Club S.V. Triaz",
+    "session": "IFS 2025-2026",
+    "program": "S.V. Triaz International French School school pickup",
+    "coaches": [
+      "William Higgins",
+      "Noah Cladera",
+      "Giorgio Crisci"
+    ],
+    "students": [
+      {
+        "name": "louis scherrer",
+        "age": "6Y 5mo",
+        "level": "Intermediate",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1080,
+        "amount_paid": 1080,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "claire",
+          "email": "claire.espinasse1@gmail.com",
+          "phone": "+31627873943"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Francesco Lopez",
+        "age": "7Y 5mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer",
+        "status": "Paid",
+        "fee": 1080,
+        "amount_paid": 1080,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Guillen",
+          "email": "guillen.lopez@discovery.vc",
+          "phone": "+33621773421"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Arthus Gallay",
+        "age": "7Y 3mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1080,
+        "amount_paid": 1080,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Sandrine",
+          "email": "sdnpotie@hotmail.com",
+          "phone": "+31611399534"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Timothee GEHIN",
+        "age": "6Y 6mo",
+        "level": "",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1080,
+        "amount_paid": 1080,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Yannick",
+          "email": "famillegehin88@gmail.com",
+          "phone": "+31621383162"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Cleophee GEHIN",
+        "age": "6Y 6mo",
+        "level": "",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1080,
+        "amount_paid": 1080,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Yannick",
+          "email": "famillegehin88@gmail.com",
+          "phone": "+31621383162"
+        },
+        "parent2": null
+      }
+    ]
+  },
+  {
+    "class_name": "IFS Wednesday 1:00-2:45 Ages 8-12 After school pickup 25/26",
+    "total_slots": 7,
+    "slots_available": 0,
+    "level": "Varies",
+    "court": "Club S.V. Triaz",
+    "session": "IFS 2025-2026",
+    "program": "S.V. Triaz International French School school pickup",
+    "coaches": [
+      "William Higgins",
+      "Noah Cladera"
+    ],
+    "students": [
+      {
+        "name": "elise tsai lavenut",
+        "age": "7Y 8mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1150,
+        "amount_paid": 1150,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "irene",
+          "email": "irene.tsai@yandex.com",
+          "phone": "+310611166291"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Elias  Thorn",
+        "age": "10Y 0mo",
+        "level": "Beginner-Intermediate",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1150,
+        "amount_paid": 990,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Clement",
+          "email": "clement_09@msn.com",
+          "phone": "+46735244849"
+        },
+        "parent2": {
+          "name": "Kathrin",
+          "email": "kathrin.thorn@hotmail.com",
+          "phone": "+46736741937"
+        }
+      },
+      {
+        "name": "Hector de Longeaux",
+        "age": "10Y 8mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1150,
+        "amount_paid": 1150,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Roch",
+          "email": "roch.delongeaux@gmail.com",
+          "phone": "+330686832047"
+        },
+        "parent2": null
+      },
+      {
+        "name": "victor alavoine",
+        "age": "9Y 4mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1150,
+        "amount_paid": 1150,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "elodie",
+          "email": "elodie.alavoine@hotmail.fr",
+          "phone": "+33683186700"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Hector Queinnec Crevel",
+        "age": "9Y 5mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1150,
+        "amount_paid": 1150,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Laurence",
+          "email": "laurence.crevel@gmail.com",
+          "phone": "+33684435099"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Jeanne-Edmee Chabannes",
+        "age": "8Y 2mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer",
+        "status": "Paid",
+        "fee": 1150,
+        "amount_paid": 1150,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Louis-René",
+          "email": "dlr.chabannes@gmail.com",
+          "phone": "+33679786969"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Eleanore Saint Jevin",
+        "age": "9Y 7mo",
+        "level": "Beginner/Advanced Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 1150,
+        "amount_paid": 820,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Nathalie",
+          "email": "nmanivong@gmail.com",
+          "phone": "+31681030534"
+        },
+        "parent2": null
+      }
+    ]
+  },
+  {
+    "class_name": "Spring BSA Monday 3:15-4:45pm After school pickup ages 5-7 2026",
+    "total_slots": 11,
+    "slots_available": 2,
+    "level": "Varies",
+    "court": "Club S.V. Triaz",
+    "session": "BSA 2025-2026",
+    "program": "The British School of Amsterdam after school tennis",
+    "coaches": [
+      "William Higgins",
+      "Noah Cladera",
+      "Giorgio Crisci"
+    ],
+    "students": [
+      {
+        "name": "Lin Koenig",
+        "age": "6Y 8mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 351,
+        "amount_paid": 351,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Louisa",
+          "email": "penglouisa@yahoo.com",
+          "phone": "+4915734397057"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Nora Frith",
+        "age": "6Y 4mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 351,
+        "amount_paid": 351,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Roxy",
+          "email": "Roxydevreede@gmail.com",
+          "phone": "+31611194799"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Wren Matsuhisa-Chapman",
+        "age": "6Y 0mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 351,
+        "amount_paid": 351,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Yoshiko",
+          "email": "ymatsuhisa@me.com",
+          "phone": "+31617344221"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Lara Callicott",
+        "age": "5Y 10mo",
+        "level": "Beginner",
+        "payment_mode": "Account Credit",
+        "status": "Paid",
+        "fee": 351,
+        "amount_paid": 351,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Barbara",
+          "email": "barbara.callicott@outlook.com",
+          "phone": "+31651898263"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Jack Gulgonul",
+        "age": "7Y 2mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 351,
+        "amount_paid": 351,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Rachel",
+          "email": "rachelgulgonul@gmail.com",
+          "phone": "+31621349276"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Kai  Puaar",
+        "age": "5Y 10mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 351,
+        "amount_paid": 351,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Priya",
+          "email": "praniga15@gmail.com",
+          "phone": "+4407889901443"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Ameyah Vasudevan",
+        "age": "5Y 7mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 351,
+        "amount_paid": 351,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Vruchi",
+          "email": "shankarandvruchi@gmail.com",
+          "phone": "+31621338477"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Elena Falconi",
+        "age": "6Y 9mo",
+        "level": "Beginner",
+        "payment_mode": "Account Credit",
+        "status": "Paid",
+        "fee": 351,
+        "amount_paid": 351,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Sara",
+          "email": "savil82@hotmail.com",
+          "phone": "+31615615006"
+        },
+        "parent2": {
+          "name": "Riccardo",
+          "email": "ricfalconi@yahoo.it",
+          "phone": "+31647177335"
+        }
+      },
+      {
+        "name": "Evan Gurkovsky",
+        "age": "5Y 10mo",
+        "level": "Beginner/Advanced Beginner",
+        "payment_mode": "-",
+        "status": "Pending",
+        "fee": 351,
+        "amount_paid": 0,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Angelika",
+          "email": "angelalastenko@gmail.com",
+          "phone": "+31611511616"
+        },
+        "parent2": null
+      }
+    ]
+  },
+  {
+    "class_name": "Spring High Perfor. Mon. 4:30-6PM Ages 9-14 Advanced 2026",
+    "total_slots": 12,
+    "slots_available": 7,
+    "level": "Varies",
+    "court": "Club S.V. Triaz",
+    "session": "Youth Spring 2026",
+    "program": "S.V. Triaz Youth High Performance",
+    "coaches": [
+      "William Higgins",
+      "Farah  Fernandez"
+    ],
+    "students": [
+      {
+        "name": "Theresa Bernhardt",
+        "age": "10Y 5mo",
+        "level": "Beginner/Advanced-Intermediate",
+        "payment_mode": "-",
+        "status": "Pending",
+        "fee": 360,
+        "amount_paid": 0,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Elena",
+          "email": "elena@elenabernhardt.de",
+          "phone": "+31642028965"
+        },
+        "parent2": {
+          "name": "Ben",
+          "email": "Ben.schroeter@icloud.com",
+          "phone": "+31615687912"
+        }
+      },
+      {
+        "name": "Arsene Legros",
+        "age": "11Y 4mo",
+        "level": "Advanced Beginner/Low Intermediate",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 360,
+        "amount_paid": 360,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Pierre",
+          "email": "pierre.legros13@gmail.com",
+          "phone": "+33607617788"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Adam Didiot",
+        "age": "9Y 6mo",
+        "level": "Advanced",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 360,
+        "amount_paid": 360,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Suzanne",
+          "email": "suzanne.ung@gmail.com",
+          "phone": "+31615123441"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Lev Chelnokov",
+        "age": "13Y 5mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 360,
+        "amount_paid": 360,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Arina",
+          "email": "forvalera@yandex.ru",
+          "phone": "+31651873564"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Wesley  Montgomery",
+        "age": "11Y 9mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 360,
+        "amount_paid": 360,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Shauna",
+          "email": "shauna.kline@gmail.com",
+          "phone": "+31611831800"
+        },
+        "parent2": null
+      }
+    ]
+  },
+  {
+    "class_name": "Spring 1 Mon 7:30-9:00PM Intermediate to Advanced Triaz 2026",
+    "total_slots": 12,
+    "slots_available": 10,
+    "level": "Intermediate-Advanced",
+    "court": "Club S.V. Triaz",
+    "session": "Adult Spring 2026",
+    "program": "S.V. Triaz Adult Classes",
+    "coaches": [
+      "Ramzi  Chouikha"
+    ],
+    "students": [
+      {
+        "name": "Christoph Tautphäus",
+        "age": "",
+        "level": "",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 216,
+        "amount_paid": 216,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Catarina",
+          "email": "tautphaeus@gmail.com",
+          "phone": "+310628220836"
+        },
+        "parent2": {
+          "name": "Christoph",
+          "email": "Catarina0902@gmail.com",
+          "phone": "+491774644824"
+        }
+      },
+      {
+        "name": "Javier Garcia",
+        "age": "",
+        "level": "",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 216,
+        "amount_paid": 216,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Jennifer",
+          "email": "cosgrave.jenny@gmail.com",
+          "phone": "+31615527791"
+        },
+        "parent2": {
+          "name": "Javier",
+          "email": "ilpapa007@hotmail.com",
+          "phone": "+31653374020"
+        }
+      }
+    ]
+  },
+  {
+    "class_name": "Spring 1 Wed 6:30-8:00PM Beginner to Intermediate Triaz 2026",
+    "total_slots": 12,
+    "slots_available": 9,
+    "level": "Advanced Beginner to Advanced Intermediate",
+    "court": "Club S.V. Triaz",
+    "session": "Adult Spring 2026",
+    "program": "S.V. Triaz Adult Classes",
+    "coaches": [
+      "Ramzi  Chouikha",
+      "Ivan Figueroa",
+      "Noah Cladera"
+    ],
+    "students": [
+      {
+        "name": "Tautvydas Maciulis",
+        "age": "27Y 0mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 288,
+        "amount_paid": 288,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Tautvydas",
+          "email": "maciulis.tautvydas22@gmail.com",
+          "phone": "+31681740632"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Henning Tansjö",
+        "age": "30Y 1mo",
+        "level": "Beginner-Intermediate",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 288,
+        "amount_paid": 288,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Henning",
+          "email": "tansjo.henning@gmail.com",
+          "phone": "+31657507568"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Ira Shulha",
+        "age": "",
+        "level": "",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 288,
+        "amount_paid": 252,
+        "notes": "cannot attend class on  29/04",
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Ira",
+          "email": "iryna.rubinina@gmail.com",
+          "phone": "+31621594478"
+        },
+        "parent2": null
+      }
+    ]
+  },
+  {
+    "class_name": "Spring High Perfor. Tues. 3:15-5:30PM Ages 7-9 AICS School Pickup 2026",
+    "total_slots": 10,
+    "slots_available": 5,
+    "level": "Varies",
+    "court": "Club S.V. Triaz",
+    "session": "Youth Spring 2026",
+    "program": "S.V. Triaz Youth High Performance",
+    "coaches": [
+      "William Higgins",
+      "Farah  Fernandez",
+      "Set Sjostrand"
+    ],
+    "students": [
+      {
+        "name": "Jasper Bernhardt",
+        "age": "7Y 10mo",
+        "level": "Beginner/Advanced-Intermediate",
+        "payment_mode": "-",
+        "status": "Pending",
+        "fee": 470,
+        "amount_paid": 0,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Elena",
+          "email": "elena@elenabernhardt.de",
+          "phone": "+31642028965"
+        },
+        "parent2": {
+          "name": "Ben",
+          "email": "Ben.schroeter@icloud.com",
+          "phone": "+31615687912"
+        }
+      },
+      {
+        "name": "Gioia Bravo",
+        "age": "9Y 1mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 470,
+        "amount_paid": 470,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Cathy",
+          "email": "cathy.lsx@gmail.com",
+          "phone": "+31615523353"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Vita Bravo",
+        "age": "7Y 0mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 470,
+        "amount_paid": 564,
+        "notes": "Refunded directly via Mollie-system would not allow refund via Timmy",
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Cathy",
+          "email": "cathy.lsx@gmail.com",
+          "phone": "+31615523353"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Matheus Pereira",
+        "age": "7Y 8mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 470,
+        "amount_paid": 470,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Livia",
+          "email": "livia.kuhner@gmail.com",
+          "phone": "+31683049342"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Maia Arevalo",
+        "age": "11Y 2mo",
+        "level": "Beginner/Advanced-Intermediate",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 470,
+        "amount_paid": 470,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Isaac",
+          "email": "isaacarevaloperel@icloud.com",
+          "phone": "+31628331957"
+        },
+        "parent2": {
+          "name": "Rebeca",
+          "email": "rmoure@gmail.com",
+          "phone": "+31621150787"
+        }
+      }
+    ]
+  },
+  {
+    "class_name": "Winter BSA Monday 3:15-4:45pm After school pickup ages 5-8 2026",
+    "total_slots": 14,
+    "slots_available": 5,
+    "level": "Varies",
+    "court": "Club S.V. Triaz",
+    "session": "BSA 2025-2026",
+    "program": "The British School of Amsterdam after school tennis",
+    "coaches": [
+      "William Higgins",
+      "Noah Cladera",
+      "Giorgio Crisci"
+    ],
+    "students": [
+      {
+        "name": "Wren Matsuhisa-Chapman",
+        "age": "6Y 0mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 407,
+        "amount_paid": 407,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Yoshiko",
+          "email": "ymatsuhisa@me.com",
+          "phone": "+31617344221"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Nora Frith",
+        "age": "6Y 4mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 407,
+        "amount_paid": 366.3,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Roxy",
+          "email": "Roxydevreede@gmail.com",
+          "phone": "+31611194799"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Jack Gulgonul",
+        "age": "7Y 2mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 407,
+        "amount_paid": 366.3,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Rachel",
+          "email": "rachelgulgonul@gmail.com",
+          "phone": "+31621349276"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Ameyah Vasudevan",
+        "age": "5Y 7mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 407,
+        "amount_paid": 366.3,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Vruchi",
+          "email": "shankarandvruchi@gmail.com",
+          "phone": "+31621338477"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Kai  Puaar",
+        "age": "5Y 10mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 407,
+        "amount_paid": 366.3,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Priya",
+          "email": "praniga15@gmail.com",
+          "phone": "+4407889901443"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Lin Koenig",
+        "age": "6Y 8mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 407,
+        "amount_paid": 366.3,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Louisa",
+          "email": "penglouisa@yahoo.com",
+          "phone": "+4915734397057"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Lara Callicott",
+        "age": "5Y 10mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 407,
+        "amount_paid": 407,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Barbara",
+          "email": "barbara.callicott@outlook.com",
+          "phone": "+31651898263"
+        },
+        "parent2": null
+      },
+      {
+        "name": "Elena Falconi",
+        "age": "6Y 9mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 407,
+        "amount_paid": 335,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Sara",
+          "email": "savil82@hotmail.com",
+          "phone": "+31615615006"
+        },
+        "parent2": {
+          "name": "Riccardo",
+          "email": "ricfalconi@yahoo.it",
+          "phone": "+31647177335"
+        }
+      },
+      {
+        "name": "Maria Samochernova",
+        "age": "6Y 0mo",
+        "level": "Beginner",
+        "payment_mode": "Bank Transfer/Credit Card",
+        "status": "Paid",
+        "fee": 407,
+        "amount_paid": 222,
+        "notes": null,
+        "booking_type": "Class",
+        "dropin_dates": "-",
+        "parent1": {
+          "name": "Natalia",
+          "email": "nbrovarnik@gmail.com",
+          "phone": "+31621316286"
+        },
+        "parent2": null
+      }
+    ]
+  }
+]

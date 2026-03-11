@@ -7,16 +7,15 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/main.css">
 <style>
-.stats{display:grid;grid-template-columns:repeat(7,1fr);background:var(--b1);border-bottom:1px solid var(--b2);gap:1px;}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);background:var(--b1);border-bottom:1px solid var(--b2);gap:1px;}
 @media(max-width:900px){.stats{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:500px){.stats{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:480px){.sc{padding:12px 14px;}.sv{font-size:22px;}.sl{font-size:10px;}.sn{font-size:10px;}}
+@media(max-width:480px){.sc{padding:12px 14px;}.sv{font-size:22px;}.sl{font-size:10px;}}
 .sc{background:var(--s1);padding:20px 24px;}
 .sv{font-size:24px;font-weight:700;line-height:1;letter-spacing:-.5px;margin-bottom:5px;}
 .sl{font-size:11px;font-weight:500;color:var(--t3);}
-.sn{font-size:10px;color:var(--t3);margin-top:4px;}
 
-.main{display:grid;grid-template-columns:1fr 340px;min-height:calc(100vh - 170px);}
+.main{display:grid;grid-template-columns:1fr 320px;min-height:calc(100vh - 170px);}
 @media(max-width:960px){.main{grid-template-columns:1fr;}}
 .lcol{padding:28px 32px;border-right:1px solid var(--b1);}
 @media(max-width:480px){.lcol{padding:16px 12px;}}
@@ -24,20 +23,19 @@
 @media(max-width:480px){.side{padding:16px 12px;gap:14px;}}
 .slbl{font-size:11px;font-weight:600;letter-spacing:0.5px;color:var(--t3);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--b1);}
 
-.mods{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:32px;}
-@media(max-width:700px){.mods{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:480px){.mods{grid-template-columns:1fr;}.mod{padding:14px 12px;}.mi{font-size:18px;}.mn{font-size:12px;}.md{font-size:9px;}}
-.mod{background:var(--s1);border:1px solid var(--b2);border-radius:8px;padding:18px 16px 14px;text-decoration:none;color:var(--t1);transition:border-color .15s;display:block;position:relative;overflow:hidden;}
-.mod:hover{border-color:var(--b3);}
-.mod.live{border-color:rgba(245,160,32,.18);}
-.mod.live:hover{border-color:var(--orange);}
-.mi{font-size:20px;margin-bottom:9px;display:block;}
-.mn{font-size:13px;font-weight:700;color:var(--t2);margin-bottom:3px;}
-.mod.live .mn{color:var(--orange);}
-.md{font-size:10px;color:var(--t3);line-height:1.55;}
-.mbadge{position:absolute;top:11px;right:11px;font-family:"DM Mono",monospace;font-size:8px;letter-spacing:1px;padding:2px 6px;border-radius:2px;}
-.bl{background:rgba(245,160,32,.1);color:var(--orange);border:1px solid rgba(245,160,32,.25);}
-.bs{background:var(--b1);color:var(--t4);}
+.today-list{display:flex;flex-direction:column;gap:6px;margin-bottom:28px;}
+.today-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--s1);border:1px solid var(--b1);border-radius:5px;text-decoration:none;color:inherit;transition:all .12s;border-left:3px solid;}
+.today-row:hover{background:var(--s2);border-color:var(--b2);}
+.today-row.triaz{border-left-color:var(--c-triaz);}
+.today-row.randwijck{border-left-color:var(--c-rand);}
+.today-row.school{border-left-color:var(--c-school);}
+.today-row.gocap{border-left-color:var(--c-gocap);}
+.today-row.event{border-left-color:#8a2be2;}
+.today-row.cancelled{opacity:.5;}
+.today-time{font-family:"DM Mono",monospace;font-size:12px;font-weight:500;min-width:52px;color:var(--t2);}
+.today-name{font-weight:600;font-size:12px;flex:1;}
+.today-meta{font-size:10px;color:var(--t4);}
+.today-empty{color:var(--t4);font-size:12px;padding:24px;text-align:center;background:var(--s1);border:1px dashed var(--b2);border-radius:5px;}
 
 .wrows{display:flex;flex-direction:column;gap:4px;}
 @media(max-width:480px){.wr{padding:8px 10px;gap:8px;}.wdn{font-size:9px;width:28px;}.wp{font-size:8px;padding:2px 5px;}.wct{font-size:9px;}}
@@ -55,13 +53,17 @@
 .lname{font-size:13px;font-weight:500;color:var(--t2);flex:1;}
 .lcnt{font-family:"DM Mono",monospace;font-size:10px;color:var(--t4);}
 
-.fr-row{display:flex;align-items:center;gap:10px;padding:8px 15px;border-bottom:1px solid var(--b1);}
-.fr-row:last-child{border-bottom:none;}
-.fr-name{font-size:11px;color:var(--t2);flex:1;}
-.fr-bar-wrap{width:80px;height:5px;background:var(--b2);border-radius:2px;overflow:hidden;}
-.fr-bar{height:100%;border-radius:2px;}
-.fr-pct{font-family:"DM Mono",monospace;font-size:10px;min-width:32px;text-align:right;}
-@media(max-width:480px){.fr-row{padding:6px 12px;}.fr-name{font-size:10px;}.fr-bar-wrap{width:60px;}.fr-pct{font-size:9px;min-width:28px;}}
+.attn-item{display:block;padding:8px 12px;border-bottom:1px solid var(--b1);font-size:11px;color:var(--t2);text-decoration:none;transition:background .12s;}
+.attn-item:hover{background:var(--s2);}
+.attn-item:last-child{border-bottom:none;}
+.attn-empty{font-size:11px;color:var(--c-triaz);padding:12px;}
+.qabtn{display:block;width:100%;padding:10px 14px;background:var(--s2);border:1px solid var(--b2);color:var(--t2);font-size:12px;font-weight:500;border-radius:5px;cursor:pointer;text-decoration:none;text-align:center;transition:all .15s;margin-bottom:8px;}
+.qabtn:hover{background:var(--orange);color:#000;border-color:var(--orange);}
+.qabtn.primary{background:var(--orange);color:#000;border-color:var(--orange);}
+.qabtn.primary:hover{filter:brightness(1.1);}
+.qa-link{display:block;font-size:11px;color:var(--t4);margin-top:8px;text-align:center;}
+.qa-link a{color:var(--t3);text-decoration:none;}
+.qa-link a:hover{color:var(--orange);}
 </style>
 </head>
 <body>
@@ -72,61 +74,59 @@
   </a>
   <div style="display:flex;align-items:center;gap:12px;">
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
-    <div class="season-switcher" id="seasonSwitcher">
-      <select class="season-select" id="seasonSelect" title="Select season">
-        <option>Loading…</option>
-      </select>
-    </div>
   </div>
 </header>
 <nav>
-  <a class="ni" href="/">Home</a>
+  <a class="ni active" href="/">Home</a>
   <a class="ni" href="/calendar">Calendar</a>
-  <a class="ni" href="/gocap">Transportation</a>
-  <a class="ni" href="/finance">Finance</a>
+  <a class="ni" href="/classes">Classes</a>
   <a class="ni" href="/coaches">Coaches</a>
+  <a class="ni" href="/students">Students</a>
   <a class="ni" href="/seasons">Seasons</a>
+  <a class="ni" href="/finance">Finance</a>
 </nav>
 
-<!-- Stats strip -->
+<!-- Stats strip: 5 operational metrics -->
 <div class="stats" id="statsStrip">
-  <div class="sc"><div class="sv" id="st-classes"><span class="spinner"></span></div><div class="sl">Classes</div></div>
-  <div class="sc"><div class="sv" id="st-students">—</div><div class="sl">Students</div></div>
-  <div class="sc"><div class="sv" id="st-coaches">—</div><div class="sl">Coaches</div></div>
-  <div class="sc"><div class="sv" id="st-locs">—</div><div class="sl">Locations</div></div>
-  <div class="sc"><div class="sv" id="st-rev" style="color:var(--c-triaz)">—</div><div class="sl">Revenue</div></div>
-  <div class="sc"><div class="sv" id="st-fill">—</div><div class="sl">Fill Rate</div><div class="sn" id="st-fill-note"></div></div>
-  <div class="sc"><div class="sv" id="st-hours">—</div><div class="sl">Hours / Week</div></div>
+  <div class="sc"><div class="sv" id="st-classes-today"><span class="spinner"></span></div><div class="sl">Classes Today</div></div>
+  <div class="sc"><div class="sv" id="st-students-today">—</div><div class="sl">Students Today</div></div>
+  <div class="sc"><div class="sv" id="st-coaches-today">—</div><div class="sl">Coaches Today</div></div>
+  <div class="sc"><div class="sv" id="st-classes-week">—</div><div class="sl">Classes This Week</div></div>
+  <div class="sc"><div class="sv" id="st-hours-week">—</div><div class="sl">Hours This Week</div></div>
 </div>
 
 <div class="main">
   <div class="lcol">
-    <div class="sec-label" style="margin-bottom:18px">Modules</div>
-    <div class="mods">
-      <a href="/calendar" class="mod live"><span class="mi">📅</span><div class="mn">Calendar</div><div class="md">Week view, day view, list. Filter by coach or type.</div><div class="mbadge bl">LIVE</div></a>
-      <a href="/gocap" class="mod live"><span class="mi">🚲</span><div class="mn">Transportation</div><div class="md">Pickup routes, transit times, bakfiets schedule.</div><div class="mbadge bl">LIVE</div></a>
-      <a href="/coaches"  class="mod live"><span class="mi">👨‍🏫</span><div class="mn">Coaches</div><div class="md">Pay calculator, rates, workload per season.</div><div class="mbadge bl">LIVE</div></a>
-      <a href="/finance"  class="mod"><span class="mi">💰</span><div class="mn">Finance</div><div class="md">P&L by class, location breakdown, season totals.</div><div class="mbadge bs">SOON</div></a>
-      <a href="/seasons"  class="mod"><span class="mi">📈</span><div class="mn">Seasons</div><div class="md">Winter vs Spring comparison, enrollment trends.</div><div class="mbadge bs">SOON</div></a>
-      <div class="mod" style="opacity:.3;cursor:default"><span class="mi">⚙️</span><div class="mn">Settings</div><div class="md">Manage CSV, rates, school calendar sync.</div><div class="mbadge bs">SOON</div></div>
-    </div>
+    <div class="sec-label">Today's Schedule</div>
+    <div class="today-list" id="todaySchedule"></div>
 
-    <div class="sec-label">Week at a Glance</div>
+    <div class="sec-label">This Week</div>
     <div class="wrows" id="weekGlance"></div>
   </div>
 
   <div class="side">
-    <div class="slbl">Locations</div>
-    <div class="card" id="locCard"><div class="chd"><span class="cht">By location</span></div><div id="locRows"></div></div>
+    <div class="slbl">Needs Attention</div>
+    <div class="card"><div class="chd"><span class="cht">This week</span></div><div id="attnRows"></div></div>
 
-    <div class="slbl">Coach Workload</div>
-    <div class="card" id="coachCard"><div class="chd"><span class="cht">Classes this season</span></div><div id="coachRows"></div></div>
+    <div class="slbl">Coaches Today</div>
+    <div class="card"><div class="chd"><span class="cht">On schedule</span></div><div id="coachRows"></div></div>
 
-    <div class="slbl">Fill Rate (lowest first)</div>
-    <div class="card"><div class="chd"><span class="cht">Enrollment</span></div><div id="fillRows"></div></div>
+    <div class="slbl">Google Calendar</div>
+    <div class="card" id="gcalStatusCard">
+      <div class="chd"><span class="cht" id="gcalStatusText">Checking…</span></div>
+      <div id="gcalSyncStatus" style="font-size:10px;color:var(--t4);padding:4px 12px 0"></div>
+      <div id="gcalStatusAction"></div>
+      <div id="gcalSyncBtn" style="padding:8px 12px 12px"></div>
+    </div>
 
-    <div style="display:flex;align-items:center;gap:8px;padding:10px 0;">
-      <div style="font-size:10px;color:var(--t4)">Last loaded from CSV</div>
+    <div class="slbl">Quick Actions</div>
+    <a href="/calendar" class="qabtn primary">+ Add Class</a>
+    <a href="/calendar" class="qabtn">+ Add Event</a>
+    <button class="qabtn" id="importDataBtn" onclick="doImport()">Import Data</button>
+    <div class="qa-link"><a href="/calendar">View Full Calendar →</a></div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 0;margin-top:auto;">
+      <div style="font-size:10px;color:var(--t4)">Data source</div>
       <button onclick="reloadCSV()" style="margin-left:auto;font-size:10px;padding:4px 10px;background:var(--s2);border:1px solid var(--b3);color:var(--t3);border-radius:4px;cursor:pointer;">Reload</button>
     </div>
   </div>
@@ -137,110 +137,245 @@
 const HT = window.HT;
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const DSHORT = { Monday:'MON',Tuesday:'TUE',Wednesday:'WED',Thursday:'THU',Friday:'FRI',Saturday:'SAT',Sunday:'SUN' };
-const TODAY_DAY = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
-let season = HT.getSeason();
-let allClasses = [];
+function toDateStr(d) {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function getMonday(d) { const x = new Date(d); const day = x.getDay(); x.setDate(x.getDate() - (day === 0 ? 6 : day - 1)); return x; }
+function getDayFromDate(dateStr) { return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(dateStr + 'T12:00:00').getDay()]; }
+
+function isCancelled(c) { return c.cancelled || (c.notes && c.notes.toLowerCase().includes('cancelled')); }
+
+let instancesToday = [];
+let instancesWeek = [];
 
 async function load() {
+  const now = new Date();
+  const todayStr = toDateStr(now);
+  const mon = getMonday(now);
+  const monStr = toDateStr(mon);
+  const sunStr = toDateStr(addDays(mon, 6));
   try {
-    allClasses = await HT.API.classes({ season });
+    const [today, week] = await Promise.all([
+      HT.API.instances({ date: todayStr }),
+      HT.API.instances({ from: monStr, to: sunStr }),
+    ]);
+    instancesToday = today || [];
+    instancesWeek = week || [];
     renderStats();
+    renderToday();
     renderWeek();
-    renderSidebar();
-  } catch(e) {
-    HT.showError('Could not load data from server: ' + e.message);
+    renderAttention();
+    renderCoachesToday();
+    renderGcalStatus();
+  } catch (e) {
+    HT.showError('Could not load data: ' + (e.message || e.error));
+  }
+}
+
+async function renderGcalStatus() {
+  const txt = document.getElementById('gcalStatusText');
+  const action = document.getElementById('gcalStatusAction');
+  const syncStatus = document.getElementById('gcalSyncStatus');
+  const syncBtn = document.getElementById('gcalSyncBtn');
+  try {
+    const [r, sync] = await Promise.all([
+      HT.API.gcalStatus(),
+      HT.API.gcalSyncStatus().catch(() => ({})),
+    ]);
+    if (r && r.oauthConnected) {
+      txt.textContent = 'Connected';
+      action.innerHTML = '<div style="font-size:10px;color:var(--t4);padding:8px 12px 0">Coach invites will be sent.</div>';
+      if (sync.lastSyncAt) {
+        const d = new Date(sync.lastSyncAt);
+        syncStatus.textContent = 'Last sync: ' + d.toLocaleString();
+      } else {
+        syncStatus.textContent = sync.polling ? 'Background sync active' : 'Not synced yet';
+      }
+      syncBtn.innerHTML = '<button class="qabtn" id="gcalSyncNowBtn" style="width:100%;margin:0">Sync Now</button>';
+      syncBtn.querySelector('#gcalSyncNowBtn').onclick = doGcalSync;
+    } else if (r && r.configured) {
+      txt.textContent = 'Service account (no invites)';
+      action.innerHTML = '<a href="/auth/google" class="qabtn primary" style="margin:8px 12px 12px">Connect Google for invites</a>';
+      syncStatus.textContent = '';
+      syncBtn.innerHTML = '';
+    } else {
+      txt.textContent = 'Not connected';
+      action.innerHTML = '<a href="/auth/google" class="qabtn primary" style="margin:8px 12px 12px">Connect Google Calendar</a>';
+      syncStatus.textContent = '';
+      syncBtn.innerHTML = '';
+    }
+  } catch (e) {
+    txt.textContent = 'Unavailable';
+    action.innerHTML = '';
+    syncStatus.textContent = '';
+    syncBtn.innerHTML = '';
+  }
+  if (new URLSearchParams(window.location.search).get('gcal_connected') === '1') {
+    window.history.replaceState({}, '', '/');
+  }
+}
+
+async function doGcalSync() {
+  const btn = document.getElementById('gcalSyncNowBtn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Syncing…';
+  try {
+    const r = await HT.API.gcalSync();
+    if (r && r.ok) {
+      HT.showSuccess(`Synced: ${r.pushed || 0} pushed, ${r.pulled || 0} pulled`);
+      renderGcalStatus();
+      load();
+    } else {
+      HT.showError(r?.error || 'Sync failed');
+    }
+  } catch (e) {
+    HT.showError('Sync failed: ' + (e.message || e.error));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sync Now';
   }
 }
 
 function renderStats() {
-  const active = allClasses.filter(c => !c.cancelled);
-  const totalPax = active.reduce((s,c) => s + (c.participants||0), 0);
-  const totalMax = active.reduce((s,c) => s + (c.max_participants||0), 0);
-  const fill = totalMax > 0 ? Math.round(totalPax/totalMax*100) : 0;
-  const coaches = [...new Set(active.flatMap(c => c.coaches).filter(Boolean))];
-  const locs    = [...new Set(active.map(c => c.location))];
-  const rev     = active.reduce((s,c) => s + (c.session_cost||0), 0);
-  const totalHours = HT.effectiveCourtHours(active);
+  const todayActive = instancesToday.filter(c => !isCancelled(c));
+  const weekActive = instancesWeek.filter(c => !isCancelled(c));
+  const studentsToday = todayActive.reduce((s, c) => s + (c.participants || 0), 0);
+  const coachesToday = [...new Set(todayActive.flatMap(c => c.coaches || []).filter(Boolean))];
+  const hoursWeek = HT.mergeInstanceHours(weekActive).totalHours;
 
-  document.getElementById('st-classes').textContent  = active.length;
-  document.getElementById('st-students').textContent = totalPax;
-  document.getElementById('st-coaches').textContent  = coaches.length;
-  document.getElementById('st-locs').textContent     = locs.length;
-  document.getElementById('st-rev').textContent      = HT.eur(rev);
-  const fillEl = document.getElementById('st-fill');
-  fillEl.textContent  = fill + '%';
-  fillEl.className   = 'sv ' + (fill < 60 ? 'metric-down' : 'metric-up');
-  fillEl.style.color = '';
-  document.getElementById('st-fill-note').textContent = totalPax + ' / ' + totalMax + ' spots';
-  document.getElementById('st-hours').textContent = totalHours.toFixed(1);
+  document.getElementById('st-classes-today').textContent = todayActive.length;
+  document.getElementById('st-students-today').textContent = studentsToday;
+  document.getElementById('st-coaches-today').textContent = coachesToday.length;
+  document.getElementById('st-classes-week').textContent = weekActive.length;
+  document.getElementById('st-hours-week').textContent = hoursWeek.toFixed(1);
+}
+
+function renderToday() {
+  const today = instancesToday.filter(c => !isCancelled(c)).sort((a, b) => HT.t2m(a.start_time) - HT.t2m(b.start_time));
+  const wrap = document.getElementById('todaySchedule');
+  if (!today.length) {
+    wrap.innerHTML = '<div class="today-empty">No classes today. <a href="/calendar" style="color:var(--orange)">View calendar</a></div>';
+    return;
+  }
+  wrap.innerHTML = today.map(c => {
+    const cc = HT.colorClass(c);
+    const name = (c.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim() || 'Class';
+    const meta = [(c.coaches || []).filter(Boolean).join(', '), c.location].filter(Boolean).join(' · ') || '—';
+    return `<a class="today-row ${cc}" href="/calendar">
+      <span class="today-time">${c.start_time}</span>
+      <div><div class="today-name">${name}</div><div class="today-meta">${meta}</div></div>
+    </a>`;
+  }).join('');
 }
 
 function renderWeek() {
   const byDay = {};
   DAYS.forEach(d => byDay[d] = []);
-  allClasses.filter(c => !c.cancelled).forEach(c => { if (byDay[c.day]) byDay[c.day].push(c); });
+  instancesWeek.filter(c => !isCancelled(c)).forEach(c => {
+    const day = getDayFromDate(c.date);
+    if (byDay[day]) byDay[day].push(c);
+  });
+  const now = new Date();
+  const todayDay = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
 
   const html = DAYS.map(day => {
     const cls = byDay[day];
     if (!cls.length) return '';
-    const isToday = day === TODAY_DAY;
-    const pills = cls.map(c => `<span class="wp ${HT.colorClass(c)}">${c.start_time} ${c.program_name.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i,'').slice(0,28)}</span>`).join('');
-    return `<a class="wr" href="/calendar?day=${day}">
-      <div class="wdn ${isToday?'on':''}">${DSHORT[day]}</div>
+    const isToday = day === todayDay;
+    const pills = cls.map(c => {
+      const name = (c.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim().slice(0, 28);
+      return `<span class="wp ${HT.colorClass(c)}">${c.start_time} ${name || '…'}</span>`;
+    }).join('');
+    const dateStr = cls[0]?.date;
+    const href = dateStr ? `/calendar` : '/calendar';
+    return `<a class="wr" href="${href}">
+      <div class="wdn ${isToday ? 'on' : ''}">${DSHORT[day]}</div>
       <div class="wps">${pills}</div>
-      <div class="wct">${cls.length} class${cls.length!==1?'es':''}</div>
+      <div class="wct">${cls.length} class${cls.length !== 1 ? 'es' : ''}</div>
     </a>`;
   }).join('');
-  document.getElementById('weekGlance').innerHTML = html || '<div style="color:var(--t4);font-size:11px;padding:12px">No classes this season</div>';
+  document.getElementById('weekGlance').innerHTML = html || '<div style="color:var(--t4);font-size:11px;padding:12px">No classes this week</div>';
 }
 
-function renderSidebar() {
-  const active = allClasses.filter(c => !c.cancelled);
+function renderAttention() {
+  const week = instancesWeek;
+  const noCoach = week.filter(c => !isCancelled(c) && (!c.coaches || !c.coaches.filter(Boolean).length));
+  const lowFill = week.filter(c => {
+    if (isCancelled(c) || !c.max_participants || c.max_participants < 1) return false;
+    const pct = Math.round(((c.participants || 0) / c.max_participants) * 100);
+    return pct < 40;
+  });
+  const cancelled = week.filter(c => isCancelled(c));
+  const items = [
+    ...noCoach.slice(0, 3).map(c => ({ txt: `${c.date} ${c.start_time} · ${(c.program_name || '').slice(0, 24)} — No coach`, href: '/calendar' })),
+    ...lowFill.slice(0, 3).map(c => ({ txt: `${c.date} · ${(c.program_name || '').slice(0, 24)} — ${Math.round(((c.participants||0)/c.max_participants)*100)}% fill`, href: '/calendar' })),
+    ...cancelled.slice(0, 2).map(c => ({ txt: `${c.date} · ${(c.program_name || '').slice(0, 24)} — Cancelled`, href: '/calendar' })),
+  ];
+  const wrap = document.getElementById('attnRows');
+  if (!items.length) {
+    wrap.innerHTML = '<div class="attn-empty">All good this week</div>';
+    return;
+  }
+  wrap.innerHTML = items.map(i => `<a class="attn-item" href="${i.href}">${escapeHtml(i.txt)}</a>`).join('');
+}
 
-  // Locations
-  const locMap = {};
-  active.forEach(c => { locMap[c.location] = (locMap[c.location]||0) + 1; });
-  const locColors = { Triaz:'var(--c-triaz)', Randwijck:'var(--c-rand)', 'AICS South Campus':'var(--c-school)', AJErnstraat:'var(--c-triaz)', VU:'var(--c-school)' };
-  document.getElementById('locRows').innerHTML = Object.entries(locMap).sort((a,b)=>b[1]-a[1])
-    .map(([l,n]) => `<div class="lrow"><div class="ldot" style="background:${locColors[l]||'var(--t4)'}"></div><div class="lname">${l}</div><div class="lcnt">${n} class${n!==1?'es':''}</div></div>`).join('');
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
 
-  // Coach workload (merge overlapping classes — coach can't be in 2 places)
+function renderCoachesToday() {
+  const today = instancesToday.filter(c => !isCancelled(c));
   const coachMap = {};
-  active.forEach(c => {
-    c.coaches.filter(Boolean).forEach(n => {
+  today.forEach(c => {
+    (c.coaches || []).filter(Boolean).forEach(n => {
       coachMap[n] = coachMap[n] || [];
       coachMap[n].push(c);
     });
   });
-  const coachStats = Object.entries(coachMap).map(([n, cls]) => {
-    const { hours, blockCount } = HT.coachEffectiveWorkload(cls);
-    return [n, blockCount, hours];
+  const stats = Object.entries(coachMap).map(([n, cls]) => {
+    const hrs = HT.mergeInstanceHours(cls).totalHours;
+    return [n, cls.length, hrs];
   }).sort((a, b) => b[1] - a[1]);
-  document.getElementById('coachRows').innerHTML = coachStats
-    .map(([n, cnt, hrs]) => `<div class="lrow"><div class="ldot" style="background:var(--orange)"></div><div class="lname">${n}</div><div class="lcnt">${cnt} class${cnt!==1?'es':''} / ${hrs.toFixed(1)}h</div></div>`).join('');
-
-  // Fill rate (lowest first)
-  const fillData = active
-    .filter(c => c.max_participants > 0)
-    .map(c => ({ name: c.program_name.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i,'').slice(0,32), pax: c.participants||0, max: c.max_participants, pct: Math.round((c.participants||0)/c.max_participants*100) }))
-    .sort((a,b) => a.pct - b.pct).slice(0, 8);
-  document.getElementById('fillRows').innerHTML = fillData.map(f => {
-    const barBg = f.pct < 50 ? 'var(--b3)' : f.pct < 75 ? 'var(--t4)' : 'var(--t2)';
-    const pctClass = f.pct < 50 ? 'metric-down' : 'metric-up';
-    return `<div class="fr-row"><div class="fr-name">${f.name}</div><div class="fr-bar-wrap"><div class="fr-bar" style="width:${f.pct}%;background:${barBg}"></div></div><div class="fr-pct ${pctClass}">${f.pct}%</div></div>`;
-  }).join('');
+  document.getElementById('coachRows').innerHTML = stats.length
+    ? stats.map(([n, cnt, hrs]) => `<div class="lrow"><div class="ldot" style="background:var(--orange)"></div><div class="lname">${n}</div><div class="lcnt">${cnt} class${cnt !== 1 ? 'es' : ''} · ${hrs.toFixed(1)}h</div></div>`).join('')
+    : '<div style="padding:12px;font-size:11px;color:var(--t4)">No coaches on schedule today</div>';
 }
 
 async function reloadCSV() {
   try {
     const r = await HT.API.reload();
-    if (r.ok) { allClasses = []; await load(); }
-  } catch(e) { HT.showError('Reload failed: ' + e.message); }
+    if (r && r.ok) { instancesToday = []; instancesWeek = []; await load(); }
+  } catch (e) { HT.showError('Reload failed: ' + (e.message || e.error)); }
 }
 
-// Season switcher
-HT.initSeasonSwitcher(s => { season = s; load(); });
+async function doImport() {
+  const btn = document.getElementById('importDataBtn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  try {
+    const r = await HT.API.importData();
+    if (r && r.ok) {
+      HT.showSuccess('Import complete. Database updated.');
+      instancesToday = [];
+      instancesWeek = [];
+      await load();
+    } else {
+      HT.showError(r?.error || 'Import failed');
+    }
+  } catch (e) {
+    HT.showError('Import failed: ' + (e.message || e.error));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Import Data';
+  }
+}
 
 load();
 </script>

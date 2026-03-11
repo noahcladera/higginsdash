@@ -58,6 +58,30 @@
 
 .pl-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 
+.sec-label{margin-bottom:8px;}
+.monthly-chart-wrap{height:180px;display:flex;align-items:flex-end;gap:2px;margin-bottom:20px;padding:12px 0;}
+.monthly-bar{flex:1;min-width:4px;background:var(--c-triaz);border-radius:2px 2px 0 0;transition:height .2s;}
+.monthly-bar:hover{filter:brightness(1.15);}
+.monthly-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--t4);margin-top:6px;}
+.session-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:24px;}
+.session-card{background:var(--s1);border:1px solid var(--b2);border-radius:6px;padding:12px 14px;}
+.session-card-name{font-weight:600;font-size:12px;margin-bottom:8px;color:var(--t2);}
+.session-card-row{font-size:10px;color:var(--t3);display:flex;justify-content:space-between;margin-bottom:4px;}
+.session-card-row .mono{font-family:"DM Mono",monospace;color:var(--t2);}
+.session-card-pending{color:var(--orange);}
+.session-cards-wrap{max-height:320px;overflow-y:auto;margin-bottom:24px;}
+.yoy-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:11px;}
+.school-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:11px;}
+.school-bar-label{min-width:140px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;}
+.school-bar-wrap{flex:1;height:16px;background:var(--b2);border-radius:2px;overflow:hidden;}
+.school-bar{height:100%;border-radius:2px;background:var(--c-triaz);}
+.retention-card{background:var(--s1);border:1px solid var(--b2);border-radius:6px;padding:14px;margin-bottom:20px;}
+.retention-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px;}
+.retention-row .mono{font-family:"DM Mono",monospace;color:var(--t2);}
+.yoy-label{min-width:60px;color:var(--t3);}
+.yoy-bar-wrap{flex:1;height:12px;background:var(--b2);border-radius:2px;overflow:hidden;}
+.yoy-bar{height:100%;border-radius:2px;background:var(--c-triaz);}
+
 @media(max-width:768px){
   .main{padding:20px 24px;}
   .side{padding:20px;gap:14px;}
@@ -85,24 +109,42 @@
   </a>
   <div style="display:flex;align-items:center;gap:12px;">
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
-    <div class="season-switcher" id="seasonSwitcher">
-      <select class="season-select" id="seasonSelect" title="Select season">
-        <option>Loading…</option>
-      </select>
-    </div>
   </div>
 </header>
 <nav>
   <a class="ni" href="/">Home</a>
   <a class="ni" href="/calendar">Calendar</a>
-  <a class="ni" href="/gocap">Transportation</a>
-  <a class="ni" href="/finance">Finance</a>
+  <a class="ni" href="/classes">Classes</a>
   <a class="ni" href="/coaches">Coaches</a>
+  <a class="ni" href="/students">Students</a>
   <a class="ni" href="/seasons">Seasons</a>
+  <a class="ni active" href="/finance">Finance</a>
 </nav>
 
 <div class="page">
   <div class="main">
+    <div class="sec-label">Monthly Net Revenue (imported)</div>
+    <div class="monthly-chart-wrap" id="monthlyChart"></div>
+    <div class="monthly-labels" id="monthlyLabels"></div>
+
+    <div class="sec-label">Year over Year</div>
+    <div class="card" style="margin-bottom:20px;">
+      <div id="yoyRows"></div>
+    </div>
+
+    <div class="sec-label">Sessions (all-time, imported)</div>
+    <div class="session-cards-wrap">
+      <div class="session-cards" id="sessionCards"></div>
+    </div>
+
+    <div class="sec-label">School / Venue Revenue</div>
+    <div class="card" style="margin-bottom:20px;">
+      <div id="schoolBars"></div>
+    </div>
+
+    <div class="sec-label">Retention & Enrollment</div>
+    <div class="retention-card" id="retentionCard"></div>
+
     <div class="kpis" id="kpis">
       <div class="kpi"><div class="kpiv" id="kRev">—</div><div class="kpil">Total revenue</div></div>
       <div class="kpi"><div class="kpiv" id="kExp">—</div><div class="kpil">Total expenses</div></div>
@@ -158,11 +200,25 @@
       <div id="marginRows"></div>
     </div>
 
-    <div class="sec-label">Revenue breakdown</div>
+    <div class="sec-label">Revenue by Booking Type</div>
     <div class="card">
-      <div class="chd"><span class="cht">Classes · Memberships · Other</span></div>
+      <div style="padding:14px 14px 10px;" id="bookingTypeChart"></div>
+    </div>
+
+    <div class="sec-label">Payment Methods</div>
+    <div class="card">
+      <div style="padding:14px 14px 10px;" id="paymentMethodChart"></div>
+    </div>
+
+    <div class="sec-label">Discounts & Refunds</div>
+    <div class="card">
+      <div id="discountRefundRows"></div>
+    </div>
+
+    <div class="sec-label">Revenue breakdown (imported)</div>
+    <div class="card">
+      <div class="chd"><span class="cht">Season · Recurring · Events</span></div>
       <div style="padding:14px 14px 10px;" id="revBreakdownChart"></div>
-      <div style="padding:8px 14px;font-size:10px;color:var(--t4);border-top:1px solid var(--b1)">Possible integration with Moneybird API</div>
     </div>
 
     <div class="sec-label">Costs breakdown</div>
@@ -179,7 +235,10 @@
 const HT = window.HT;
 const TYPE_COLORS={'GoCAP':'var(--c-gocap)','Club':'var(--c-triaz)','School':'var(--c-school)','Private':'var(--c-rand)'};
 const LOC_COLORS={'Triaz':'var(--c-triaz)','AJ Ernststraat':'var(--c-triaz)','AJErnstraat':'var(--c-triaz)','Randwijck':'var(--c-rand)','AICS South Campus':'var(--c-school)','VU':'var(--c-school)'};
-let season=HT.getSeason(), all=[], sortKey='net', sortDir=-1;
+const REV_BREAKDOWN_COLORS={'Season Classes':'var(--c-triaz)','Recurring Classes':'var(--c-school)','Events':'var(--c-gocap)','Private Lessons':'var(--c-rand)','Camps':'var(--t3)'};
+const BOOKING_COLORS={'Class':'var(--c-triaz)','Event':'var(--c-gocap)','Private lesson':'var(--c-rand)'};
+const PAYMENT_COLORS={'Bank Transfer/Credit Card':'var(--c-triaz)','Bank Transfer':'var(--c-school)','Cash':'var(--c-rand)','Account Credit':'var(--c-gocap)','Check':'var(--t3)','Member Account':'var(--b2)'};
+let all=[], monthly=[], sessions=[], schools=[], enrollmentHistory=[], sortKey='net', sortDir=-1;
 
 function polarToCart(cx,cy,r,angle){ return [cx+r*Math.cos(angle),cy+r*Math.sin(angle)]; }
 function arcPath(cx,cy,r,ir,startAngle,endAngle){
@@ -210,7 +269,6 @@ function renderPie(containerId,dataMap,colorMap){
   el.innerHTML=`<div class="pie-wrap"><svg class="pie-svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${paths}<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" class="pie-center">${HT.eur(total)}</text></svg><div class="pie-legend">${legend}</div></div>`;
 }
 
-const REV_BREAKDOWN_COLORS={'Classes':'var(--c-triaz)','Memberships':'var(--c-school)','Other':'var(--c-gocap)'};
 const COSTS_COLORS={'Material':'var(--c-gocap)','Memberships':'var(--c-rand)','Court fees':'var(--c-school)'};
 function renderEmptyDonut(containerId,labels,colorMap,centerLabel){
   const size=120,cx=size/2,cy=size/2,r=45,ir=28;
@@ -234,19 +292,134 @@ function renderEmptyDonut(containerId,labels,colorMap,centerLabel){
 }
 
 async function load(){
-  all=await HT.API.classes({season});
+  const [classesRes, monthlyRes, sessionsRes, schoolsRes, enrollRes] = await Promise.all([
+    HT.API.classes({}).catch(()=>[]),
+    HT.API.financeMonthly().catch(()=>[]),
+    HT.API.financeSessions().catch(()=>[]),
+    HT.API.financeSchools().catch(()=>[]),
+    HT.API.financeEnrollmentHistory().catch(()=>[]),
+  ]);
+  all = Array.isArray(classesRes) ? classesRes : [];
+  monthly = Array.isArray(monthlyRes) ? monthlyRes : [];
+  sessions = Array.isArray(sessionsRes) ? sessionsRes : [];
+  schools = Array.isArray(schoolsRes) ? schoolsRes : [];
+  enrollmentHistory = Array.isArray(enrollRes) ? enrollRes : [];
   render();
 }
 
 function render(){
+  // Monthly revenue chart (chronological: oldest left)
+  const chartEl = document.getElementById('monthlyChart');
+  const labelsEl = document.getElementById('monthlyLabels');
+  const monthOrder = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const sortedMonthly = [...monthly].sort((a,b)=>{
+    if (a.year !== b.year) return a.year - b.year;
+    return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month);
+  });
+  if (sortedMonthly.length) {
+    const maxNet = Math.max(...sortedMonthly.map(m=>m.net_revenue||0), 1);
+    chartEl.innerHTML = sortedMonthly.map(m=>{
+      const h = ((m.net_revenue||0)/maxNet)*100;
+      return `<div class="monthly-bar" title="${m.month} ${m.year}: ${HT.eur(m.net_revenue||0)}" style="height:${Math.max(h,2)}%"></div>`;
+    }).join('');
+    const step = Math.max(1, Math.floor(sortedMonthly.length/12));
+    let labelsHtml = '';
+    for (let i=0;i<sortedMonthly.length;i+=step) {
+      const m = sortedMonthly[i];
+      labelsHtml += `<span>${m.month.slice(0,3)} ${m.year}</span>`;
+    }
+    labelsEl.innerHTML = labelsHtml;
+  } else {
+    chartEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--t4);font-size:11px">Run <code>node data/import-financials.js</code> to import monthly data</div>';
+    labelsEl.innerHTML = '';
+  }
+
+  // YoY
+  const yoyByYear = {};
+  monthly.forEach(m=>{
+    const y = m.year;
+    if (!yoyByYear[y]) yoyByYear[y] = 0;
+    yoyByYear[y] += m.net_revenue || 0;
+  });
+  const maxYoy = Math.max(...Object.values(yoyByYear), 1);
+  document.getElementById('yoyRows').innerHTML = Object.entries(yoyByYear).sort((a,b)=>a[0]-b[0]).map(([y,v])=>
+    `<div class="yoy-row"><span class="yoy-label">${y}</span><div class="yoy-bar-wrap"><div class="yoy-bar" style="width:${(v/maxYoy)*100}%"></div></div><span class="mono">${HT.eur(v)}</span></div>`
+  ).join('') || '<div style="padding:12px;color:var(--t4);font-size:11px">No data</div>';
+
+  // Session cards + total pending
+  const totalPending = sessions.reduce((s,x)=>s+(x.pending||0),0);
+  const cardsEl = document.getElementById('sessionCards');
+  let cardsHtml = '';
+  if (totalPending > 0) {
+    cardsHtml += `<div class="session-card" style="border-color:var(--orange);background:rgba(245,160,32,.08);"><div class="session-card-name">Total Pending</div><div class="session-card-row"><span class="mono" style="font-size:14px;color:var(--orange)">${HT.eur(totalPending)}</span></div></div>`;
+  }
+  cardsHtml += sessions.map(s=>`
+    <div class="session-card">
+      <div class="session-card-name">${(s.name||'').slice(0,24)}</div>
+      <div class="session-card-row"><span>Net</span><span class="mono">${HT.eur(s.net_revenue||0)}</span></div>
+      <div class="session-card-row"><span>Gross</span><span class="mono">${HT.eur(s.gross_revenue||0)}</span></div>
+      <div class="session-card-row"><span>Refunds</span><span class="mono">${HT.eur(s.refunds||0)}</span></div>
+      <div class="session-card-row"><span>Students</span><span>${s.students||0}</span></div>
+      ${(s.pending||0)>0 ? `<div class="session-card-row session-card-pending"><span>Pending</span><span class="mono">${HT.eur(s.pending)}</span></div>` : ''}
+    </div>
+  `).join('');
+  cardsEl.innerHTML = cardsHtml || '<div style="padding:12px;color:var(--t4);font-size:11px">No session data</div>';
+
+  // School/Venue revenue bars
+  const schoolBarsEl = document.getElementById('schoolBars');
+  if (schools.length) {
+    const maxNet = Math.max(...schools.map(s=>s.net_revenue||0), 1);
+    schoolBarsEl.innerHTML = schools.map(s=>{
+      const pct = ((s.net_revenue||0)/maxNet)*100;
+      return `<div class="school-bar-row"><span class="school-bar-label" title="${s.name}">${(s.name||'').slice(0,28)}</span><div class="school-bar-wrap"><div class="school-bar" style="width:${pct}%"></div></div><span class="mono" style="min-width:60px;text-align:right">${HT.eur(s.net_revenue||0)}</span><span style="font-size:10px;color:var(--t4)">(${s.total_students||0})</span></div>`;
+    }).join('');
+  } else {
+    schoolBarsEl.innerHTML = '<div style="padding:12px;color:var(--t4);font-size:11px">Run <code>node data/import-financials-2.js</code></div>';
+  }
+
+  // Retention metrics from enrollment history
+  const retentionEl = document.getElementById('retentionCard');
+  if (enrollmentHistory.length) {
+    const uniqueStudents = new Set(enrollmentHistory.map(e=>((e.student_name||'')+'|'+(e.parent1?.email||'')).toLowerCase())).size;
+    const totalPaid = enrollmentHistory.reduce((s,e)=>s+(e.amount_paid||0),0);
+    const totalFees = enrollmentHistory.reduce((s,e)=>s+(e.fee||0),0);
+    const totalDiscounts = enrollmentHistory.reduce((s,e)=>s+(e.discount||0),0);
+    const totalRefunds = enrollmentHistory.reduce((s,e)=>s+(e.refund_amount||0),0);
+    const byBooking = {};
+    enrollmentHistory.forEach(e=>{ const b=e.booking_type||'Other'; byBooking[b]=(byBooking[b]||0)+(e.amount_paid||0); });
+    const sessionsSet = new Set(enrollmentHistory.map(e=>e.session).filter(Boolean));
+    const avgSessions = uniqueStudents>0 ? (enrollmentHistory.length/uniqueStudents).toFixed(1) : '—';
+    retentionEl.innerHTML = `
+      <div class="retention-row"><span>Unique students (enrolled)</span><span class="mono">${uniqueStudents}</span></div>
+      <div class="retention-row"><span>Total enrollments</span><span class="mono">${enrollmentHistory.length}</span></div>
+      <div class="retention-row"><span>Avg sessions per student</span><span class="mono">${avgSessions}</span></div>
+      <div class="retention-row"><span>Total paid (all-time)</span><span class="mono">${HT.eur(totalPaid)}</span></div>
+      <div class="retention-row"><span>Unique sessions</span><span class="mono">${sessionsSet.size}</span></div>
+    `;
+  } else {
+    retentionEl.innerHTML = '<div style="padding:12px;color:var(--t4);font-size:11px">No enrollment history</div>';
+  }
+
   const active=all.filter(c=>!c.cancelled);
   const withData=active.filter(c=>c.session_cost||c.expenses||c.net_profit);
-  const totRev=active.reduce((s,c)=>s+(c.session_cost||0),0);
-  const totExp=active.reduce((s,c)=>s+(c.expenses||0),0);
+  let totRev=active.reduce((s,c)=>s+(c.session_cost||0),0);
+  let totExp=active.reduce((s,c)=>s+(c.expenses||0),0);
+  const useEnrollmentData = enrollmentHistory.length > 0;
+  if (useEnrollmentData) {
+    const totalPaid = enrollmentHistory.reduce((s,e)=>s+(e.amount_paid||0),0);
+    const uniqueStudents = new Set(enrollmentHistory.map(e=>((e.student_name||'')+'|'+(e.parent1?.email||'')).toLowerCase())).size;
+    totRev = totalPaid;
+    document.getElementById('kRev').textContent = HT.eur(totalPaid);
+    document.getElementById('kRev').title = 'All-time revenue from enrollment history';
+    document.getElementById('kRevPerStudent').textContent = uniqueStudents>0 ? HT.eur(totalPaid/uniqueStudents) : '—';
+    document.getElementById('kRevPerStudent').title = 'Avg LTV per student';
+  } else {
+    document.getElementById('kRev').textContent = HT.eur(totRev);
+    document.getElementById('kRevPerStudent').textContent = active.reduce((s,c)=>s+(c.participants||0),0)>0 ? HT.eur(totRev/active.reduce((s,c)=>s+(c.participants||0),0)) : '—';
+  }
   const totNet=totRev-totExp;
   const margin=totRev>0?Math.round(totNet/totRev*100):0;
 
-  document.getElementById('kRev').textContent=HT.eur(totRev);
   document.getElementById('kExp').textContent=HT.eur(totExp);
   const netEl=document.getElementById('kNet');
   netEl.textContent=HT.eur(totNet);
@@ -255,9 +428,9 @@ function render(){
   mEl.textContent=margin+'%';
   mEl.className='kpiv '+(margin>=30?'metric-up':margin>=15?'metric-up':'metric-down');
 
-  const totalStudents=active.reduce((s,c)=>s+(c.participants||0),0);
+  const totalStudents=useEnrollmentData ? new Set(enrollmentHistory.map(e=>((e.student_name||'')+'|'+(e.parent1?.email||'')).toLowerCase())).size : active.reduce((s,c)=>s+(c.participants||0),0);
   const classCount=active.length||1;
-  document.getElementById('kRevPerStudent').textContent=totalStudents>0?HT.eur(totRev/totalStudents):'—';
+  if (!useEnrollmentData) document.getElementById('kRevPerStudent').textContent=totalStudents>0?HT.eur(totRev/totalStudents):'—';
   document.getElementById('kRevPerClass').textContent=classCount>0?HT.eur(totRev/classCount):'—';
   document.getElementById('kAvgClassSize').textContent=classCount>0?(totalStudents/classCount).toFixed(1):'—';
   document.getElementById('kCostPerStudent').textContent=totalStudents>0?HT.eur(totExp/totalStudents):'—';
@@ -318,14 +491,56 @@ function render(){
     return `<div class="crow"><div class="cname">${t}</div><div class="cval ${mClass}">${m!=null?m+'%':'—'}</div></div>`;
   }).join('');
 
-  // Empty placeholder donuts (for future Moneybird / manual data)
-  renderEmptyDonut('revBreakdownChart',['Classes','Memberships','Other'],REV_BREAKDOWN_COLORS,'—');
+  // Revenue breakdown from imported monthly data
+  const revBreakdown = {};
+  monthly.forEach(m=>{
+    if (m.season_classes) revBreakdown['Season Classes'] = (revBreakdown['Season Classes']||0) + m.season_classes;
+    if (m.recurring_classes) revBreakdown['Recurring Classes'] = (revBreakdown['Recurring Classes']||0) + m.recurring_classes;
+    if (m.events) revBreakdown['Events'] = (revBreakdown['Events']||0) + m.events;
+    if (m.private_lessons) revBreakdown['Private Lessons'] = (revBreakdown['Private Lessons']||0) + m.private_lessons;
+    if (m.camps) revBreakdown['Camps'] = (revBreakdown['Camps']||0) + m.camps;
+  });
+  const revTotal = Object.values(revBreakdown).reduce((s,v)=>s+v,0);
+  if (revTotal > 0) {
+    renderPie('revBreakdownChart', revBreakdown, REV_BREAKDOWN_COLORS);
+  } else {
+    renderEmptyDonut('revBreakdownChart',['Season Classes','Recurring Classes','Events'],REV_BREAKDOWN_COLORS,'—');
+  }
+
+  // Booking type from enrollment history
+  const bookingTypeMap = {};
+  enrollmentHistory.forEach(e=>{ const b=(e.booking_type||'Class').trim()||'Class'; bookingTypeMap[b]=(bookingTypeMap[b]||0)+(e.amount_paid||0); });
+  if (Object.keys(bookingTypeMap).length) {
+    renderPie('bookingTypeChart', bookingTypeMap, BOOKING_COLORS);
+  } else {
+    renderEmptyDonut('bookingTypeChart',['Class','Event','Private lesson'],BOOKING_COLORS,'—');
+  }
+
+  // Payment method from enrollment history
+  const paymentMap = {};
+  enrollmentHistory.forEach(e=>{ const p=(e.payment_mode||'Other').trim()||'Other'; paymentMap[p]=(paymentMap[p]||0)+(e.amount_paid||0); });
+  if (Object.keys(paymentMap).length) {
+    renderPie('paymentMethodChart', paymentMap, PAYMENT_COLORS);
+  } else {
+    renderEmptyDonut('paymentMethodChart',['Bank Transfer','Cash','Account Credit'],PAYMENT_COLORS,'—');
+  }
+
+  // Discount & refund analysis
+  const totalDiscounts = enrollmentHistory.reduce((s,e)=>s+(e.discount||0),0);
+  const totalRefunds = enrollmentHistory.reduce((s,e)=>s+(e.refund_amount||0),0);
+  const totalFeesEnroll = enrollmentHistory.reduce((s,e)=>s+(e.fee||0),0);
+  const refundRate = totalFeesEnroll > 0 ? ((totalRefunds/totalFeesEnroll)*100).toFixed(1) : '0';
+  document.getElementById('discountRefundRows').innerHTML = enrollmentHistory.length ? `
+    <div class="retention-row"><span>Total discounts given</span><span class="mono">${HT.eur(totalDiscounts)}</span></div>
+    <div class="retention-row"><span>Total refunds</span><span class="mono">${HT.eur(totalRefunds)}</span></div>
+    <div class="retention-row"><span>Refund rate</span><span class="mono">${refundRate}%</span></div>
+  ` : '<div style="padding:12px;color:var(--t4);font-size:11px">No data</div>';
+
   renderEmptyDonut('costsChart',['Material','Memberships','Court fees'],COSTS_COLORS,'—');
 }
 
 function sortBy(key){ sortKey=key; sortDir*=-1; render(); }
 
-HT.initSeasonSwitcher(s=>{season=s;load();});
 load();
 </script>
 </body>

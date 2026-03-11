@@ -401,4 +401,135 @@ function reload(filePath) {
   return getClasses(filePath);
 }
 
-module.exports = { getClasses, reload, parse };
+// ── XLSX → JSON migration ────────────────────────────────────────────────────
+
+const SEASON_CONFIG = {
+  'Winter 2026': { start: '2026-01-06', end: '2026-03-13' },
+  'Spring 2026': { start: '2026-03-16', end: '2026-06-13' },
+};
+
+function genId(prefix) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let s = '';
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return prefix + s;
+}
+
+function toDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseNoClassDates(str) {
+  if (!str || typeof str !== 'string') return [];
+  return str
+    .split(/[\s,;]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+    .map(s => {
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+      if (m) {
+        const y = m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : '2026';
+        return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      return null;
+    })
+    .filter(Boolean);
+}
+
+function migrateToJson(xlsxPath, outputPath) {
+  const classes = parse(xlsxPath);
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const DAY_TO_NUM = Object.fromEntries(DAYS.map((d, i) => [d, i]));
+
+  const templates = [];
+  const instances = [];
+  const seasons = { ...SEASON_CONFIG };
+
+  classes.forEach((c) => {
+    const templateId = genId('t_');
+    const coachPay = [...(c.coach_pay || [])];
+    if (c.coach_bonus && c.coach_bonus[0]) coachPay[0] = (coachPay[0] || 0) + c.coach_bonus[0];
+
+    const template = {
+      id: templateId,
+      season: c.season,
+      day_of_week: c.day,
+      start_time: c.start_time,
+      end_time: c.end_time,
+      program_name: c.program_name || '',
+      location: c.location || '',
+      type: c.type || 'Club',
+      age_group: c.age_group || '',
+      coaches: c.coaches || [],
+      max_participants: c.max_participants || 0,
+      cost_per_class: c.cost_per_class ?? null,
+      coach_pay: coachPay,
+      court_fee: c.court_fee ?? 0,
+      no_class_dates: c.no_class_dates || '',
+      notes: c.notes || '',
+    };
+    templates.push(template);
+
+    const range = seasons[c.season];
+    if (!range || !range.start || !range.end) return;
+    const targetDay = DAY_TO_NUM[c.day];
+    if (targetDay == null) return;
+
+    const startDate = new Date(range.start + 'T12:00:00');
+    const endDate = new Date(range.end + 'T12:00:00');
+    const noClass = parseNoClassDates(c.no_class_dates || '');
+
+    const d = new Date(startDate);
+    while (d <= endDate) {
+      if (d.getDay() === targetDay) {
+        const dateStr = toDateStr(d);
+        if (!noClass.includes(dateStr)) {
+          instances.push({
+            id: genId('i_'),
+            template_id: templateId,
+            date: dateStr,
+            start_time: c.start_time,
+            end_time: c.end_time,
+            program_name: c.program_name || '',
+            location: c.location || '',
+            type: c.type || 'Club',
+            age_group: c.age_group || '',
+            coaches: [...(c.coaches || [])],
+            original_coaches: [...(c.coaches || [])],
+            participants: c.participants || 0,
+            max_participants: c.max_participants || 0,
+            cost_per_class: c.cost_per_class ?? null,
+            coach_pay: coachPay,
+            court_fee: c.court_fee ?? 0,
+            cancelled: c.cancelled || false,
+            notes: c.notes || '',
+          });
+        }
+      }
+      d.setDate(d.getDate() + 1);
+    }
+  });
+
+  const data = { version: 1, seasons, templates, instances };
+  fs.writeFileSync(outputPath, JSON.stringify(data, null, 2), 'utf8');
+  return { templates: templates.length, instances: instances.length };
+}
+
+// CLI: node data/parse.js --migrate [xlsxPath]
+if (require.main === module && process.argv.includes('--migrate')) {
+  const xlsxPath = process.argv[process.argv.indexOf('--migrate') + 1]
+    || path.join(__dirname, 'schedule.xlsx');
+  const outputPath = path.join(__dirname, 'classes.json');
+  if (!fs.existsSync(xlsxPath)) {
+    console.error('File not found:', xlsxPath);
+    process.exit(1);
+  }
+  const result = migrateToJson(xlsxPath, outputPath);
+  console.log(`Migrated: ${result.templates} templates, ${result.instances} instances → ${outputPath}`);
+}
+
+module.exports = { getClasses, reload, parse, migrateToJson };

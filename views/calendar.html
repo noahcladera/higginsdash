@@ -40,8 +40,8 @@
 .cal-view-btns .vbtn{padding:5px 12px;background:var(--s2);border:1px solid var(--b2);color:var(--t3);font-size:11px;cursor:pointer;border-radius:4px;transition:all .15s;}
 .cal-view-btns .vbtn:hover{color:var(--t2);}
 .cal-view-btns .vbtn.active{background:var(--orange);color:#000;border-color:var(--orange);font-weight:600;}
-.cal-main #calView,.cal-main #schedView,.cal-main #listView{flex:1;min-height:0;display:flex;flex-direction:column;}
-.cal-main #calView .cal-outer,.cal-main #schedView.sched-outer{flex:1;min-height:0;}
+.cal-main #calView,.cal-main #listView{flex:1;min-height:0;display:flex;flex-direction:column;}
+.cal-main #calView .cal-outer{flex:1;min-height:0;}
 .cal-main #listView{overflow-y:auto;}
 .stats-strip{display:flex;gap:16px;padding:6px 20px;background:var(--s0);border-bottom:1px solid var(--b1);font-size:11px;color:var(--t3);}
 .stats-strip span{color:var(--t2);}
@@ -54,6 +54,8 @@
 .leg-dot{width:9px;height:9px;border-radius:2px;}
 
 .cal-outer{overflow-x:auto;overflow-y:auto;position:relative;max-height:calc(100vh - 220px);}
+.cal-outer.cal-nav-flash,.month-wrap.cal-nav-flash,.list-wrap.cal-nav-flash{animation:calNavFlash 0.14s ease-out;}
+@keyframes calNavFlash{0%{opacity:1}40%{opacity:0.88}100%{opacity:1}}
 .cal-grid{display:grid;background:var(--bg);transition:opacity .15s;}
 .cal-time-head{background:var(--s2);border-bottom:1px solid var(--b2);border-right:1px solid var(--b1);width:52px;}
 .cal-day-head{padding:9px 6px;text-align:center;background:var(--s2);border-bottom:1px solid var(--b2);border-right:1px solid var(--b1);}
@@ -74,31 +76,13 @@
 .ev.randwijck{background:var(--c-rand-bg);border-color:var(--c-rand-bd);border-left-color:var(--c-rand);}
 .ev.school{background:var(--c-school-bg);border-color:var(--c-school-bd);border-left-color:var(--c-school);}
 .ev.gocap{background:var(--c-gocap-bg);border-color:var(--c-gocap-bd);border-left-color:var(--c-gocap);}
+.ev.event{background:rgba(138,43,226,.18);border-color:rgba(138,43,226,.4);border-left-color:#8a2be2;}
 .ev-name{font-weight:600;font-size:10px;line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .ev-coach{font-family:"DM Mono",monospace;font-size:9px;color:var(--t3);margin-top:1px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .ev-time{font-family:"DM Mono",monospace;font-size:8px;opacity:.55;margin-top:1px;}
 .ev-fill{font-size:8px;margin-top:2px;padding:1px 4px;background:var(--s2);border-radius:2px;display:inline-block;}
 
 .now-line{position:absolute;left:52px;right:0;height:2px;background:var(--orange);z-index:15;pointer-events:none;}
-
-/* Coach Schedule (Gantt) view */
-.sched-outer{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 220px);}
-.sched-grid{display:grid;background:var(--bg);min-width:max-content;}
-.sched-time-head{background:var(--s2);border-bottom:1px solid var(--b2);border-right:1px solid var(--b1);padding:6px 8px;font-family:"DM Mono",monospace;font-size:9px;color:var(--t4);text-align:center;}
-.sched-name-cell{background:var(--s2);border-bottom:1px solid var(--b1);border-right:1px solid var(--b1);padding:4px 10px;font-weight:600;font-size:11px;min-width:140px;position:sticky;left:0;z-index:2;display:flex;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.sched-timeline-cell{position:relative;border-bottom:1px solid var(--b1);border-right:1px solid var(--b1);min-width:24px;height:36px;}
-.sched-row{display:contents;}
-.sched-bar{position:absolute;top:2px;bottom:2px;border-radius:2px;padding:2px 4px;overflow:hidden;cursor:pointer;font-size:9px;font-weight:500;border-left:2px solid;transition:filter .12s;}
-.sched-bar:hover{filter:brightness(1.1);z-index:5;}
-.sched-bar.triaz{background:var(--c-triaz-bg);border-left-color:var(--c-triaz);}
-.sched-bar.randwijck{background:var(--c-rand-bg);border-left-color:var(--c-rand);}
-.sched-bar.school{background:var(--c-school-bg);border-left-color:var(--c-school);}
-.sched-bar.gocap{background:var(--c-gocap-bg);border-left-color:var(--c-gocap);}
-.sched-bar.cancelled{opacity:.4;}
-.sched-day-tab{display:flex;gap:4px;padding:6px 20px;background:var(--s1);border-bottom:1px solid var(--b1);flex-wrap:wrap;}
-.sched-day-tab button{padding:4px 10px;font-size:10px;font-family:"DM Mono",monospace;background:var(--s2);border:1px solid var(--b2);color:var(--t3);border-radius:3px;cursor:pointer;transition:all .15s;}
-.sched-day-tab button:hover{color:var(--t2);}
-.sched-day-tab button.on{background:var(--orange);color:#000;border-color:var(--orange);}
 
 /* Hover popover */
 .popover{position:fixed;z-index:1000;background:var(--s1);border:1px solid var(--b2);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.4);padding:10px 12px;min-width:200px;max-width:280px;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .1s,visibility .1s;}
@@ -109,6 +93,13 @@
 .popover-tag:hover{background:var(--orange);color:#000;}
 .popover-fill{height:4px;background:var(--b2);border-radius:2px;margin-top:4px;overflow:hidden;}
 .popover-fill-bar{height:100%;border-radius:2px;background:var(--c-triaz);}
+
+.add-choice{padding:8px 0;}
+.add-choice-p{font-size:13px;color:var(--t2);margin-bottom:12px;}
+.add-choice-btns{display:flex;gap:10px;margin-bottom:12px;}
+.add-choice-btn{flex:1;}
+.add-choice-hint{font-size:11px;color:var(--t4);}
+.form-row .optional{font-weight:400;color:var(--t4);font-size:10px;}
 
 /* Contact a sub — select dropdown + action buttons */
 .sub-section{margin-top:16px;padding-top:14px;border-top:1px solid var(--b2);}
@@ -123,6 +114,42 @@
 .sub-contact-btn.wa:hover{background:#25D366;color:#fff;border-color:#25D366;}
 .sub-contact-btn.disabled{opacity:.35;pointer-events:none;cursor:default;}
 .sub-no-contacts{font-size:11px;color:var(--t4);padding:8px 0;}
+
+/* Month view */
+.month-wrap{padding:20px 24px;transition:opacity .15s;}
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--b1);border:1px solid var(--b1);border-radius:4px;overflow:hidden;}
+.month-dow{background:var(--s2);padding:8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--t3);}
+.month-cell{min-height:100px;background:var(--s1);padding:6px;cursor:pointer;transition:background .12s;}
+.month-cell:hover{background:var(--s2);}
+.month-cell.other-month{opacity:.4;}
+.month-cell.today{background:rgba(245,160,32,.1);border:1px solid var(--orange);}
+.month-cell-num{font-size:11px;font-weight:600;color:var(--t3);margin-bottom:4px;}
+.month-cell.today .month-cell-num{color:var(--orange);}
+.month-ev{font-size:9px;padding:3px 5px;margin-bottom:2px;border-radius:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;border-left:3px solid;}
+.month-ev.triaz{border-left-color:var(--c-triaz);background:var(--c-triaz-bg);}
+.month-ev.randwijck{border-left-color:var(--c-rand);background:var(--c-rand-bg);}
+.month-ev.school{border-left-color:var(--c-school);background:var(--c-school-bg);}
+.month-ev.gocap{border-left-color:var(--c-gocap);background:var(--c-gocap-bg);}
+.month-ev.event{border-left-color:#8a2be2;background:rgba(138,43,226,.18);}
+.month-ev.cancelled{opacity:.5;}
+.month-add{font-size:10px;color:var(--t4);margin-top:4px;cursor:pointer;}
+.month-add:hover{color:var(--orange);}
+
+/* Form modal */
+.form-row{margin-bottom:12px;}
+.form-row label{display:block;font-size:10px;font-weight:600;letter-spacing:0.5px;color:var(--t4);text-transform:uppercase;margin-bottom:4px;}
+.form-row input[type="text"],.form-row input[type="number"],.form-row input[type="date"],.form-row input[type="time"],.form-row select{width:100%;background:var(--s2);border:1px solid var(--b2);color:var(--t1);font-size:13px;padding:8px 10px;border-radius:4px;}
+.form-row.form-inline{display:flex;align-items:center;gap:8px;}
+.form-row.form-inline input,.form-row.form-inline select{flex:1;}
+.form-actions{display:flex;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--b2);}
+.btn-primary{background:var(--orange);color:#000;border:none;padding:8px 20px;border-radius:4px;font-weight:600;cursor:pointer;}
+.btn-secondary{background:var(--s2);color:var(--t2);border:1px solid var(--b2);padding:8px 20px;border-radius:4px;cursor:pointer;}
+.btn-danger{background:transparent;color:#e74;border:1px solid #e74;padding:8px 20px;border-radius:4px;cursor:pointer;}
+.chips-wrap{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{padding:4px 10px;background:var(--s2);border:1px solid var(--b2);border-radius:4px;font-size:11px;cursor:pointer;transition:all .15s;}
+.chip:hover,.chip.selected{background:var(--orange);color:#000;border-color:var(--orange);}
+.fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--orange);color:#000;border:none;font-size:24px;font-weight:300;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:900;transition:transform .15s;}
+.fab:hover{transform:scale(1.05);}
 
 .list-wrap{padding:20px 24px;transition:opacity .15s;}
 .list-day{margin-bottom:22px;}
@@ -153,7 +180,7 @@
   .cal-toolbar input[type="search"]{min-width:120px;}
   .stats-strip{padding:5px 12px;font-size:10px;}
   .legend{padding:6px 12px;gap:12px;}
-  .cal-outer,.sched-outer{max-height:calc(100vh - 200px);}
+  .cal-outer{max-height:calc(100vh - 200px);}
 }
 @media(max-width:480px){
   .cal-sidebar{flex-direction:column;padding:10px 12px;}
@@ -167,11 +194,6 @@
   .cal-day-head .dn{font-size:11px;}
   .cal-day-head .dc{font-size:8px;}
   .now-line{left:40px;}
-  .sched-name-cell{min-width:90px;font-size:10px;padding:3px 8px;}
-  .sched-timeline-cell{height:30px;min-width:18px;}
-  .sched-time-head{font-size:8px;padding:4px 6px;}
-  .sched-day-tab{padding:5px 10px;}
-  .sched-day-tab button{padding:3px 8px;font-size:9px;}
   .popover{min-width:auto;max-width:none;left:8px!important;right:8px!important;bottom:12px!important;top:auto!important;max-height:40vh;overflow-y:auto;}
   .list-wrap{padding:12px 14px;}
   .list-dtitle{font-size:10px;}
@@ -194,20 +216,16 @@
   </a>
   <div style="display:flex;align-items:center;gap:12px;">
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">Theme</button>
-    <div class="season-switcher" id="seasonSwitcher">
-      <select class="season-select" id="seasonSelect" title="Select season">
-        <option>Loading…</option>
-      </select>
-    </div>
   </div>
 </header>
 <nav>
   <a class="ni" href="/">Home</a>
-  <a class="ni" href="/calendar">Calendar</a>
-  <a class="ni" href="/gocap">Transportation</a>
-  <a class="ni" href="/finance">Finance</a>
+  <a class="ni active" href="/calendar">Calendar</a>
+  <a class="ni" href="/classes">Classes</a>
   <a class="ni" href="/coaches">Coaches</a>
+  <a class="ni" href="/students">Students</a>
   <a class="ni" href="/seasons">Seasons</a>
+  <a class="ni" href="/finance">Finance</a>
 </nav>
 
 <div class="cal-page">
@@ -227,17 +245,21 @@
       <select id="sLoc" onchange="applyFilters()"><option value="">All Locations</option></select>
     </div>
   </div>
+  <div>
+    <div class="slbl">Google Calendar</div>
+    <div id="calSyncStatus" style="font-size:10px;color:var(--t4);margin-bottom:8px"></div>
+    <button class="vbtn" id="calSyncBtn" style="width:100%" onclick="doCalSync()">Sync Now</button>
+  </div>
 </aside>
 
 <main class="cal-main">
 <div class="cal-toolbar">
   <input type="search" id="sSearch" placeholder="Search classes, coaches, locations…" oninput="debouncedSearch()">
   <div class="cal-view-btns">
-    <button class="vbtn" data-v="day">Day</button>
+    <button class="vbtn" data-v="month">Month</button>
+    <button class="vbtn" data-v="week">Week</button>
     <button class="vbtn" data-v="3day">3 Days</button>
-    <button class="vbtn active" data-v="week">Week</button>
     <button class="vbtn" data-v="list">List</button>
-    <button class="vbtn" data-v="schedule">Schedule</button>
   </div>
 </div>
 <div class="stats-strip" id="statsStrip">
@@ -248,17 +270,7 @@
   <button class="daynav-btn" onclick="shiftDay(-1)">◀</button>
   <div class="daynav-lbl" id="dayNavLbl">—</div>
   <button class="daynav-btn" onclick="shiftDay(1)">▶</button>
-</div>
-
-<div class="sched-day-tab" id="schedDayTab" style="display:none">
-  <button data-day="">All Days</button>
-  <button data-day="Monday">Mon</button>
-  <button data-day="Tuesday">Tue</button>
-  <button data-day="Wednesday">Wed</button>
-  <button data-day="Thursday">Thu</button>
-  <button data-day="Friday">Fri</button>
-  <button data-day="Saturday">Sat</button>
-  <button data-day="Sunday">Sun</button>
+  <button class="daynav-btn" onclick="goToToday()" title="Go to today">Today</button>
 </div>
 
 <div class="legend">
@@ -266,10 +278,11 @@
   <div class="leg"><div class="leg-dot" style="background:var(--c-rand)"></div>Randwijck — clay</div>
   <div class="leg"><div class="leg-dot" style="background:var(--c-school)"></div>School on-campus</div>
   <div class="leg"><div class="leg-dot" style="background:var(--c-gocap)"></div>GoCAP pickup</div>
+  <div class="leg"><div class="leg-dot" style="background:#8a2be2"></div>Event</div>
 </div>
 
 <div id="calView"><div class="cal-outer" id="calOuter"><div class="cal-grid" id="calGrid"></div><div class="now-line" id="nowLine" style="display:none"></div></div></div>
-<div id="schedView" class="sched-outer hidden"><div class="sched-grid" id="schedGrid"></div></div>
+<div id="monthView" class="month-wrap hidden"></div>
 <div id="listView" class="list-wrap hidden"></div>
 </main>
 </div>
@@ -288,8 +301,66 @@
     <button class="mclose" onclick="closeMo()">✕</button>
     <div class="mtitle" id="moTitle"></div>
     <div id="moBody"></div>
+    <div id="addChoiceWrap" class="hidden add-choice">
+      <p class="add-choice-p">Add to calendar</p>
+      <div class="add-choice-btns">
+        <button type="button" class="btn-primary add-choice-btn" id="addClassBtn">Class</button>
+        <button type="button" class="btn-secondary add-choice-btn" id="addEventBtn">Event</button>
+      </div>
+      <p class="add-choice-hint">Class = full schedule, participants, cost. Event = coach + time + place.</p>
+    </div>
+    <div id="moFormWrap" class="hidden">
+      <form id="classForm" onsubmit="return saveClassForm(event)">
+        <div class="form-row"><label>Program name</label><input type="text" id="fProgramName" required></div>
+        <div class="form-row"><label>Date</label><input type="date" id="fDate" required></div>
+        <div class="form-row form-inline"><label>Time</label><select id="fStartTime" class="form-select" required></select><span>–</span><select id="fEndTime" class="form-select" required></select></div>
+        <div class="form-row"><label>Location</label><select id="fLocation"><option value="Triaz">Triaz</option><option value="Randwijck">Randwijck</option><option value="VU">VU</option><option value="AICS South Campus">AICS South Campus</option><option value="AJErnstraat">AJErnstraat</option></select></div>
+        <div class="form-row"><label>Type</label><select id="fType"><option value="Club">Club</option><option value="School">School</option><option value="GoCAP">GoCAP</option><option value="Private">Private</option></select></div>
+        <div class="form-row"><label>Age group</label><input type="text" id="fAgeGroup" placeholder="e.g. 6-9, Adult"></div>
+        <div class="form-row"><label>Coaches</label><div id="fCoachesChips" class="chips-wrap"></div></div>
+        <div class="form-row"><label>Max participants</label><input type="number" id="fMaxPax" min="0"></div>
+        <div class="form-row"><label>Cost per class (€)</label><input type="number" id="fCost" min="0" step="0.01"></div>
+        <div class="form-row"><label>Notes</label><input type="text" id="fNotes" placeholder="Optional"></div>
+        <div class="form-row" id="fRecurringRow"><label><input type="checkbox" id="fRecurring"> Recurring (create template + instances for season)</label></div>
+        <div class="form-row" id="fSeasonRow"><label>Season</label><select id="fSeason" class="form-select"></select></div>
+        <div class="form-row" id="fScopeRow" style="display:none"><label>Apply to</label><select id="fScope"><option value="this">This instance only</option><option value="all">All future instances</option></select></div>
+        <div class="form-row form-actions">
+          <button type="button" class="btn-secondary" onclick="closeMo()">Cancel</button>
+          <button type="button" class="btn-danger" id="fDeleteBtn" style="display:none" onclick="deleteCurrentClass()">Delete</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+      <div id="moSubSection" class="sub-section"></div>
+    </div>
+    <div id="eventFormWrap" class="hidden">
+      <form id="eventForm" onsubmit="return saveEventForm(event)">
+        <div class="form-row"><label>Coach</label><div id="eCoachesChips" class="chips-wrap"></div></div>
+        <div class="form-row"><label>Date</label><input type="date" id="eDate" required></div>
+        <div class="form-row form-inline"><label>Time</label><select id="eStartTime" class="form-select" required></select><span>–</span><select id="eEndTime" class="form-select" required></select></div>
+        <div class="form-row"><label>Location</label><select id="eLocation"><option value="Triaz">Triaz</option><option value="Randwijck">Randwijck</option><option value="VU">VU</option><option value="AICS South Campus">AICS South Campus</option><option value="AJErnstraat">AJErnstraat</option></select></div>
+        <div class="form-row"><label>Title <span class="optional">optional</span></label><input type="text" id="eTitle" placeholder="e.g. Meeting, Private lesson"></div>
+        <div class="form-row form-actions">
+          <button type="button" class="btn-secondary" onclick="closeMo()">Cancel</button>
+          <button type="button" class="btn-danger" id="eDeleteBtn" style="display:none" onclick="deleteCurrentClass()">Delete</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
+<div class="mo" id="deleteChoiceMo" onclick="if(event.target===this)hideDeleteChoice()" style="z-index:250">
+  <div class="mdl" style="max-width:360px">
+    <div class="mtitle" style="margin-bottom:8px">Delete class</div>
+    <p style="font-size:12px;color:var(--t3);margin-bottom:16px">What would you like to delete?</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button type="button" class="btn-secondary" style="justify-content:flex-start;text-align:left" onclick="doDelete('one')">This instance only</button>
+      <button type="button" class="btn-secondary" style="justify-content:flex-start;text-align:left" onclick="doDelete('future')">This and all future instances</button>
+      <button type="button" class="btn-danger" style="justify-content:flex-start;text-align:left" onclick="doDelete('course')">Entire course</button>
+      <button type="button" class="btn-secondary" style="margin-top:8px" onclick="hideDeleteChoice()">Cancel</button>
+    </div>
+  </div>
+</div>
+<button class="fab" id="fabAdd" title="Add class or event">+</button>
 
 <script src="/js/shared.js"></script>
 <script>
@@ -297,17 +368,43 @@ const HT = window.HT;
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const DSHORT = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
 const SH = 9, EH = 21, SLOTH = 54;
-const TODAY = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
-let season = HT.getSeason();
+function toDateStr(d) {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function parseDateStr(s) { return new Date(s + 'T12:00:00'); }
+function getDayFromDate(dateStr) { return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][parseDateStr(dateStr).getDay()]; }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function addMonths(d, n) { const x = new Date(d); x.setMonth(x.getMonth() + n); return x; }
+function getMonday(d) { const x = new Date(d); const day = x.getDay(); x.setDate(x.getDate() - (day === 0 ? 6 : day - 1)); return x; }
+function getViewRange() {
+  if (view === '3day') return { from: toDateStr(currentDate), to: toDateStr(addDays(currentDate, 2)) };
+  if (view === 'week') {
+    const mon = getMonday(currentDate), sun = addDays(mon, 6);
+    return { from: toDateStr(mon), to: toDateStr(sun) };
+  }
+  if (view === 'month') {
+    const y = currentDate.getFullYear(), m = currentDate.getMonth();
+    const first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
+    const startPad = getMonday(first), endPad = addDays(getMonday(last), 6);
+    return { from: toDateStr(startPad), to: toDateStr(endPad) };
+  }
+  const mon = getMonday(currentDate), sun = addDays(mon, 6);
+  return { from: toDateStr(mon), to: toDateStr(sun) };
+}
+
 let all = [], filtered = [];
 let coachContacts = {};
+let allCoaches = [];
 let currentModalClass = null;
 let currentModalSubs = [];
-let view = 'week', dayOff = 0;
-let schedDay = TODAY;
+let modalMode = 'view'; // 'view' | 'edit' | 'create'
+let view = 'week';
+let currentDate = new Date();
 let searchDebounce = null;
 let popoverHideTimer = null;
+let createSlotPreFill = null;
 
 function isCancelled(c) {
   return c.cancelled || (c.notes && c.notes.toLowerCase().includes('cancelled'));
@@ -320,7 +417,7 @@ function activeForStats(arr) {
 function renderFilterBars() {
   const active = all.filter(c => !c.cancelled);
   const coachMap = {};
-  active.forEach(c => c.coaches.filter(Boolean).forEach(n => { coachMap[n] = (coachMap[n] || []).concat(c); }));
+  active.forEach(c => (c.coaches || []).filter(Boolean).forEach(n => { coachMap[n] = (coachMap[n] || []).concat(c); }));
   const coachesByHours = Object.entries(coachMap)
     .map(([n, cls]) => ({ name: n, hours: HT.coachEffectiveWorkload(cls).hours }))
     .sort((a, b) => b.hours - a.hours)
@@ -328,7 +425,7 @@ function renderFilterBars() {
 
   const coachBar = document.getElementById('sCoachBar');
   coachBar.innerHTML = '<span class="filter-chip on" data-coach="">All</span>' +
-    coachesByHours.map(c => `<span class="filter-chip" data-coach="${c.name}">${c.name}<span class="chip-hrs">${c.hrs}h</span></span>`).join('');
+    (coachesByHours || []).map(c => `<span class="filter-chip" data-coach="${c.name}">${c.name}<span class="chip-hrs">${c.hrs}h</span></span>`).join('');
   coachBar.querySelectorAll('.filter-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       coachBar.querySelectorAll('.filter-chip').forEach(x => x.classList.remove('on'));
@@ -352,17 +449,67 @@ function renderFilterBars() {
 
 async function loadData() {
   try {
-    const [classes, contacts] = await Promise.all([
-      HT.API.classes({ season }),
-      HT.API.coachContacts().catch(() => ({}))
+    const range = getViewRange();
+    const [instances, contacts, coaches] = await Promise.all([
+      HT.API.instances({ from: range.from, to: range.to }),
+      HT.API.coachContacts().catch(() => ({})),
+      HT.API.coaches('').catch(() => [])
     ]);
-    all = classes;
+    all = instances.map(i => ({ ...i, day: getDayFromDate(i.date) }));
+    allCoaches = coaches && coaches.length ? coaches : [...new Set(all.flatMap(c => c.coaches || []).filter(Boolean))].sort();
     coachContacts = contacts || {};
     renderFilterBars();
     const locs = [...new Set(all.map(c => c.location).filter(Boolean))].sort();
     document.getElementById('sLoc').innerHTML = '<option value="">All Locations</option>' + locs.map(l => `<option value="${l}">${l}</option>`).join('');
     applyFilters();
+    loadCalSyncStatus();
   } catch (e) { HT.showError(e.message); }
+}
+
+async function loadCalSyncStatus() {
+  const el = document.getElementById('calSyncStatus');
+  const btn = document.getElementById('calSyncBtn');
+  if (!el || !btn) return;
+  try {
+    const [gcal, sync] = await Promise.all([
+      HT.API.gcalStatus().catch(() => ({})),
+      HT.API.gcalSyncStatus().catch(() => ({})),
+    ]);
+    if (gcal && gcal.oauthConnected) {
+      btn.style.display = '';
+      if (sync.lastSyncAt) {
+        el.textContent = 'Last sync: ' + new Date(sync.lastSyncAt).toLocaleString();
+      } else {
+        el.textContent = sync.polling ? 'Background sync active' : 'Not synced yet';
+      }
+    } else {
+      btn.style.display = 'none';
+      el.textContent = '';
+    }
+  } catch {
+    el.textContent = '';
+  }
+}
+
+async function doCalSync() {
+  const btn = document.getElementById('calSyncBtn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Syncing…';
+  try {
+    const r = await HT.API.gcalSync();
+    if (r && r.ok) {
+      HT.showSuccess('Synced: ' + (r.pushed || 0) + ' pushed, ' + (r.pulled || 0) + ' pulled');
+      loadData();
+    } else {
+      HT.showError(r?.error || 'Sync failed');
+    }
+  } catch (e) {
+    HT.showError('Sync failed: ' + (e.message || e.error));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sync Now';
+  }
 }
 
 function buildSubMessage(e, coachName) {
@@ -414,21 +561,57 @@ function renderStats() {
 
 function setView(v) {
   view = v;
-  dayOff = 0;
   document.querySelectorAll('.vbtn').forEach(b => b.classList.toggle('active', b.dataset.v === v));
-  document.getElementById('dayNav').style.display = (v === 'day' || v === '3day') ? 'flex' : 'none';
-  document.getElementById('schedDayTab').style.display = v === 'schedule' ? 'flex' : 'none';
-  document.getElementById('calView').classList.toggle('hidden', v === 'list' || v === 'schedule');
-  document.getElementById('schedView').classList.toggle('hidden', v !== 'schedule');
+  document.getElementById('dayNav').style.display = (v === '3day' || v === 'week' || v === 'month') ? 'flex' : 'none';
+  document.getElementById('calView').classList.toggle('hidden', v === 'list' || v === 'month');
   document.getElementById('listView').classList.toggle('hidden', v !== 'list');
-  render();
+  document.getElementById('monthView').classList.toggle('hidden', v !== 'month');
+  updateDayNavLabel();
+  loadData();
 }
 
-function shiftDay(d) { dayOff += d; render(); }
+function shiftDay(d) {
+  if (view === 'month') currentDate = addMonths(currentDate, d);
+  else if (view === 'week') currentDate = addDays(currentDate, d * 7);
+  else if (view === '3day') currentDate = addDays(currentDate, d * 3);
+  else currentDate = addDays(currentDate, d);
+  updateDayNavLabel();
+  navFlash();
+  loadData();
+}
+
+function navFlash() {
+  let el = null;
+  if (view === 'month') el = document.getElementById('monthView');
+  else if (view === 'list') el = document.getElementById('listView');
+  else el = document.getElementById('calOuter');
+  if (!el) return;
+  el.classList.remove('cal-nav-flash');
+  el.offsetHeight; // reflow
+  el.classList.add('cal-nav-flash');
+  setTimeout(function(){ el.classList.remove('cal-nav-flash'); }, 150);
+}
+
+function goToToday() {
+  currentDate = new Date();
+  updateDayNavLabel();
+  loadData();
+}
+
+function updateDayNavLabel() {
+  const lbl = document.getElementById('dayNavLbl');
+  if (!lbl) return;
+  if (view === '3day') lbl.textContent = toDateStr(currentDate) + ' – ' + toDateStr(addDays(currentDate, 2));
+  else if (view === 'week') {
+    const mon = getMonday(currentDate), sun = addDays(mon, 6);
+    lbl.textContent = toDateStr(mon) + ' – ' + toDateStr(sun);
+  } else if (view === 'month') lbl.textContent = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  else lbl.textContent = '—';
+}
 
 function render() {
-  if (view === 'list') renderList();
-  else if (view === 'schedule') renderSchedule();
+  if (view === 'month') renderMonth();
+  else if (view === 'list') renderList();
   else renderCal();
 }
 
@@ -478,20 +661,20 @@ function renderCal() {
   const grid = document.getElementById('calGrid');
   const hours = []; for (let h = SH; h <= EH; h++) hours.push(h);
 
-  let days;
-  if (view === 'day') {
-    const i = ((dayOff % 7) + 7) % 7;
-    days = [DAYS[i]];
-    document.getElementById('dayNavLbl').textContent = DAYS[i];
-  } else if (view === '3day') {
-    const s = ((dayOff % 7) + 7) % 7;
-    days = [DAYS[s], DAYS[(s + 1) % 7], DAYS[(s + 2) % 7]];
-    document.getElementById('dayNavLbl').textContent = days.join(' · ');
-  } else days = DAYS;
+  let days, colDates;
+  if (view === '3day') {
+    days = [0, 1, 2].map(i => getDayFromDate(toDateStr(addDays(currentDate, i))));
+    colDates = [0, 1, 2].map(i => addDays(currentDate, i));
+  } else {
+    const mon = getMonday(currentDate);
+    days = [0, 1, 2, 3, 4, 5, 6].map(i => getDayFromDate(toDateStr(addDays(mon, i))));
+    colDates = [0, 1, 2, 3, 4, 5, 6].map(i => addDays(mon, i));
+  }
 
+  const todayStr = toDateStr(new Date());
   const w = window.innerWidth;
   const timeCol = w <= 480 ? 40 : 52;
-  const minW = w <= 480 ? (view === 'day' ? 180 : view === '3day' ? 140 : 90) : w <= 768 ? (view === 'day' ? 240 : view === '3day' ? 160 : 100) : (view === 'day' ? 300 : view === '3day' ? 200 : 130);
+  const minW = w <= 480 ? (view === '3day' ? 140 : 90) : w <= 768 ? (view === '3day' ? 160 : 100) : (view === '3day' ? 200 : 130);
   const slotH = w <= 480 ? 44 : SLOTH;
   grid.style.cssText = `display:grid;grid-template-columns:${timeCol}px repeat(${days.length},minmax(${minW}px,1fr));grid-template-rows:auto repeat(${hours.length},${slotH}px);`;
   grid.innerHTML = '';
@@ -499,13 +682,18 @@ function renderCal() {
   const byDay = {}; DAYS.forEach(d => byDay[d] = []);
   filtered.forEach(e => { if (byDay[e.day]) byDay[e.day].push(e); });
 
+  const byDateStr = {};
+  filtered.forEach(e => { if (!byDateStr[e.date]) byDateStr[e.date] = []; byDateStr[e.date].push(e); });
+
   const tl = document.createElement('div'); tl.className = 'cal-time-head'; tl.style.gridArea = '1/1'; grid.appendChild(tl);
 
   days.forEach((d, ci) => {
+    const dateStr = toDateStr(colDates[ci]);
+    const evs = byDateStr[dateStr] || [];
     const h = document.createElement('div');
-    h.className = 'cal-day-head' + (d === TODAY ? ' today' : '');
+    h.className = 'cal-day-head' + (dateStr === todayStr ? ' today' : '');
     h.style.gridArea = `1/${ci + 2}`;
-    h.innerHTML = `<div class="dn">${DSHORT[DAYS.indexOf(d)]}</div><div class="dc">${byDay[d].length} class${byDay[d].length !== 1 ? 'es' : ''}</div>`;
+    h.innerHTML = `<div class="dn">${DSHORT[DAYS.indexOf(d)]}</div><div class="dc">${dateStr.slice(5)} · ${evs.length}</div>`;
     grid.appendChild(h);
   });
 
@@ -515,14 +703,23 @@ function renderCal() {
   });
 
   days.forEach((day, ci) => {
+    const dateStr = toDateStr(colDates[ci]);
+    const evs = byDateStr[dateStr] || [];
     const col = document.createElement('div');
-    col.className = 'day-col' + (day === TODAY ? ' today' : '');
+    col.className = 'day-col' + (dateStr === todayStr ? ' today' : '');
     col.style.gridArea = `2/${ci + 2}/span ${hours.length}`;
     col.style.height = `${hours.length * slotH}px`;
-    hours.forEach(() => { const s = document.createElement('div'); s.className = 'time-slot'; col.appendChild(s); });
+    col.dataset.date = dateStr;
+    hours.forEach((_, hi) => {
+      const s = document.createElement('div');
+      s.className = 'time-slot';
+      s.dataset.date = dateStr;
+      s.dataset.slot = String(hi);
+      s.onclick = () => openCreateForSlot(dateStr, String(SH + hi).padStart(2, '0') + ':00');
+      col.appendChild(s);
+    });
 
     const layer = document.createElement('div'); layer.className = 'ev-layer';
-    const evs = byDay[day];
     const slotMap = computeOverlapSlots(evs);
 
     evs.forEach(e => {
@@ -562,9 +759,9 @@ function renderCal() {
   scrollToNow();
 }
 
-function showPopover(ev, e) {
-  const id = parseInt(ev.currentTarget?.dataset?.id, 10);
-  const c = all.find(x => x.id === id); if (!c) return;
+function showPopover(ev) {
+  const id = ev.currentTarget?.dataset?.id;
+  const c = all.find(x => String(x.id) === String(id)); if (!c) return;
   clearTimeout(popoverHideTimer);
   const pop = document.getElementById('popover');
   document.getElementById('popTitle').textContent = (c.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim();
@@ -605,7 +802,7 @@ function setLocFilter(loc) { document.getElementById('sLoc').value = loc; applyF
 
 function updateNowLine() {
   const nl = document.getElementById('nowLine');
-  if (view === 'list' || view === 'schedule') { nl.style.display = 'none'; return; }
+  if (view === 'list') { nl.style.display = 'none'; return; }
   const now = new Date();
   const minOfDay = now.getHours() * 60 + now.getMinutes();
   if (minOfDay < SH * 60 || minOfDay > EH * 60) { nl.style.display = 'none'; return; }
@@ -617,7 +814,7 @@ function updateNowLine() {
   nl.style.top = (timeCol + top) + 'px';
 }
 function scrollToNow() {
-  if (view === 'list' || view === 'schedule') return;
+  if (view === 'list') return;
   const now = new Date();
   const minOfDay = now.getHours() * 60 + now.getMinutes();
   if (minOfDay < SH * 60 || minOfDay > EH * 60) return;
@@ -627,99 +824,47 @@ function scrollToNow() {
 }
 setInterval(updateNowLine, 60000);
 
-function renderSchedule() {
-  const grid = document.getElementById('schedGrid');
-  const coaches = [...new Set(filtered.flatMap(c => c.coaches).filter(Boolean))].sort();
-  const dayFilter = schedDay || null;
-  const evs = dayFilter ? filtered.filter(c => c.day === dayFilter) : filtered;
+function renderMonth() {
+  const wrap = document.getElementById('monthView');
+  const y = currentDate.getFullYear(), m = currentDate.getMonth();
+  const first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
+  const startPad = getMonday(first), endPad = addDays(getMonday(last), 6);
+  const todayStr = toDateStr(new Date());
 
-  const rows = [];
-  if (dayFilter) {
-    coaches.forEach(n => {
-      const cls = evs.filter(c => c.coaches.includes(n));
-      if (cls.length) rows.push({ label: n, classes: cls });
+  const byDateStr = {};
+  filtered.forEach(e => { if (!byDateStr[e.date]) byDateStr[e.date] = []; byDateStr[e.date].push(e); });
+
+  let html = '<div class="month-grid">';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => { html += `<div class="month-dow">${d}</div>`; });
+
+  const d = new Date(startPad);
+  while (d <= endPad) {
+    const dateStr = toDateStr(d);
+    const evs = byDateStr[dateStr] || [];
+    const isOther = d.getMonth() !== m;
+    const isToday = dateStr === todayStr;
+    html += `<div class="month-cell ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''}" data-date="${dateStr}" onclick="monthCellClick('${dateStr}', event)">
+      <div class="month-cell-num">${d.getDate()}</div>`;
+    evs.slice(0, 4).forEach(e => {
+      const name = (e.program_name || '').slice(0, 20);
+      const cc = HT.colorClass(e);
+      html += `<div class="month-ev ${cc} ${e.cancelled ? 'cancelled' : ''}" onclick="event.stopPropagation();openMo('${e.id}')">${name} ${e.start_time}</div>`;
     });
-  } else {
-    coaches.forEach(n => {
-      const coachEvs = evs.filter(c => c.coaches.includes(n));
-      const days = [...new Set(coachEvs.map(c => c.day))];
-      days.sort((a, b) => DAYS.indexOf(a) - DAYS.indexOf(b));
-      days.forEach(d => {
-        const cls = coachEvs.filter(c => c.day === d);
-        if (cls.length) rows.push({ label: `${n} · ${d.slice(0, 3)}`, classes: cls });
-      });
-    });
+    if (evs.length > 4) html += `<div class="month-ev" style="opacity:.7">+${evs.length-4} more</div>`;
+    html += `<div class="month-add" onclick="event.stopPropagation();openCreateForSlot('${dateStr}','16:00')">+ Add</div>`;
+    html += '</div>';
+    d.setDate(d.getDate() + 1);
   }
-
-  const hours = []; for (let h = SH; h <= EH; h++) hours.push(h);
-  const totalMins = (EH - SH) * 60;
-
-  const schedMinW = window.innerWidth <= 480 ? 320 : window.innerWidth <= 768 ? 450 : 600;
-  const nameW = window.innerWidth <= 480 ? 90 : 140;
-  grid.style.cssText = `display:grid;grid-template-columns:${nameW}px 1fr;grid-template-rows:auto repeat(${rows.length}, 32px);min-width:${schedMinW}px;`;
-  grid.innerHTML = '';
-
-  const blank = document.createElement('div');
-  blank.className = 'sched-time-head';
-  blank.style.gridColumn = '1';
-  grid.appendChild(blank);
-  const timeHead = document.createElement('div');
-  timeHead.className = 'sched-time-head';
-  timeHead.style.cssText = 'grid-column:2;display:flex;';
-  hours.forEach(h => {
-    const th = document.createElement('span');
-    th.style.cssText = `flex:1;text-align:center;font-size:9px;min-width:0;`;
-    th.textContent = h + ':00';
-    timeHead.appendChild(th);
-  });
-  grid.appendChild(timeHead);
-
-  rows.forEach((row, ri) => {
-    const nameCell = document.createElement('div');
-    nameCell.className = 'sched-name-cell';
-    nameCell.textContent = row.label;
-    nameCell.style.gridArea = `${ri + 2} / 1`;
-    grid.appendChild(nameCell);
-
-    const timelineCell = document.createElement('div');
-    timelineCell.style.cssText = `grid-area:${ri + 2}/2;position:relative;height:32px;min-height:32px;border-bottom:1px solid var(--b1);`;
-    grid.appendChild(timelineCell);
-
-    row.classes.forEach(c => {
-      const startM = HT.t2m(c.start_time), endM = HT.t2m(c.end_time);
-      const left = ((startM - SH * 60) / totalMins) * 100;
-      const w = Math.max(((endM - startM) / totalMins) * 100, 1.5);
-
-      const bar = document.createElement('div');
-      bar.className = `sched-bar ${HT.colorClass(c)}${isCancelled(c) ? ' cancelled' : ''}`;
-      bar.style.cssText = `left:${left}%;width:${w}%;`;
-      const name = (c.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim();
-      bar.textContent = name.slice(0, 16) + ' ' + (c.start_time || '');
-      bar.title = `${name} · ${c.start_time}–${c.end_time} · ${c.location}`;
-      bar.onclick = () => openMo(c.id);
-      bar.onmouseenter = (ev) => showPopover(ev);
-      bar.onmouseleave = hidePopover;
-      bar.dataset.id = c.id;
-      timelineCell.appendChild(bar);
-    });
-  });
-
-  if (!rows.length) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--t3)">No classes match the current filter</div>';
-  }
+  html += '</div>';
+  wrap.innerHTML = html;
 }
 
-document.getElementById('schedDayTab').addEventListener('click', e => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-  document.querySelectorAll('#schedDayTab button').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  schedDay = btn.dataset.day || '';
-  renderSchedule();
-});
-document.querySelectorAll('#schedDayTab button').forEach(b => {
-  b.classList.toggle('on', b.dataset.day === schedDay);
-});
+function monthCellClick(dateStr, ev) {
+  if (ev.target.closest('.month-ev') || ev.target.closest('.month-add')) return;
+  currentDate = parseDateStr(dateStr);
+  view = '3day';
+  setView('3day');
+}
 
 function renderList() {
   const wrap = document.getElementById('listView');
@@ -728,18 +873,19 @@ function renderList() {
     wrap.innerHTML = '<div style="text-align:center;padding:60px;color:var(--t3)">No classes match the current filter</div>';
     return;
   }
-  const byDay = {}; DAYS.forEach(d => byDay[d] = []);
-  filtered.forEach(e => { if (byDay[e.day]) byDay[e.day].push(e); });
+  const byDate = {};
+  filtered.forEach(e => { if (!byDate[e.date]) byDate[e.date] = []; byDate[e.date].push(e); });
+  const dates = Object.keys(byDate).sort();
   let html = '';
-  DAYS.forEach(d => {
-    if (!byDay[d].length) return;
-    const sorted = byDay[d].sort((a, b) => HT.t2m(a.start_time) - HT.t2m(b.start_time));
-    html += `<div class="list-day"><div class="list-dtitle">${d}</div>`;
+  dates.forEach(dateStr => {
+    const sorted = byDate[dateStr].sort((a, b) => HT.t2m(a.start_time) - HT.t2m(b.start_time));
+    const dayName = getDayFromDate(dateStr);
+    html += `<div class="list-day"><div class="list-dtitle">${dateStr} · ${dayName}</div>`;
     sorted.forEach(e => {
       const coaches = e.coaches.filter(Boolean).join(' + ');
       const fill = e.max_participants ? `${e.participants}/${e.max_participants}` : e.participants;
       const cc = HT.colorClass(e);
-      html += `<div class="list-ev ${cc}${isCancelled(e) ? ' cancelled' : ''}" onclick="openMo(${e.id})">
+      html += `<div class="list-ev ${cc}${isCancelled(e) ? ' cancelled' : ''}" onclick="openMo('${e.id}')">
         <div class="lt">${e.start_time}<br>${e.end_time}</div>
         <div><div class="ln">${e.program_name.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '')}</div><div class="ls">${e.location} · Ages ${e.age_group || '—'}</div></div>
         <div class="lc">${coaches || '—'}</div>
@@ -753,54 +899,284 @@ function renderList() {
 }
 
 function openMo(id) {
-  const e = all.find(x => x.id === id); if (!e) return;
+  const e = all.find(x => String(x.id) === String(id)); if (!e) return;
   hidePopover();
-  const coaches = e.coaches.filter(Boolean).join(', ');
-  const p = e.net_profit;
-  const teaching = new Set(e.coaches.filter(Boolean));
-  const allCoaches = [...new Set(all.flatMap(c => c.coaches).filter(Boolean))].sort();
-  const contactKey = (n) => Object.keys(coachContacts || {}).find(k => k.trim().toLowerCase() === (n||'').trim().toLowerCase());
-  const potentialSubs = allCoaches.filter(n => !teaching.has(n)).map(name => ({
-    name,
-    ...(coachContacts[contactKey(name) || name] || {})
-  }));
   currentModalClass = e;
-  currentModalSubs = potentialSubs.map(c => ({
-    name: c.name,
-    phone: c.phone || '',
-    email: c.email || ''
-  }));
-  const subHtml = potentialSubs.length
-    ? `<div class="sub-picker">
-        <select class="sub-select" id="subSelect">
-          ${potentialSubs.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
-        </select>
-        <div class="sub-actions" id="subActions"></div>
-      </div>`
-    : '<div class="sub-no-contacts">All coaches are on this class.</div>';
-  document.getElementById('moTitle').textContent = (e.program_name || '').replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+[\d:\/]+[-–][\d:]+\s*/i, '').trim();
-  document.getElementById('moBody').innerHTML = `
-    <div class="mrow"><span class="mk">Day & Time</span><span class="mv">${e.day} · ${e.start_time}–${e.end_time}</span></div>
-    <div class="mrow"><span class="mk">Location</span><span class="mv">${e.location || '—'}</span></div>
-    <div class="mrow"><span class="mk">Type</span><span class="mv">${e.type || '—'}</span></div>
-    <div class="mrow"><span class="mk">Age Group</span><span class="mv">${e.age_group || '—'}</span></div>
-    <div class="mrow"><span class="mk">Coaches</span><span class="mv">${coaches || '—'}</span></div>
-    <div class="mrow"><span class="mk">Participants</span><span class="mv">${e.participants ?? '—'} / ${e.max_participants ?? '?'}</span></div>
-    <div class="mrow"><span class="mk">Season</span><span class="mv">${e.season || '—'}</span></div>
-    <div class="mrow"><span class="mk">Weeks</span><span class="mv">${e.weeks ?? '—'}</span></div>
-    <div class="mrow"><span class="mk">Cost / Class</span><span class="mv">${HT.eur(e.cost_per_class)}</span></div>
-    <div class="mrow"><span class="mk">Session Revenue</span><span class="mv">${HT.eur(e.session_cost)}</span></div>
-    <div class="mrow"><span class="mk">Expenses</span><span class="mv">${HT.eur(e.expenses)}</span></div>
-    <div class="mrow"><span class="mk">Net Profit</span><span class="mv ${(p != null && p >= 0) ? 'metric-up' : 'metric-down'}">${HT.eur(p)}</span></div>
-    ${e.notes ? `<div class="mrow"><span class="mk">Notes</span><span class="mv" style="font-size:11px;max-width:240px;text-align:right">${e.notes}</span></div>` : ''}
-    <div class="sub-section">
-      <div class="slbl">Contact a sub</div>
-      ${subHtml}
-    </div>
-  `;
+  modalMode = 'edit';
+  populateCalendarTimeSelects();
+  document.getElementById('addChoiceWrap').classList.add('hidden');
+  document.getElementById('moBody').classList.add('hidden');
+  if (e.type === 'Event') {
+    document.getElementById('moTitle').textContent = 'Edit event';
+    document.getElementById('moFormWrap').classList.add('hidden');
+    document.getElementById('eventFormWrap').classList.remove('hidden');
+    document.getElementById('eDeleteBtn').style.display = 'block';
+    populateEventForm(e);
+  } else {
+    document.getElementById('moTitle').textContent = 'Edit class';
+    document.getElementById('eventFormWrap').classList.add('hidden');
+    document.getElementById('moFormWrap').classList.remove('hidden');
+    document.getElementById('fRecurringRow').style.display = 'none';
+    document.getElementById('fSeasonRow').style.display = 'none';
+    document.getElementById('fScopeRow').style.display = e.template_id ? 'flex' : 'none';
+    document.getElementById('fDeleteBtn').style.display = 'block';
+    populateForm(e);
+    renderSubSection(e);
+  }
   document.getElementById('mo').classList.add('open');
+}
+
+function openCreateForSlot(dateStr, timeStr) {
+  createSlotPreFill = { date: dateStr, start_time: timeStr, end_time: timeStr };
+  const endH = parseInt(timeStr, 10) + 1;
+  if (endH < 24) createSlotPreFill.end_time = String(endH).padStart(2, '0') + ':00';
+  openCreateModal();
+}
+
+function populateCalendarTimeSelects() {
+  const opts = HT.buildTimeOptions();
+  ['fStartTime','fEndTime','eStartTime','eEndTime'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel || sel.options.length > 0) return;
+    opts.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.label;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function openCreateModal() {
+  currentModalClass = null;
+  modalMode = 'create';
+  document.getElementById('moTitle').textContent = 'Add to calendar';
+  document.getElementById('moBody').classList.add('hidden');
+  document.getElementById('moFormWrap').classList.add('hidden');
+  document.getElementById('eventFormWrap').classList.add('hidden');
+  document.getElementById('addChoiceWrap').classList.remove('hidden');
+  populateCalendarTimeSelects();
+  const prefill = createSlotPreFill || { date: toDateStr(currentDate), start_time: '16:00', end_time: '17:00' };
+  populateForm(prefill);
+  populateEventForm(prefill);
+  document.getElementById('moSubSection').innerHTML = '';
+  document.getElementById('mo').classList.add('open');
+  createSlotPreFill = null;
+}
+
+function showClassForm() {
+  document.getElementById('addChoiceWrap').classList.add('hidden');
+  document.getElementById('eventFormWrap').classList.add('hidden');
+  document.getElementById('moFormWrap').classList.remove('hidden');
+  document.getElementById('moTitle').textContent = 'Add class';
+  document.getElementById('fRecurringRow').style.display = 'block';
+  document.getElementById('fSeasonRow').style.display = 'block';
+  document.getElementById('fScopeRow').style.display = 'none';
+  document.getElementById('fDeleteBtn').style.display = 'none';
+}
+
+function showEventForm() {
+  document.getElementById('addChoiceWrap').classList.add('hidden');
+  document.getElementById('moFormWrap').classList.add('hidden');
+  document.getElementById('eventFormWrap').classList.remove('hidden');
+  document.getElementById('moTitle').textContent = 'Add event';
+  document.getElementById('eDeleteBtn').style.display = 'none';
+}
+
+function populateEventForm(data) {
+  document.getElementById('eDate').value = data.date || toDateStr(currentDate);
+  document.getElementById('eStartTime').value = data.start_time || '16:00';
+  document.getElementById('eEndTime').value = data.end_time || '17:00';
+  document.getElementById('eLocation').value = data.location || 'Triaz';
+  document.getElementById('eTitle').value = data.program_name || '';
+  const chips = document.getElementById('eCoachesChips');
+  const fromContacts = Object.keys(coachContacts || {}).filter(Boolean).sort();
+  const coaches = fromContacts.length ? fromContacts : (allCoaches.length ? allCoaches : ['Set','Ramzi','Ivan','Noah','Farah']);
+  chips.innerHTML = coaches.map(n => {
+    const sel = (data.coaches || []).includes(n);
+    return `<span class="chip ${sel ? 'selected' : ''}" data-name="${n}">${n}</span>`;
+  }).join('');
+  chips.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => chip.classList.toggle('selected'));
+  });
+}
+
+function getSelectedEventCoaches() {
+  return [...document.querySelectorAll('#eCoachesChips .chip.selected')].map(c => c.dataset.name);
+}
+
+async function saveEventForm(ev) {
+  ev.preventDefault();
+  const coaches = getSelectedEventCoaches();
+  if (!coaches.length) { HT.showError('Select at least one coach'); return false; }
+  const data = {
+    program_name: document.getElementById('eTitle').value.trim() || 'Event',
+    date: document.getElementById('eDate').value,
+    start_time: document.getElementById('eStartTime').value,
+    end_time: document.getElementById('eEndTime').value,
+    location: document.getElementById('eLocation').value,
+    type: 'Event',
+    coaches,
+    age_group: '', max_participants: 0, cost_per_class: null, notes: '',
+  };
+  try {
+    if (modalMode === 'create') {
+      await HT.API.createInstance(data);
+      closeMo(); loadData();
+    } else {
+      await HT.API.updateInstance(currentModalClass.id, data);
+      closeMo(); loadData();
+    }
+  } catch (e) { HT.showError(e.message || e.error || 'Save failed'); }
+  return false;
+}
+
+function populateForm(data) {
+  document.getElementById('fProgramName').value = data.program_name || '';
+  document.getElementById('fDate').value = data.date || toDateStr(currentDate);
+  document.getElementById('fStartTime').value = data.start_time || '16:00';
+  document.getElementById('fEndTime').value = data.end_time || '17:00';
+  document.getElementById('fLocation').value = data.location || 'Triaz';
+  document.getElementById('fType').value = data.type || 'Club';
+  document.getElementById('fAgeGroup').value = data.age_group || '';
+  document.getElementById('fMaxPax').value = data.max_participants || '';
+  document.getElementById('fCost').value = data.cost_per_class ?? '';
+  document.getElementById('fNotes').value = data.notes || '';
+  const chips = document.getElementById('fCoachesChips');
+  const coachList = Object.keys(coachContacts || {}).filter(Boolean).sort();
+  const formCoaches = coachList.length ? coachList : (allCoaches.length ? allCoaches : ['Set','Ramzi','Ivan','Noah','Farah']);
+  chips.innerHTML = formCoaches.map(n => {
+    const sel = (data.coaches || []).includes(n);
+    return `<span class="chip ${sel ? 'selected' : ''}" data-name="${n}">${n}</span>`;
+  }).join('');
+  chips.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('selected');
+    });
+  });
+  HT.API.seasons().then(seasons => {
+    const sel = document.getElementById('fSeason');
+    sel.innerHTML = (seasons || []).map(s => `<option value="${s}">${s}</option>`).join('');
+    if (data.season && seasons.includes(data.season)) sel.value = data.season;
+    else if (seasons.length) sel.value = seasons[0];
+  }).catch(() => {});
+}
+
+function renderSubSection(e) {
+  const teaching = new Set((e.coaches || []).filter(Boolean));
+  const potentialSubs = allCoaches.filter(n => !teaching.has(n));
+  const contactKey = (n) => Object.keys(coachContacts || {}).find(k => k.trim().toLowerCase() === (n||'').trim().toLowerCase());
+  currentModalSubs = potentialSubs.map(n => ({ name: n, ...(coachContacts[contactKey(n) || n] || {}) }));
+  const subHtml = potentialSubs.length
+    ? `<div class="slbl">Contact a sub</div><div class="sub-picker"><select class="sub-select" id="subSelect">${potentialSubs.map(n => `<option value="${n}">${n}</option>`).join('')}</select><div class="sub-actions" id="subActions"></div></div>`
+    : '<div class="sub-no-contacts">All coaches are on this class.</div>';
+  document.getElementById('moSubSection').innerHTML = subHtml;
   const sel = document.getElementById('subSelect');
   if (sel) { updateSubActions(e); sel.addEventListener('change', () => updateSubActions(e)); }
+}
+
+function closeMo() {
+  document.getElementById('mo').classList.remove('open');
+  document.getElementById('moBody').classList.remove('hidden');
+  document.getElementById('moFormWrap').classList.add('hidden');
+  document.getElementById('eventFormWrap').classList.add('hidden');
+  document.getElementById('addChoiceWrap').classList.add('hidden');
+  currentModalClass = null;
+}
+
+function getSelectedCoaches() {
+  return [...document.querySelectorAll('#fCoachesChips .chip.selected')].map(c => c.dataset.name);
+}
+
+async function saveClassForm(ev) {
+  ev.preventDefault();
+  const data = {
+    program_name: document.getElementById('fProgramName').value.trim(),
+    date: document.getElementById('fDate').value,
+    start_time: document.getElementById('fStartTime').value,
+    end_time: document.getElementById('fEndTime').value,
+    location: document.getElementById('fLocation').value,
+    type: document.getElementById('fType').value,
+    age_group: document.getElementById('fAgeGroup').value.trim(),
+    coaches: getSelectedCoaches(),
+    max_participants: parseInt(document.getElementById('fMaxPax').value, 10) || 0,
+    cost_per_class: parseFloat(document.getElementById('fCost').value) || null,
+    notes: document.getElementById('fNotes').value.trim(),
+  };
+  try {
+    if (modalMode === 'create') {
+      const recurring = document.getElementById('fRecurring').checked;
+      const dayOfWeek = getDayFromDate(data.date);
+      const templateData = {
+        day_of_week: dayOfWeek,
+        start_time: data.start_time,
+        end_time: data.end_time,
+        program_name: data.program_name,
+        location: data.location,
+        type: data.type,
+        age_group: data.age_group,
+        coaches: data.coaches,
+        max_participants: data.max_participants,
+        cost_per_class: data.cost_per_class,
+        notes: data.notes,
+      };
+      if (recurring) {
+        const season = document.getElementById('fSeason').value;
+        if (!season) { HT.showError('Select a season for recurring class'); return false; }
+        templateData.season = season;
+      } else {
+        templateData.term_start = data.date;
+        templateData.term_end = data.date;
+        templateData.season = 'Custom';
+      }
+      const res = await HT.API.createTemplate(templateData);
+      if (res.id) { closeMo(); loadData(); }
+    } else {
+      const scope = document.getElementById('fScope')?.value || 'this';
+      if (scope === 'all' && currentModalClass.template_id) {
+        const tData = { ...data, day_of_week: currentModalClass.day };
+        delete tData.date;
+        await HT.API.updateTemplate(currentModalClass.template_id, tData, 'all');
+      } else {
+        await HT.API.updateInstance(currentModalClass.id, data);
+      }
+      closeMo(); loadData();
+    }
+  } catch (e) { HT.showError(e.message || e.error || 'Save failed'); }
+  return false;
+}
+
+function showDeleteChoice() {
+  if (!currentModalClass) return;
+  if (currentModalClass.type === 'Event' || !currentModalClass.template_id) {
+    if (confirm('Delete this event?')) doDelete('one');
+    return;
+  }
+  document.getElementById('deleteChoiceMo').classList.add('open');
+}
+
+function hideDeleteChoice() {
+  document.getElementById('deleteChoiceMo').classList.remove('open');
+}
+
+async function doDelete(scope) {
+  if (!currentModalClass) return;
+  hideDeleteChoice();
+  try {
+    if (scope === 'course') {
+      await HT.API.deleteTemplate(currentModalClass.template_id);
+    } else if (scope === 'future') {
+      await HT.API.deleteInstance(currentModalClass.id, 'future');
+    } else {
+      await HT.API.deleteInstance(currentModalClass.id);
+    }
+    closeMo();
+    loadData();
+  } catch (e) { HT.showError(e.message || e.error || 'Delete failed'); }
+}
+
+function deleteCurrentClass() {
+  showDeleteChoice();
 }
 
 function updateSubActions(classObj) {
@@ -822,25 +1198,27 @@ function updateSubActions(classObj) {
     <a class="sub-contact-btn${mail ? '' : ' disabled'}" ${mail ? `href="${mail}"` : ''}>Email</a>
   `;
 }
-function closeMo() { document.getElementById('mo').classList.remove('open'); }
 
 document.querySelectorAll('.vbtn').forEach(b => {
   b.addEventListener('click', () => setView(b.dataset.v));
 });
 
+document.getElementById('fabAdd').addEventListener('click', () => openCreateModal());
+document.getElementById('addClassBtn').addEventListener('click', showClassForm);
+document.getElementById('addEventBtn').addEventListener('click', showEventForm);
+
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   if (e.key === 'Escape') { closeMo(); hidePopover(true); return; }
   if (e.key === '/') { e.preventDefault(); document.getElementById('sSearch').focus(); return; }
-  const vmap = { d: 'day', '3': '3day', w: 'week', l: 'list', s: 'schedule' };
+  const vmap = { m: 'month', '3': '3day', w: 'week', l: 'list' };
   if (vmap[e.key?.toLowerCase()]) { setView(vmap[e.key.toLowerCase()]); return; }
   if (e.key === 'ArrowLeft') { shiftDay(-1); return; }
   if (e.key === 'ArrowRight') { shiftDay(1); return; }
-  if (e.key === 't' || e.key === 'T') { dayOff = DAYS.indexOf(TODAY); render(); }
+  if (e.key === 't' || e.key === 'T') { goToToday(); }
 });
 
-HT.initSeasonSwitcher(s => { season = s; loadData(); });
-loadData();
+setView('week');
 </script>
 </body>
 </html>

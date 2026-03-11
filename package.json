@@ -12,6 +12,7 @@
   },
   "license": "UNLICENSED",
   "dependencies": {
+    "googleapis": "^144.0.0",
     "xlsx": "^0.18.5"
   }
 }

@@ -75,6 +75,36 @@ curl "http://localhost:3000/api/stats?season=Spring%202026"
 curl -X POST http://localhost:3000/api/reload
 ```
 
+## Google Calendar Sync (optional)
+
+Create, update, and delete classes in Google Calendar automatically. Coaches with emails in `data/coaches.json` receive calendar invites as attendees. Class details (program, location, participants) are added to the event description. Add or update the `email` field for each coach in `data/coaches.json` to enable invites.
+
+### One-time setup (~10 min)
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com), create a project
+2. Enable **Google Calendar API** (APIs & Services → Library → search "Calendar")
+3. Create a **Service Account**: APIs & Services → Credentials → Create Credentials → Service Account. Download the JSON key
+4. Create a Google Calendar (e.g. "Higgins Tennis") in your Google account
+5. Share that calendar with the service account email (`…@…iam.gserviceaccount.com`) — **Make changes to events**
+6. Save the JSON key as `data/google-credentials.json`
+7. Set the calendar ID: `export GOOGLE_CALENDAR_ID="your-calendar-id@group.calendar.google.com"`
+
+Calendar ID: Open the calendar in Google Calendar → Settings → Integrate calendar → Calendar ID.
+
+### API endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/gcal/status` | `{ configured: true/false }` |
+| `POST /api/gcal/sync` | Bulk sync: create Google events for instances that don't have one yet |
+
+### Behaviour
+
+- **Create** class/event → Google Calendar event created, coaches added as attendees
+- **Update** class/event → Google Calendar event updated
+- **Delete** class/event → Google Calendar event deleted
+- Sync runs in the background; if Google is unreachable, the instance is still saved locally. Use `POST /api/gcal/sync` to retry.
+
 ## Updating the Schedule
 
 1. Export your Google Sheet as CSV
