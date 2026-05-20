@@ -1,0 +1,2408 @@
+// Higgins Tennis NL — database schema
+// Source-of-truth: design/database.md (30 tables, 29 cross-entity rules, 5 ER sub-diagrams)
+//
+// Conventions:
+// - DB column / table names are snake_case (matches design/database.md 1:1)
+// - Prisma client uses camelCase (Prisma idiom)
+// - Mapping is via @map / @@map on every renamed identifier
+// - All UUIDs use Postgres native uuid type
+// - All timestamps use timestamptz (UTC at rest, rendered in Europe/Amsterdam at the display layer per R-cross-cutting)
+//
+// Postgres-only features that Prisma cannot express are added via a hand-edited
+// follow-up migration (see prisma/migrations/<timestamp>_postgres_extras/migration.sql):
+//   - btree_gist extension
+//   - tstzrange `during` generated column on court_bookings
+//   - EXCLUDE constraint on court_bookings (R13 conflict prevention)
+//   - Partial unique index on email_addresses (one primary email per person)
+//
+// people.id == auth.users.id (Supabase) — no separate auth bridge column.
+// On first login, a people row is auto-created with id = supabase auth user id.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+// People
+enum RoleInHousehold {
+  adult
+  child
+
+  @@map("role_in_household")
+}
+
+enum Gender {
+  male
+  female
+  other
+  prefer_not_to_say
+
+  @@map("gender")
+}
+
+enum EmailKind {
+  personal
+  work
+  other
+
+  @@map("email_kind")
+}
+
+enum SkillLevel {
+  // Tenniskids progression (kids)
+  red_1
+  red_2
+  red_3
+  orange_1
+  orange_2
+  orange_3
+  green_1
+  green_2
+  yellow
+
+  // Adult recreational buckets
+  adult_beginner_beginner
+  adult_beginner_intermediate
+  adult_advanced_beginner
+  adult_intermediate
+  adult_advanced
+
+  @@map("skill_level")
+}
+
+/// Audience for CMS-style level descriptions (kids Tenniskids vs adult buckets).
+enum LevelAudience {
+  kids
+  adults
+
+  @@map("level_audience")
+}
+
+enum StudentEnrollmentStatus {
+  active
+  paused
+  archived
+
+  @@map("student_enrollment_status")
+}
+
+enum CoachEmploymentType {
+  employee
+  freelancer
+
+  @@map("coach_employment_type")
+}
+
+/// Admin-generated coach onboarding invite (staff vs ZZP).
+enum CoachInviteRole {
+  staff_coach
+  zzp_coach
+
+  @@map("coach_invite_role")
+}
+
+// Physical infrastructure
+enum ClubOwnershipType {
+  owned
+  leased
+  shared
+
+  @@map("club_ownership_type")
+}
+
+enum CourtSurface {
+  clay
+  grass
+  multi_use
+  hard
+  indoor_hard
+  other
+
+  @@map("court_surface")
+}
+
+enum CourtQualityTier {
+  premium
+  standard
+  practice_only
+  walk_on_only
+
+  @@map("court_quality_tier")
+}
+
+// Memberships
+//
+// `MembershipKind` was dropped on 2026-04-21 — it was a redundant
+// `family|individual` flag that always agreed with `coverage_tier`.
+// Use `coverage_tier` everywhere (`family` ↔ family, `adult|child` ↔
+// individual). See `design/database.md` and the
+// `20260421014500_drop_membership_kind` migration.
+
+/// Per-row coverage tier. Single source of truth for "what kind of
+/// membership is this":
+///   - `adult`  → single individual seat at the adult price
+///   - `child`  → single individual seat at the child price
+///   - `family` → covers the whole household at the chosen clubs
+/// Family rows MUST have `assignedPersonId IS NULL`; individual rows
+/// MUST have a non-null assignee. Enforced at the DB level by the
+/// `memberships_assignment_matches_tier` CHECK constraint installed in
+/// the `20260421013700_membership_constraints` migration.
+enum MembershipCoverageTier {
+  adult
+  child
+  family
+
+  @@map("membership_coverage_tier")
+}
+
+enum MembershipStatus {
+  pending_payment
+  active
+  expired
+  cancelled
+
+  @@map("membership_status")
+}
+
+// Class model
+enum ProgramTargetAudience {
+  kids
+  adults
+  mixed
+
+  @@map("program_target_audience")
+}
+
+enum ClassType {
+  group_lesson
+  high_performance
+  school_pickup
+  school_onsite
+  private_individual
+  private_small_group
+  camp
+  trial
+  event
+
+  @@map("class_type")
+}
+
+/// §2.12a — How a class is delivered. Orthogonal to {@link ClassType}:
+/// - `at_club` — kids come to a Higgins club (Triaz / Randwijck).
+/// - `onsite`  — coach goes to the venue (e.g. school, rented court).
+/// - `pickup`  — coach collects kids from a school and walks/rides to the
+///               destination club.
+enum ClassDeliveryMode {
+  at_club
+  onsite
+  pickup
+
+  @@map("class_delivery_mode")
+}
+
+/// §2.9a — What a {@link Venue} is. `club` venues link back to a Higgins
+/// {@link Club}; `school` venues are places we deliver on-site lessons
+/// at (AICS today); `rented_court` venues are 3rd-party courts we rent
+/// (AJ Ernststraat, VU Sportcentrum) for weather/backup use.
+///
+/// Pickup-only origins (IFS, BSA, AMITY, AICS-as-pickup) live in
+/// {@link School}, not here.
+enum VenueKind {
+  club
+  school
+  rented_court
+
+  @@map("venue_kind")
+}
+
+enum SeasonAudience {
+  youth
+  adult
+
+  @@map("season_audience")
+}
+
+enum DayOfWeek {
+  mon
+  tue
+  wed
+  thu
+  fri
+  sat
+  sun
+
+  @@map("day_of_week")
+}
+
+enum ClassSeriesVisibility {
+  public
+  members_only
+  private_invite
+  school_only
+
+  @@map("class_series_visibility")
+}
+
+enum ClassSeriesStatus {
+  draft
+  published
+  full
+  in_progress
+  completed
+  cancelled
+
+  @@map("class_series_status")
+}
+
+enum ClassSessionStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+
+  @@map("class_session_status")
+}
+
+enum ClassCoachRole {
+  lead
+  assistant
+
+  @@map("class_coach_role")
+}
+
+enum EnrollmentStatus {
+  pending_payment
+  active
+  waitlist
+  withdrawn
+  completed
+
+  @@map("enrollment_status")
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  late
+  excused
+
+  @@map("attendance_status")
+}
+
+enum CoachSubRequestStatus {
+  pending
+  filled
+  cancelled
+  expired
+
+  @@map("coach_sub_request_status")
+}
+
+// Court booking
+enum CourtBookingStatus {
+  confirmed
+  /// Coach requested deletion of a 'coaching' booking; awaiting admin review.
+  /// Slot stays blocked (EXCLUDE covers this) so it can't be re-booked while
+  /// the request is pending.
+  cancellation_requested
+  cancelled
+  completed
+  no_show
+
+  @@map("court_booking_status")
+}
+
+/// What kind of court time this is from the booker's perspective.
+/// Coaches can pick `coaching` to bypass member rules (quota, advance window,
+/// payment, partner min/max) for slots they're using to teach.
+enum BookingPurpose {
+  personal
+  coaching
+
+  @@map("booking_purpose")
+}
+
+enum CourtBookingPaymentStatus {
+  not_required
+  pending
+  paid
+  failed
+  refunded
+
+  @@map("court_booking_payment_status")
+}
+
+enum BookingStartTimeConstraint {
+  any
+  on_the_hour
+  on_the_half_hour
+
+  @@map("booking_start_time_constraint")
+}
+
+enum BookingPartnerCaptureMode {
+  none
+  free_text
+  fk_member
+
+  @@map("booking_partner_capture_mode")
+}
+
+enum BookingConfirmationMode {
+  member_decides
+  auto_email
+
+  @@map("booking_confirmation_mode")
+}
+
+/// Hosted-checkout state while waiting for Mollie (fulfillment runs on webhook).
+enum PaymentCheckoutIntentStatus {
+  open
+  paid
+  failed
+  expired
+  canceled
+
+  @@map("payment_checkout_intent_status")
+}
+
+// Payments (mirrors Mollie statuses 1:1)
+enum PaymentStatus {
+  open
+  pending
+  authorized
+  paid
+  failed
+  expired
+  canceled
+  refunded
+  charged_back
+
+  @@map("payment_status")
+}
+
+// School partnerships
+enum SchoolPartnershipType {
+  pickup
+  onsite
+  both
+
+  @@map("school_partnership_type")
+}
+
+enum SchoolBillingModel {
+  parent_direct
+
+  @@map("school_billing_model")
+}
+
+// Recurring blocks
+enum RecurringBlockPurpose {
+  zzp_coach_rental
+  member_recurring
+  external_partner
+  /// Coach-owned private-lesson series: the coach rents the court on a
+  /// recurring cadence so they can teach a client. Priced at a flat hourly
+  /// rate by admin invoicing; see /admin/private-lessons.
+  coach_private_lesson
+  /// Legacy — was auto-managed from class enrollment; no longer created.
+  class_capacity
+  other
+
+  @@map("recurring_block_purpose")
+}
+
+enum RecurringBlockStatus {
+  pending
+  approved
+  denied
+  active
+  expired
+  cancelled
+
+  @@map("recurring_block_status")
+}
+
+/// Defines who is affected by a recurring block. `full` blocks members and
+/// coaches/admins (default, current behavior). `members_only` blocks members
+/// from booking but lets coaches/admins continue to use the court (e.g. the
+/// "Kids Actief" partnership blocks all courts for members 14-18 but coaches
+/// still teach private lessons on courts 3-4 during that window).
+enum RecurringBlockScope {
+  full
+  members_only
+
+  @@map("recurring_block_scope")
+}
+
+enum InvoiceStatus {
+  not_required
+  pending
+  sent
+  paid
+  waived
+
+  @@map("invoice_status")
+}
+
+// Cross-cutting
+enum AuditAction {
+  insert
+  update
+  delete
+
+  @@map("audit_action")
+}
+
+enum AuditChangeSource {
+  web_app
+  mobile_app
+  api
+  scheduled_job
+  webhook
+  migration
+  admin_console
+
+  @@map("audit_change_source")
+}
+
+enum NotificationChannel {
+  email
+  sms
+  push
+  in_app
+
+  @@map("notification_channel")
+}
+
+enum NotificationStatus {
+  queued
+  sending
+  sent
+  failed
+  bounced
+
+  @@map("notification_status")
+}
+
+enum MollieRefundStatus {
+  pending
+  processing
+  refunded
+  failed
+  canceled
+
+  @@map("mollie_refund_status")
+}
+
+/// Reason a `HouseholdCredit` ledger row was written. Drives the
+/// CHECK constraint that pairs `enrollment_payment` (negative amount,
+/// must reference an enrollment) with the issuing reasons (positive
+/// amount).
+enum HouseholdCreditReason {
+  /// Surplus from a class transfer that the admin chose to bank as credit.
+  transfer_remainder
+  /// Refund-equivalent issued as credit instead of cash.
+  withdrawal_refund
+  /// Manual office adjustment (gift / correction / write-off).
+  admin_adjustment
+  /// Spend: paying for a lesson enrollment with available credit.
+  enrollment_payment
+
+  @@map("household_credit_reason")
+}
+
+// Adult ladder
+enum LadderEntryStatus {
+  active
+  withdrawn
+
+  @@map("ladder_entry_status")
+}
+
+enum LadderMatchStatus {
+  /// Challenger has picked an opponent + slot, but hasn't sent yet (rare).
+  proposed
+  /// Sent to opponent, awaiting accept/decline.
+  awaiting_opponent
+  /// Both confirmed; court auto-booked.
+  scheduled
+  /// Played; one side has reported a score, awaiting the other to confirm.
+  awaiting_confirmation
+  /// Both sides agreed on the score; positions updated.
+  played
+  /// Cancelled before being played (no-show, withdrawal, declined, etc.).
+  cancelled
+  /// One side disputes the reported score; admin must resolve.
+  disputed
+
+  @@map("ladder_match_status")
+}
+
+enum LadderAwardKind {
+  /// Most wins in the calendar month.
+  mvp
+  /// Largest positive position climb (startPosition - currentPosition) in the month.
+  most_improved
+  /// Most matches played in the month.
+  iron_man
+
+  @@map("ladder_award_kind")
+}
+
+// ============================================================================
+// 1. PEOPLE
+// ============================================================================
+
+/// §2.2 — Every human Higgins has any relationship with.
+/// `id` is the same UUID as Supabase `auth.users.id` (no separate bridge column).
+model Person {
+  id                           String    @id @db.Uuid
+  firstName                    String    @map("first_name")
+  lastName                     String    @map("last_name")
+  dateOfBirth                  DateTime? @map("date_of_birth") @db.Date
+  gender                       Gender?
+  phone                        String?
+  // A person's own postal address. For people who live in a multi-person
+  // household the household's address is the canonical mailing address;
+  // these fields exist so that single people (no household) and household
+  // members who live elsewhere (e.g. a teen at boarding school) can still
+  // have a personal address on file.
+  addressLine1                 String?   @map("address_line1")
+  addressLine2                 String?   @map("address_line2")
+  postalCode                   String?   @map("postal_code")
+  city                         String?
+  country                      String    @default("NL")
+  // Free-text emergency contact. Useful for both adults (who's your
+  // partner / next of kin) and minors (the parent's parent / sibling).
+  emergencyContactName         String?   @map("emergency_contact_name")
+  emergencyContactPhone        String?   @map("emergency_contact_phone")
+  emergencyContactRelationship String?   @map("emergency_contact_relationship")
+  passwordHash                 String?   @map("password_hash")
+  lastLoginAt                  DateTime? @map("last_login_at") @db.Timestamptz(6)
+  isAdmin                      Boolean   @default(false) @map("is_admin")
+  notes                        String?
+  archivedAt                   DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt                    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  emails                           EmailAddress[]
+  householdMember                  HouseholdMember?
+  primaryContactForHouseholds      Household[]             @relation("HouseholdPrimaryContact")
+  student                          Student?
+  studentsPreferringThisCoach      Student[]               @relation("StudentPreferredCoach")
+  coach                            Coach?
+  zzpCoach                         ZzpCoach?
+  coachClubAccess                  CoachClubAccess[]
+  coachInvitesSent                 CoachInvite[]           @relation("CoachInviteInvitedBy")
+  coachInvitesAccepted             CoachInvite[]           @relation("CoachInviteAcceptedBy")
+  enrollmentsCreated               Enrollment[]            @relation("EnrollmentCreatedBy")
+  classSessionsCancelled           ClassSession[]          @relation("ClassSessionCancelledBy")
+  classSessionCoachSubstitutions   ClassSessionCoach[]     @relation("ClassSessionCoachSubstitutingFor")
+  coachSubRequestsRequested        CoachSubRequest[]       @relation("CoachSubRequestRequester")
+  coachSubRequestsFilled           CoachSubRequest[]       @relation("CoachSubRequestFilledBy")
+  coachSubRequestsDecided          CoachSubRequest[]       @relation("CoachSubRequestDecidedBy")
+  coachAvailability                CoachAvailability[]
+  attendanceRecorded               Attendance[]            @relation("AttendanceRecordedBy")
+  courtBookings                    CourtBooking[]          @relation("CourtBookingBookedBy")
+  courtBookingsCancelled           CourtBooking[]          @relation("CourtBookingCancelledBy")
+  courtBookingCancellationsDecided CourtBooking[]          @relation("CourtBookingCancellationDecidedBy")
+  courtBookingPartners             CourtBookingPartner[]
+  recurringBlockRequests           RecurringBlock[]        @relation("RecurringBlockRequester")
+  recurringBlockDecisions          RecurringBlock[]        @relation("RecurringBlockDecidedBy")
+  recurringBlockCancellations      RecurringBlock[]        @relation("RecurringBlockCancelledBy")
+  assignedMemberships              Membership[]            @relation("MembershipAssignedTo")
+  membershipCancellationsRequested Membership[]            @relation("MembershipCancellationRequester")
+  membershipsCancelled             Membership[]            @relation("MembershipCancelledBy")
+  payments                         Payment[]               @relation("PaymentPaidBy")
+  paymentCheckoutIntents           PaymentCheckoutIntent[]
+  refundsProcessed                 Refund[]                @relation("RefundProcessedBy")
+  skillHistoryChangesAuthored      StudentSkillHistory[]   @relation("SkillHistoryChangedBy")
+  levelContentsUpdated             LevelContent[]          @relation("LevelContentUpdatedBy")
+  studentLevelProgressAuthored     StudentLevelProgress[]  @relation("StudentLevelProgressAchievedBy")
+  enrollmentLevelReviewsDecided    EnrollmentLevelReview[] @relation("EnrollmentLevelReviewDecidedBy")
+  classUpdatesPosted               ClassUpdate[]           @relation("ClassUpdatePostedBy")
+  auditLogEntriesAuthored          AuditLog[]              @relation("AuditLogChangedBy")
+  notifications                    Notification[]
+  ladderEntries                    LadderEntry[]
+  ladderMatchesReported            LadderMatch[]           @relation("LadderMatchReportedBy")
+  ladderAwards                     LadderAward[]
+  householdCreditsCreated          HouseholdCredit[]       @relation("HouseholdCreditCreatedBy")
+  classTransferRequestsRequested   ClassTransferRequest[]  @relation("ClassTransferRequestRequester")
+  classTransferRequestsDecided     ClassTransferRequest[]  @relation("ClassTransferRequestDecidedBy")
+  calendarFeedTokens               CalendarFeedToken[]
+
+  @@index([archivedAt])
+  @@index([lastName, firstName])
+  @@index([firstName, lastName])
+  @@map("people")
+}
+
+/// §2.2.1 — Multiple emails per person; one is `is_primary`.
+model EmailAddress {
+  id         String    @id @default(uuid()) @db.Uuid
+  personId   String    @map("person_id") @db.Uuid
+  address    String    @unique
+  kind       EmailKind @default(personal)
+  isPrimary  Boolean   @default(false) @map("is_primary")
+  isVerified Boolean   @default(false) @map("is_verified")
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  // Partial unique index `(person_id) WHERE is_primary = true` is added in the
+  // postgres_extras follow-up migration.
+  @@index([personId])
+  @@index([archivedAt])
+  @@map("email_addresses")
+}
+
+/// §2.3 — Family unit a membership is sold to.
+model Household {
+  id                     String    @id @default(uuid()) @db.Uuid
+  displayName            String    @map("display_name")
+  primaryContactPersonId String    @map("primary_contact_person_id") @db.Uuid
+  addressLine1           String?   @map("address_line1")
+  addressLine2           String?   @map("address_line2")
+  postalCode             String?   @map("postal_code")
+  city                   String?
+  country                String    @default("NL")
+  /// Set during signup when a parent indicates they also want to play
+  /// themselves (not just their kids). Drives adult-program recommendations
+  /// on the portal home so parents who don't play don't see clutter.
+  parentAlsoPlays        Boolean   @default(false) @map("parent_also_plays")
+  notes                  String?
+  archivedAt             DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  primaryContact  Person            @relation("HouseholdPrimaryContact", fields: [primaryContactPersonId], references: [id])
+  members         HouseholdMember[]
+  memberships     Membership[]
+  courtBookings   CourtBooking[]
+  recurringBlocks RecurringBlock[]
+  payments        Payment[]
+  credits         HouseholdCredit[]
+
+  @@index([primaryContactPersonId])
+  @@index([archivedAt])
+  @@index([displayName])
+  @@map("households")
+}
+
+/// §2.4 — Join: which people belong to which household with what role.
+model HouseholdMember {
+  id                String          @id @default(uuid()) @db.Uuid
+  householdId       String          @map("household_id") @db.Uuid
+  personId          String          @unique @map("person_id") @db.Uuid
+  roleInHousehold   RoleInHousehold @map("role_in_household")
+  joinedHouseholdOn DateTime        @default(now()) @map("joined_household_on") @db.Date
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  person    Person    @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@map("household_members")
+}
+
+/// §2.5 — Sub-table of people: anyone who actually takes lessons.
+model Student {
+  personId               String                  @id @map("person_id") @db.Uuid
+  skillLevel             SkillLevel?             @map("skill_level")
+  enrollmentStatus       StudentEnrollmentStatus @default(active) @map("enrollment_status")
+  joinedOn               DateTime                @default(now()) @map("joined_on") @db.Date
+  preferredCoachPersonId String?                 @map("preferred_coach_person_id") @db.Uuid
+  // Free-text school name (e.g. "OBS de Kweekvijver"). Most relevant for
+  // children in school-pickup programs; null for adults.
+  school                 String?
+  medicalNotes           String?                 @map("medical_notes")
+  notes                  String?
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  person         Person                 @relation(fields: [personId], references: [id], onDelete: Cascade)
+  preferredCoach Person?                @relation("StudentPreferredCoach", fields: [preferredCoachPersonId], references: [id])
+  enrollments    Enrollment[]
+  attendance     Attendance[]
+  skillHistory   StudentSkillHistory[]
+  levelProgress  StudentLevelProgress[]
+
+  @@index([skillLevel])
+  @@index([enrollmentStatus])
+  @@map("students")
+}
+
+/// §2.5.2 — Permanent audit trail of every skill-level change. Insert-only.
+/// `to_level` may be null when the level is cleared.
+model StudentSkillHistory {
+  id                String      @id @default(uuid()) @db.Uuid
+  studentId         String      @map("student_id") @db.Uuid
+  fromLevel         SkillLevel? @map("from_level")
+  toLevel           SkillLevel? @map("to_level")
+  changedAt         DateTime    @default(now()) @map("changed_at") @db.Timestamptz(6)
+  changedByPersonId String      @map("changed_by_person_id") @db.Uuid
+  reason            String?
+
+  student         Student @relation(fields: [studentId], references: [personId], onDelete: Cascade)
+  changedByPerson Person  @relation("SkillHistoryChangedBy", fields: [changedByPersonId], references: [id])
+
+  @@index([studentId, changedAt])
+  @@map("student_skill_history")
+}
+
+/// Admin-editable descriptions (and optional video URLs) for each skill level,
+/// shown on the shared "What's my level?" pages.
+model LevelContent {
+  skillLevel        SkillLevel    @id @map("skill_level")
+  audience          LevelAudience @map("audience")
+  title             String        @map("title")
+  shortDescription  String?       @map("short_description")
+  longDescription   String        @default("") @map("long_description") @db.Text
+  /// Free-text "what your child needs to show to graduate from this level".
+  /// Sits next to the structured {@link LevelCriterion} checklist so admins
+  /// can write a couple of paragraphs of context for parents while coaches
+  /// drive day-to-day promotion off the criteria ticks.
+  howToGraduate     String?       @map("how_to_graduate") @db.Text
+  videoUrl          String?       @map("video_url")
+  sortOrder         Int           @default(0) @map("sort_order")
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedByPersonId String?       @map("updated_by_person_id") @db.Uuid
+  updatedBy         Person?       @relation("LevelContentUpdatedBy", fields: [updatedByPersonId], references: [id])
+
+  @@index([audience, sortOrder])
+  @@map("level_content")
+}
+
+/// Admin-managed checklist of skills a student must demonstrate to
+/// graduate from one {@link SkillLevel} to the next. Coaches tick rows
+/// off via {@link StudentLevelProgress}; parents see a progress bar
+/// on /portal/family and the full list on /levels/[skillLevel].
+///
+/// `sortOrder` is the canonical display order (low → high). Soft-delete
+/// via `archivedAt` so old criteria stay attached to historical
+/// `StudentLevelProgress` rows without polluting current checklists.
+model LevelCriterion {
+  id          String     @id @default(uuid()) @db.Uuid
+  skillLevel  SkillLevel @map("skill_level")
+  label       String
+  description String?
+  sortOrder   Int        @default(0) @map("sort_order")
+  archivedAt  DateTime?  @map("archived_at") @db.Timestamptz(6)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  studentProgress StudentLevelProgress[]
+
+  @@index([skillLevel, sortOrder])
+  @@index([archivedAt])
+  @@map("level_criteria")
+}
+
+/// Per-student record of which {@link LevelCriterion} the coach has
+/// confirmed. One row per (student, criterion) — re-toggling deletes
+/// the row rather than carrying a boolean. When a student is promoted
+/// past the criterion's level, the row stays as silent history; the
+/// progress UI only counts criteria for the student's *current* level.
+model StudentLevelProgress {
+  id                 String   @id @default(uuid()) @db.Uuid
+  studentId          String   @map("student_id") @db.Uuid
+  criterionId        String   @map("criterion_id") @db.Uuid
+  achievedAt         DateTime @default(now()) @map("achieved_at") @db.Timestamptz(6)
+  achievedByPersonId String   @map("achieved_by_person_id") @db.Uuid
+  note               String?
+
+  student          Student        @relation(fields: [studentId], references: [personId], onDelete: Cascade)
+  criterion        LevelCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  achievedByPerson Person         @relation("StudentLevelProgressAchievedBy", fields: [achievedByPersonId], references: [id])
+
+  @@unique([studentId, criterionId])
+  @@index([studentId])
+  @@index([criterionId])
+  @@map("student_level_progress")
+}
+
+/// A coach's end-of-season call on a single {@link Enrollment}: did
+/// the student stay at their current level, get promoted, or get held
+/// back? One row per enrollment (the final review for the series). The
+/// `/coach/classes/[seriesId]` season-review banner gates on this when
+/// `series.endsOn` is within the next 14 days.
+///
+/// Promoted/demoted rows also drive the {@link Student.skillLevel}
+/// change via the same pipeline as `setStudentSkillLevelAsCoach`, so
+/// `StudentSkillHistory` stays the source of truth.
+model EnrollmentLevelReview {
+  id                String                       @id @default(uuid()) @db.Uuid
+  enrollmentId      String                       @unique @map("enrollment_id") @db.Uuid
+  decidedAt         DateTime                     @default(now()) @map("decided_at") @db.Timestamptz(6)
+  decidedByPersonId String                       @map("decided_by_person_id") @db.Uuid
+  outcome           EnrollmentLevelReviewOutcome
+  fromLevel         SkillLevel?                  @map("from_level")
+  toLevel           SkillLevel?                  @map("to_level")
+  comment           String?
+  createdAt         DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  enrollment      Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  decidedByPerson Person     @relation("EnrollmentLevelReviewDecidedBy", fields: [decidedByPersonId], references: [id])
+
+  @@index([decidedAt])
+  @@index([decidedByPersonId])
+  @@map("enrollment_level_reviews")
+}
+
+enum EnrollmentLevelReviewOutcome {
+  /// Student stays at their current level for the next season.
+  stayed
+  /// Student moves up to the next level.
+  promoted
+  /// Student moves down a level (rare, but supported).
+  demoted
+
+  @@map("enrollment_level_review_outcome")
+}
+
+/// A coach-authored update on a class series — the "here's how today's
+/// session went" surface. Lands in every enrolled parent's inbox via
+/// `notify()` and renders inline on the parent's series page. Optional
+/// `videoUrl` is parsed at create time into a provider + id so the
+/// portal can render a stable embed + thumbnail without re-parsing on
+/// every request. YouTube/Vimeo links only — no native uploads.
+///
+/// `classSessionId` lets a post be tied to a specific session ("Wed at
+/// IFS, the special exercise"); null for series-wide updates.
+model ClassUpdate {
+  id               String                    @id @default(uuid()) @db.Uuid
+  classSeriesId    String                    @map("class_series_id") @db.Uuid
+  classSessionId   String?                   @map("class_session_id") @db.Uuid
+  postedByPersonId String                    @map("posted_by_person_id") @db.Uuid
+  title            String
+  bodyMarkdown     String                    @default("") @map("body_markdown") @db.Text
+  videoUrl         String?                   @map("video_url")
+  videoProvider    ClassUpdateVideoProvider? @map("video_provider")
+  videoId          String?                   @map("video_id")
+  thumbnailUrl     String?                   @map("thumbnail_url")
+  publishedAt      DateTime                  @default(now()) @map("published_at") @db.Timestamptz(6)
+  archivedAt       DateTime?                 @map("archived_at") @db.Timestamptz(6)
+  createdAt        DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  classSeries  ClassSeries   @relation(fields: [classSeriesId], references: [id], onDelete: Cascade)
+  classSession ClassSession? @relation(fields: [classSessionId], references: [id])
+  postedBy     Person        @relation("ClassUpdatePostedBy", fields: [postedByPersonId], references: [id])
+
+  @@index([classSeriesId, publishedAt(sort: Desc)])
+  @@index([classSessionId])
+  @@index([archivedAt])
+  @@map("class_updates")
+}
+
+enum ClassUpdateVideoProvider {
+  youtube
+  vimeo
+
+  @@map("class_update_video_provider")
+}
+
+/// §2.6 — Sub-table of people: HTN coaches (employees + HTN-contracted freelancers).
+model Coach {
+  personId           String              @id @map("person_id") @db.Uuid
+  employmentType     CoachEmploymentType @map("employment_type")
+  defaultHourlyRate  Decimal?            @map("default_hourly_rate") @db.Decimal(10, 2)
+  /// Hourly EUR for private-lesson court rental when invoiced by Higgins; null = global default (see private-lesson-rates).
+  courtRentalRate    Decimal?            @map("court_rental_rate") @db.Decimal(10, 2)
+  knltbQualification String?             @map("knltb_qualification")
+  bio                String?
+  photoUrl           String?             @map("photo_url")
+  isActive           Boolean             @default(true) @map("is_active")
+  joinedOn           DateTime            @map("joined_on") @db.Date
+  notes              String?
+  archivedAt         DateTime?           @map("archived_at") @db.Timestamptz(6)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Optional default lesson location (club / school venue). Null = not set.
+  primaryVenueId     String?             @map("primary_venue_id") @db.Uuid
+
+  person                  Person              @relation(fields: [personId], references: [id], onDelete: Cascade)
+  primaryVenue            Venue?              @relation("CoachPrimaryVenue", fields: [primaryVenueId], references: [id], onDelete: SetNull)
+  classSeriesAssignments  ClassSeriesCoach[]
+  classSessionAssignments ClassSessionCoach[]
+
+  @@index([isActive])
+  @@index([archivedAt])
+  @@index([primaryVenueId])
+  @@map("coaches")
+}
+
+/// §2.7 — Sub-table of people: external freelance coaches who rent court time.
+model ZzpCoach {
+  personId               String    @id @map("person_id") @db.Uuid
+  businessName           String?   @map("business_name")
+  vatNumber              String?   @map("vat_number")
+  defaultCourtRentalRate Decimal?  @map("default_court_rental_rate") @db.Decimal(10, 2)
+  contractStart          DateTime? @map("contract_start") @db.Date
+  contractEnd            DateTime? @map("contract_end") @db.Date
+  isActive               Boolean   @default(true) @map("is_active")
+  notes                  String?
+  archivedAt             DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([isActive])
+  @@index([archivedAt])
+  @@map("zzp_coaches")
+}
+
+/// Which clubs a coach (staff or ZZP) may access. Empty rows for a person = all clubs.
+model CoachClubAccess {
+  personId  String   @map("person_id") @db.Uuid
+  clubId    String   @map("club_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@id([personId, clubId])
+  @@map("coach_club_access")
+}
+
+/// Pending or completed admin-generated invites for coach accounts.
+model CoachInvite {
+  id             String          @id @default(uuid()) @db.Uuid
+  token          String          @unique
+  email          String
+  firstName      String?         @map("first_name")
+  lastName       String?         @map("last_name")
+  role           CoachInviteRole
+  allowedClubIds String[]        @map("allowed_club_ids") @db.Uuid
+  invitedById    String          @map("invited_by_id") @db.Uuid
+  expiresAt      DateTime        @map("expires_at") @db.Timestamptz(6)
+  acceptedAt     DateTime?       @map("accepted_at") @db.Timestamptz(6)
+  acceptedById   String?         @map("accepted_by_id") @db.Uuid
+  revokedAt      DateTime?       @map("revoked_at") @db.Timestamptz(6)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  invitedBy  Person  @relation("CoachInviteInvitedBy", fields: [invitedById], references: [id])
+  acceptedBy Person? @relation("CoachInviteAcceptedBy", fields: [acceptedById], references: [id])
+
+  @@index([email])
+  @@index([acceptedAt])
+  @@map("coach_invites")
+}
+
+/// A single recurring weekly availability window declared by a coach
+/// (staff or ZZP). Coaches use this to advertise "I can teach Mon
+/// 16:00-21:00 + Sat 09:00-13:00" so the office can avoid pinging them
+/// for subs / new lessons outside those hours. Times are minutes-of-day
+/// in Europe/Amsterdam local time (0..1439). Empty rows for a person =
+/// no preferences declared (treat as fully flexible).
+model CoachAvailability {
+  id          String   @id @default(uuid()) @db.Uuid
+  personId    String   @map("person_id") @db.Uuid
+  /// 0=Mon..6=Sun, matching `amsterdamDayOfWeek()` in src/lib/booking/time.ts.
+  dayOfWeek   Int      @map("day_of_week")
+  startMinute Int      @map("start_minute")
+  endMinute   Int      @map("end_minute")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId])
+  @@index([dayOfWeek])
+  @@map("coach_availability")
+}
+
+/// §2.8 — Household's right to enroll students + book courts.
+model Membership {
+  id                              String                 @id @default(uuid()) @db.Uuid
+  householdId                     String                 @map("household_id") @db.Uuid
+  assignedPersonId                String?                @map("assigned_person_id") @db.Uuid
+  coverageTier                    MembershipCoverageTier @map("coverage_tier")
+  startsOn                        DateTime               @map("starts_on") @db.Date
+  expiresOn                       DateTime               @map("expires_on") @db.Date
+  status                          MembershipStatus
+  pricePaid                       Decimal?               @map("price_paid") @db.Decimal(10, 2)
+  paidAt                          DateTime?              @map("paid_at") @db.Timestamptz(6)
+  invoiceNumber                   String?                @unique @map("invoice_number")
+  invoicedAt                      DateTime?              @map("invoiced_at") @db.Timestamptz(6)
+  cancellationRequestedAt         DateTime?              @map("cancellation_requested_at") @db.Timestamptz(6)
+  cancellationRequestedReason     String?                @map("cancellation_requested_reason")
+  cancellationRequestedByPersonId String?                @map("cancellation_requested_by_person_id") @db.Uuid
+  cancelledAt                     DateTime?              @map("cancelled_at") @db.Timestamptz(6)
+  cancelledByPersonId             String?                @map("cancelled_by_person_id") @db.Uuid
+  cancellationDenialReason        String?                @map("cancellation_denial_reason")
+  refundRequestedAt               DateTime?              @map("refund_requested_at") @db.Timestamptz(6)
+  createdAt                       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                       DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  household             Household        @relation(fields: [householdId], references: [id])
+  assignedPerson        Person?          @relation("MembershipAssignedTo", fields: [assignedPersonId], references: [id])
+  cancellationRequester Person?          @relation("MembershipCancellationRequester", fields: [cancellationRequestedByPersonId], references: [id])
+  cancelledByPerson     Person?          @relation("MembershipCancelledBy", fields: [cancelledByPersonId], references: [id])
+  membershipClubs       MembershipClub[]
+  paymentLines          PaymentLine[]
+  // Postgres-side generated column `active_window` (daterange) and the
+  // M1–M5 trigger/EXCLUDE constraints live in the
+  // `20260421013700_membership_constraints` migration. Prisma can't
+  // express GENERATED ALWAYS AS or constraint triggers, so we keep
+  // those out of the schema and let `prisma db pull` ignore them.
+
+  @@index([householdId])
+  @@index([assignedPersonId])
+  @@index([status])
+  @@index([expiresOn])
+  @@index([cancellationRequestedAt])
+  @@map("memberships")
+}
+
+// ============================================================================
+// 2. PHYSICAL INFRASTRUCTURE
+// ============================================================================
+
+/// §2.9 — A physical place where Higgins owns or manages courts.
+model Club {
+  id            String            @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String            @unique
+  ownershipType ClubOwnershipType @map("ownership_type")
+  addressLine1  String?           @map("address_line1")
+  postalCode    String?           @map("postal_code")
+  city          String?
+  country       String            @default("NL")
+  latitude      Decimal?          @db.Decimal(10, 7)
+  longitude     Decimal?          @db.Decimal(10, 7)
+  notes         String?
+  isActive      Boolean           @default(true) @map("is_active")
+  archivedAt    DateTime?         @map("archived_at") @db.Timestamptz(6)
+  displayOrder  Int               @default(0) @map("display_order")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  courts             Court[]
+  bookingSettings    BookingSettings?
+  membershipClubs    MembershipClub[]
+  classSeries        ClassSeries[]
+  venues             Venue[]
+  courtBookings      CourtBooking[]
+  recurringBlocks    RecurringBlock[]
+  coachClubAccess    CoachClubAccess[]
+  ladderAvailability LadderAvailability[]
+
+  @@map("clubs")
+}
+
+/// §2.10 — A single playable court at a club.
+model Court {
+  id                String           @id @default(uuid()) @db.Uuid
+  clubId            String           @map("club_id") @db.Uuid
+  name              String
+  displayOrder      Int              @map("display_order")
+  surface           CourtSurface
+  qualityTier       CourtQualityTier @map("quality_tier")
+  isKnltbCertified  Boolean          @default(false) @map("is_knltb_certified")
+  isBookable        Boolean          @default(true) @map("is_bookable")
+  isLit             Boolean          @default(false) @map("is_lit")
+  isCoveredOrIndoor Boolean          @default(false) @map("is_covered_or_indoor")
+  isActive          Boolean          @default(true) @map("is_active")
+  notes             String?
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  club                     Club                @relation(fields: [clubId], references: [id])
+  classSeriesAsDefault     ClassSeries[]
+  classSessionsAsOverride  ClassSession[]
+  courtBookings            CourtBooking[]
+  recurringBlocks          RecurringBlock[]
+  schoolPartnershipsPickup SchoolPartnership[]
+
+  @@unique([clubId, name])
+  @@index([clubId])
+  @@map("courts")
+}
+
+/// §2.10a — A lesson location.
+///
+/// Covers every site where a class can physically be played: Triaz /
+/// Randwijck (own clubs), AICS (on-site school venue), AJ Ernststraat /
+/// VU Sportcentrum (rented indoor backups). Venues of `kind = club` link
+/// back to the owning {@link Club}.
+///
+/// Pickup-only origin schools (IFS, BSA, AMITY) do *not* live here — see
+/// {@link School}. AICS is deliberately in both tables.
+///
+/// Timing lives on {@link School} for pickup classes (via
+/// `coachArriveAtHubMinutes` = travel time from the Triaz hub to the
+/// school). For at-club / onsite classes the coach arrives at
+/// `startTime`; there is no per-venue setup buffer.
+model Venue {
+  id           String    @id @default(uuid()) @db.Uuid
+  slug         String    @unique
+  name         String
+  kind         VenueKind
+  addressLine1 String?   @map("address_line1")
+  addressLine2 String?   @map("address_line2")
+  postalCode   String?   @map("postal_code")
+  city         String?
+  country      String    @default("NL")
+  clubId       String?   @map("club_id") @db.Uuid
+  notes        String?
+  isActive     Boolean   @default(true) @map("is_active")
+  archivedAt   DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  club        Club?         @relation(fields: [clubId], references: [id])
+  classSeries ClassSeries[]
+  coachesWithPrimaryVenue Coach[] @relation("CoachPrimaryVenue")
+
+  @@index([clubId])
+  @@index([kind])
+  @@map("venues")
+}
+
+/// §2.10b — A pickup-only location (a school where we collect kids before
+/// class). Distinct from {@link Venue} because schools like IFS, BSA, and
+/// AMITY are *never* lesson locations — we just fetch the kids and ride
+/// them back to a real court. AICS is deliberately in both tables because
+/// it's the only site that is both a pickup origin and an on-site venue.
+///
+/// `coachArriveAtHubMinutes` is "minutes before `pickupAt` the coach must
+/// already be at the Triaz hub to grab the gocab/stint". Different schools
+/// have different distances, which is why this lives on School and not on
+/// the venue.
+model School {
+  id                      String    @id @default(uuid()) @db.Uuid
+  slug                    String    @unique
+  name                    String
+  coachArriveAtHubMinutes Int       @default(30) @map("coach_arrive_at_hub_minutes")
+  notes                   String?
+  isActive                Boolean   @default(true) @map("is_active")
+  archivedAt              DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  classSeries ClassSeries[]
+
+  @@map("schools")
+}
+
+/// §2.11 — Many-to-many join: which clubs a membership covers.
+model MembershipClub {
+  id           String   @id @default(uuid()) @db.Uuid
+  membershipId String   @map("membership_id") @db.Uuid
+  clubId       String   @map("club_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  club       Club       @relation(fields: [clubId], references: [id])
+
+  @@unique([membershipId, clubId])
+  @@index([clubId])
+  @@map("membership_clubs")
+}
+
+// ============================================================================
+// 3. CLASS MODEL
+// ============================================================================
+
+/// §2.12.1 — The catalog. What parents see when picking lessons.
+model Program {
+  id                  String                @id @default(uuid()) @db.Uuid
+  name                String
+  slug                String                @unique
+  targetAudience      ProgramTargetAudience @map("target_audience")
+  defaultClassType    ClassType             @map("default_class_type")
+  descriptionPublic   String?               @map("description_public")
+  descriptionInternal String?               @map("description_internal")
+  coverImageUrl       String?               @map("cover_image_url")
+  isPubliclyListed    Boolean               @default(true) @map("is_publicly_listed")
+  isActive            Boolean               @default(true) @map("is_active")
+  displayOrder        Int                   @default(0) @map("display_order")
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  classSeries ClassSeries[]
+
+  @@map("programs")
+}
+
+/// §2.12.2 — A manual label grouping class series (e.g. "Spring 2026").
+/// Name and slug are admin-authored. Youth rows require a date window;
+/// adult rows may omit dates and only serve as naming tags. Enrollment
+/// windows live on `class_series`, not here.
+model Season {
+  id                   String         @id @default(uuid()) @db.Uuid
+  name                 String
+  slug                 String         @unique
+  audience             SeasonAudience
+  startsOn             DateTime?      @map("starts_on") @db.Date
+  endsOn               DateTime?      @map("ends_on") @db.Date
+  defaultExcludedDates DateTime[]     @map("default_excluded_dates") @db.Date
+  isActive             Boolean        @default(true) @map("is_active")
+  notes                String?
+  archivedAt           DateTime?      @map("archived_at") @db.Timestamptz(6)
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  classSeries ClassSeries[]
+
+  @@index([startsOn, endsOn])
+  @@map("seasons")
+}
+
+/// §2.12.3 — The class recipe (recurring pattern).
+model ClassSeries {
+  id                         String                @id @default(uuid()) @db.Uuid
+  programId                  String                @map("program_id") @db.Uuid
+  /// Season is a pure naming label (Spring 1, Spring 2, Year-long, …).
+  /// Optional - dates are driven by `startsOn`/`endsOn`/`excludedDates`,
+  /// never by the season's `defaultExcludedDates`.
+  seasonId                   String?               @map("season_id") @db.Uuid
+  name                       String
+  /// Optional manual override. When `null`, `name` is auto-derived
+  /// from the series' parameters (program audience, delivery mode,
+  /// venue/school, day/time, season + year, ages or adult levels,
+  /// sub-groups) by `deriveSeriesName` and the server rewrites it on
+  /// every save. When non-null, the server skips derivation and
+  /// stores this string verbatim in `name`. Used as the escape hatch
+  /// for one-off classes whose deterministic name doesn't fit (e.g.
+  /// charity events, named clinics).
+  nameOverride               String?               @map("name_override")
+  classType                  ClassType             @map("class_type")
+  /// How the class is delivered (kids come to us, we go to them, or
+  /// coach picks kids up at a school). Drives coach-arrive / pickup
+  /// time display.
+  deliveryMode               ClassDeliveryMode     @default(at_club) @map("delivery_mode")
+  /// Where the class is played. Always a real venue (Triaz / Randwijck /
+  /// AICS today). For pickup mode, this is the *destination* — where the
+  /// kids are riding to. For at-club / onsite, the class just runs here.
+  venueId                    String                @map("venue_id") @db.Uuid
+  /// Pickup mode only: the school the coach collects the kids from. Null
+  /// for at-club / onsite modes.
+  schoolId                   String?               @map("school_id") @db.Uuid
+  clubId                     String?               @map("club_id") @db.Uuid
+  defaultCourtId             String?               @map("default_court_id") @db.Uuid
+  schoolPartnershipId        String?               @map("school_partnership_id") @db.Uuid
+  venueText                  String?               @map("venue_text")
+  dayOfWeek                  DayOfWeek?            @map("day_of_week")
+  startTime                  DateTime              @map("start_time") @db.Time(6)
+  endTime                    DateTime              @map("end_time") @db.Time(6)
+  /// Pickup mode only: kids-out-of-school time (HH:MM). Coach must be at
+  /// Triaz `school.coachArriveAtHubMinutes` earlier to grab the
+  /// gocab/stint. Class starts at `startTime` once the coach has ridden
+  /// back from the school.
+  pickupAt                   DateTime?             @map("pickup_at") @db.Time(6)
+  recurrenceRule             String?               @map("recurrence_rule")
+  startsOn                   DateTime              @map("starts_on") @db.Date
+  endsOn                     DateTime              @map("ends_on") @db.Date
+  excludedDates              DateTime[]            @map("excluded_dates") @db.Date
+  maxStudents                Int                   @map("max_students")
+  minStudents                Int?                  @map("min_students")
+  waitlistEnabled            Boolean               @default(true) @map("waitlist_enabled")
+  eligibleSkillLevels        SkillLevel[]          @map("eligible_skill_levels")
+  minAge                     Int?                  @map("min_age")
+  maxAge                     Int?                  @map("max_age")
+  visibility                 ClassSeriesVisibility @default(public)
+  enrollmentOpensAt          DateTime?             @map("enrollment_opens_at") @db.Timestamptz(6)
+  enrollmentClosesAt         DateTime?             @map("enrollment_closes_at") @db.Timestamptz(6)
+  pricePerSession            Decimal?              @map("price_per_session") @db.Decimal(10, 2)
+  pricePerSeries             Decimal?              @map("price_per_series") @db.Decimal(10, 2)
+  /// Optional priced tiers for one-off events (e.g. standard vs member).
+  /// JSON array: `{ id, label, amountEur, note?, forMembers? }[]`.
+  /// Primary checkout price stays on `pricePerSeries` (first / non-member tier).
+  pricingTiers               Json?                 @map("pricing_tiers") @db.JsonB
+  defaultCoachPayRate        Decimal?              @map("default_coach_pay_rate") @db.Decimal(10, 2)
+  defaultCourtCostPerSession Decimal?              @map("default_court_cost_per_session") @db.Decimal(10, 2)
+  status                     ClassSeriesStatus     @default(draft)
+  publicNotes                String?               @map("public_notes")
+  internalNotes              String?               @map("internal_notes")
+  /// Optional WhatsApp group invite link (chat.whatsapp.com/...). Surfaced
+  /// in the enrolled-student view and confirmation emails so families can
+  /// jump straight into the parents/players group chat for that series.
+  whatsappUrl                String?               @map("whatsapp_url")
+  /// Optional hero image shown at the top of the class page that
+  /// parents see when deciding whether to sign up. Uploaded via the
+  /// class-series form; stored as a public URL in the `org-media`
+  /// bucket. NULL means "fall back to the program's cover image".
+  coverImageUrl              String?               @map("cover_image_url")
+  publishedAt                DateTime?             @map("published_at") @db.Timestamptz(6)
+  archivedAt                 DateTime?             @map("archived_at") @db.Timestamptz(6)
+  createdAt                  DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  program           Program                @relation(fields: [programId], references: [id])
+  season            Season?                @relation(fields: [seasonId], references: [id])
+  venue             Venue                  @relation(fields: [venueId], references: [id])
+  school            School?                @relation(fields: [schoolId], references: [id])
+  club              Club?                  @relation(fields: [clubId], references: [id])
+  defaultCourt      Court?                 @relation(fields: [defaultCourtId], references: [id])
+  schoolPartnership SchoolPartnership?     @relation(fields: [schoolPartnershipId], references: [id])
+  sessions          ClassSession[]
+  coaches           ClassSeriesCoach[]
+  enrollments       Enrollment[]
+  capacityBlocks    RecurringBlock[]
+  groups            ClassSeriesGroup[]
+  transferRequests  ClassTransferRequest[] @relation("ClassTransferRequestedTarget")
+  updates           ClassUpdate[]
+
+  @@index([programId])
+  @@index([seasonId])
+  @@index([venueId])
+  @@index([schoolId])
+  @@index([clubId])
+  @@index([status])
+  @@index([startsOn])
+  @@map("class_series")
+}
+
+/// §2.12.3.1 — A sub-group inside a ClassSeries. Every series has at
+/// least one group; "split classes" (e.g. Wed AICS pickup with 7-9 yo
+/// finishing earlier than 9-12 yo) get N>1 groups, each with their own
+/// end time, age band, level filter, and capacity.
+///
+/// `endTime` must be ≤ `series.endTime`. The series-level `endTime`
+/// remains the union footprint (used for court blocks / calendar span).
+model ClassSeriesGroup {
+  id                  String       @id @default(uuid()) @db.Uuid
+  classSeriesId       String       @map("class_series_id") @db.Uuid
+  name                String
+  displayOrder        Int          @default(0) @map("display_order")
+  minAge              Int?         @map("min_age")
+  maxAge              Int?         @map("max_age")
+  eligibleSkillLevels SkillLevel[] @map("eligible_skill_levels")
+  endTime             DateTime     @map("end_time") @db.Time(6)
+  maxStudents         Int          @map("max_students")
+  minStudents         Int?         @map("min_students")
+  internalNotes       String?      @map("internal_notes")
+  archivedAt          DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  classSeries   ClassSeries              @relation(fields: [classSeriesId], references: [id], onDelete: Cascade)
+  enrollments   Enrollment[]
+  coachScopes   ClassSeriesCoachGroup[]
+  sessionScopes ClassSessionCoachGroup[]
+
+  @@index([classSeriesId])
+  @@map("class_series_groups")
+}
+
+/// §2.12.4 — A specific dated occurrence of a class series.
+model ClassSession {
+  id                  String             @id @default(uuid()) @db.Uuid
+  classSeriesId       String             @map("class_series_id") @db.Uuid
+  startsAt            DateTime           @map("starts_at") @db.Timestamptz(6)
+  endsAt              DateTime           @map("ends_at") @db.Timestamptz(6)
+  courtId             String?            @map("court_id") @db.Uuid
+  venueText           String?            @map("venue_text")
+  status              ClassSessionStatus @default(scheduled)
+  cancellationReason  String?            @map("cancellation_reason")
+  cancelledAt         DateTime?          @map("cancelled_at") @db.Timestamptz(6)
+  cancelledByPersonId String?            @map("cancelled_by_person_id") @db.Uuid
+  makeupSessionId     String?            @map("makeup_session_id") @db.Uuid
+  sessionNotes        String?            @map("session_notes")
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  classSeries       ClassSeries         @relation(fields: [classSeriesId], references: [id], onDelete: Cascade)
+  court             Court?              @relation(fields: [courtId], references: [id])
+  cancelledByPerson Person?             @relation("ClassSessionCancelledBy", fields: [cancelledByPersonId], references: [id])
+  makeupSession     ClassSession?       @relation("ClassSessionMakeup", fields: [makeupSessionId], references: [id])
+  cancelledSessions ClassSession[]      @relation("ClassSessionMakeup")
+  coaches           ClassSessionCoach[]
+  attendance        Attendance[]
+  coachSubRequests  CoachSubRequest[]
+  updates           ClassUpdate[]
+
+  @@index([classSeriesId])
+  @@index([startsAt])
+  @@index([status])
+  @@index([courtId])
+  @@map("class_sessions")
+}
+
+/// §2.12.5 — Default coach lineup for a series.
+model ClassSeriesCoach {
+  id                   String         @id @default(uuid()) @db.Uuid
+  classSeriesId        String         @map("class_series_id") @db.Uuid
+  coachPersonId        String         @map("coach_person_id") @db.Uuid
+  role                 ClassCoachRole
+  /// Pickup-mode classes only: when false, this coach skips the
+  /// gocab leave-Triaz anchor and is expected on court at class
+  /// start instead. Ignored for at-club / onsite delivery modes.
+  participatesInPickup Boolean        @default(true) @map("participates_in_pickup")
+  payRateOverride      Decimal?       @map("pay_rate_override") @db.Decimal(10, 2)
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  classSeries ClassSeries             @relation(fields: [classSeriesId], references: [id], onDelete: Cascade)
+  coach       Coach                   @relation(fields: [coachPersonId], references: [personId])
+  groupScopes ClassSeriesCoachGroup[]
+
+  @@unique([classSeriesId, coachPersonId])
+  @@index([coachPersonId])
+  @@map("class_series_coaches")
+}
+
+/// §2.12.5.1 — Optional per-coach group scope. Empty rows for a coach
+/// mean "teaches all sub-groups" (block ends at series.endTime). One
+/// or more rows narrow the coach's calendar block end to the latest
+/// `endTime` among assigned groups.
+model ClassSeriesCoachGroup {
+  id                 String   @id @default(uuid()) @db.Uuid
+  classSeriesCoachId String   @map("class_series_coach_id") @db.Uuid
+  groupId            String   @map("group_id") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  classSeriesCoach ClassSeriesCoach @relation(fields: [classSeriesCoachId], references: [id], onDelete: Cascade)
+  group            ClassSeriesGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([classSeriesCoachId, groupId])
+  @@index([groupId])
+  @@map("class_series_coach_groups")
+}
+
+/// §2.12.6 — Per-session coach overrides (sub coaches, extras).
+model ClassSessionCoach {
+  id                      String         @id @default(uuid()) @db.Uuid
+  classSessionId          String         @map("class_session_id") @db.Uuid
+  coachPersonId           String         @map("coach_person_id") @db.Uuid
+  role                    ClassCoachRole
+  isSubstitute            Boolean        @default(false) @map("is_substitute")
+  substitutingForPersonId String?        @map("substituting_for_person_id") @db.Uuid
+  /// One-off override for `participatesInPickup`. NULL = inherit from
+  /// the corresponding ClassSeriesCoach row. Only meaningful for
+  /// pickup-mode series.
+  participatesInPickup    Boolean?       @map("participates_in_pickup")
+  payRateOverride         Decimal?       @map("pay_rate_override") @db.Decimal(10, 2)
+  createdAt               DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  classSession    ClassSession             @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+  coach           Coach                    @relation(fields: [coachPersonId], references: [personId])
+  substitutingFor Person?                  @relation("ClassSessionCoachSubstitutingFor", fields: [substitutingForPersonId], references: [id])
+  groupScopes     ClassSessionCoachGroup[]
+
+  @@unique([classSessionId, coachPersonId])
+  @@index([coachPersonId])
+  @@map("class_session_coaches")
+}
+
+/// §2.12.6.1 — Per-session coach->group scope override. Mirrors
+/// ClassSeriesCoachGroup but at the single-occurrence level so a sub
+/// can take only the early sub-group, etc.
+model ClassSessionCoachGroup {
+  id                  String   @id @default(uuid()) @db.Uuid
+  classSessionCoachId String   @map("class_session_coach_id") @db.Uuid
+  groupId             String   @map("group_id") @db.Uuid
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  classSessionCoach ClassSessionCoach @relation(fields: [classSessionCoachId], references: [id], onDelete: Cascade)
+  group             ClassSeriesGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([classSessionCoachId, groupId])
+  @@index([groupId])
+  @@map("class_session_coach_groups")
+}
+
+/// §2.12.6.5 — A coach's request to be subbed for a single session.
+/// `pending` rows are surfaced in the office inbox; admin assigns a
+/// substitute by inserting a `ClassSessionCoach` row with `isSubstitute=true`
+/// and flipping the request to `filled`. `cancelled` rows are requester-
+/// driven; `expired` rows are for a future cron once the session has passed.
+model CoachSubRequest {
+  id                     String                @id @default(uuid()) @db.Uuid
+  classSessionId         String                @map("class_session_id") @db.Uuid
+  requesterCoachPersonId String                @map("requester_coach_person_id") @db.Uuid
+  reason                 String
+  status                 CoachSubRequestStatus @default(pending)
+  filledByCoachPersonId  String?               @map("filled_by_coach_person_id") @db.Uuid
+  filledAt               DateTime?             @map("filled_at") @db.Timestamptz(6)
+  cancelledAt            DateTime?             @map("cancelled_at") @db.Timestamptz(6)
+  decidedByPersonId      String?               @map("decided_by_person_id") @db.Uuid
+  adminNote              String?               @map("admin_note")
+  createdAt              DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  classSession    ClassSession @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+  requesterCoach  Person       @relation("CoachSubRequestRequester", fields: [requesterCoachPersonId], references: [id])
+  filledByCoach   Person?      @relation("CoachSubRequestFilledBy", fields: [filledByCoachPersonId], references: [id])
+  decidedByPerson Person?      @relation("CoachSubRequestDecidedBy", fields: [decidedByPersonId], references: [id])
+
+  @@index([classSessionId])
+  @@index([requesterCoachPersonId])
+  @@index([status])
+  @@map("coach_sub_requests")
+}
+
+/// §2.12.7 — A student's enrollment in a class series.
+model Enrollment {
+  id                            String           @id @default(uuid()) @db.Uuid
+  classSeriesId                 String           @map("class_series_id") @db.Uuid
+  /// Required once the migration backfills default groups; the
+  /// portal/admin enrollment actions pick the group up front. Kept
+  /// nullable in Prisma for legacy rows in case rollback happens.
+  groupId                       String?          @map("group_id") @db.Uuid
+  studentPersonId               String           @map("student_person_id") @db.Uuid
+  status                        EnrollmentStatus @default(pending_payment)
+  enrolledOn                    DateTime         @default(now()) @map("enrolled_on") @db.Date
+  enrolledByPersonId            String           @map("enrolled_by_person_id") @db.Uuid
+  withdrawnOn                   DateTime?        @map("withdrawn_on") @db.Date
+  withdrawalReason              String?          @map("withdrawal_reason")
+  pricePaid                     Decimal?         @map("price_paid") @db.Decimal(10, 2)
+  // Snapshot of the membership add-on quoted to the parent at enrollment
+  // time. Null when the student already had a covering membership (no
+  // add-on shown) or when the enrollment is a waitlist row that hasn't
+  // been priced yet. See computeEnrollmentPricing for the math.
+  priceMembershipAddOn          Decimal?         @map("price_membership_add_on") @db.Decimal(10, 2)
+  // Number of sessions still ahead of `enrolledOn`. Together with
+  // `pricePaid` this lets the office reconstruct the proration math
+  // forever (sessionsRemaining / totalSessions * fullPrice). Null on
+  // waitlist rows for the same reason as above.
+  sessionsRemainingAtEnrollment Int?             @map("sessions_remaining_at_enrollment")
+  paymentId                     String?          @map("payment_id") @db.Uuid
+  internalNotes                 String?          @map("internal_notes")
+  /// When a parent withdraws after paying (and before the series starts),
+  /// `withdrawEnrollment` flags the row for admin refund review. Admins
+  /// resolve via the /admin/payments + /admin/inbox surfaces.
+  refundRequestedAt             DateTime?        @map("refund_requested_at") @db.Timestamptz(6)
+  refundRequestedReason         String?          @map("refund_requested_reason")
+  /// Heather feedback v1: when a parent enrolls a child whose age sits
+  /// outside the configured age band, the portal lets them push through
+  /// with an explicit override. We mark the row for admin review so the
+  /// office can confirm with the family before the lesson starts.
+  /// Cleared when an admin approves (or withdraws) the row.
+  requiresReview                Boolean          @default(false) @map("requires_review")
+  /// Free-form context for `requiresReview`. Today the only producer is
+  /// "age_override:<student_age>:<group_band>", but kept as text so we
+  /// can grow other manual review reasons (skill gap, capacity exception,
+  /// …) without another schema change.
+  reviewReason                  String?          @map("review_reason")
+  createdAt                     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  classSeries       ClassSeries            @relation(fields: [classSeriesId], references: [id], onDelete: Cascade)
+  group             ClassSeriesGroup?      @relation(fields: [groupId], references: [id])
+  student           Student                @relation(fields: [studentPersonId], references: [personId])
+  enrolledByPerson  Person                 @relation("EnrollmentCreatedBy", fields: [enrolledByPersonId], references: [id])
+  payment           Payment?               @relation(fields: [paymentId], references: [id])
+  paymentLines      PaymentLine[]
+  creditLedger      HouseholdCredit[]
+  transfersFromThis ClassTransferRequest[] @relation("ClassTransferFromEnrollment")
+  transfersToThis   ClassTransferRequest[] @relation("ClassTransferResultEnrollment")
+  levelReview       EnrollmentLevelReview?
+
+  @@unique([classSeriesId, studentPersonId])
+  @@index([studentPersonId])
+  @@index([status])
+  @@index([refundRequestedAt])
+  @@index([groupId])
+  @@index([requiresReview])
+  @@map("enrollments")
+}
+
+/// §2.12.8 — Per-session per-student attendance.
+model Attendance {
+  id                 String           @id @default(uuid()) @db.Uuid
+  classSessionId     String           @map("class_session_id") @db.Uuid
+  studentPersonId    String           @map("student_person_id") @db.Uuid
+  status             AttendanceStatus
+  notes              String?
+  recordedByPersonId String           @map("recorded_by_person_id") @db.Uuid
+  recordedAt         DateTime         @default(now()) @map("recorded_at") @db.Timestamptz(6)
+
+  classSession     ClassSession @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+  student          Student      @relation(fields: [studentPersonId], references: [personId])
+  recordedByPerson Person       @relation("AttendanceRecordedBy", fields: [recordedByPersonId], references: [id])
+
+  @@unique([classSessionId, studentPersonId])
+  @@index([studentPersonId])
+  @@map("attendance")
+}
+
+// ============================================================================
+// 4. COURT BOOKING
+// ============================================================================
+
+/// §2.13.1 — A single member's reservation of a court for a 1-hour slot.
+/// `during` (tstzrange) and the EXCLUDE constraint live in the postgres_extras migration.
+model CourtBooking {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  courtId             String                    @map("court_id") @db.Uuid
+  clubId              String                    @map("club_id") @db.Uuid
+  startsAt            DateTime                  @map("starts_at") @db.Timestamptz(6)
+  endsAt              DateTime                  @map("ends_at") @db.Timestamptz(6)
+  bookedByPersonId    String                    @map("booked_by_person_id") @db.Uuid
+  bookedByHouseholdId String?                   @map("booked_by_household_id") @db.Uuid
+  needsLights         Boolean                   @default(false) @map("needs_lights")
+  priceCharged        Decimal?                  @map("price_charged") @db.Decimal(10, 2)
+  paymentId           String?                   @map("payment_id") @db.Uuid
+  paymentStatus       CourtBookingPaymentStatus @default(not_required) @map("payment_status")
+  purpose             BookingPurpose            @default(personal)
+  status              CourtBookingStatus        @default(confirmed)
+  cancelledAt         DateTime?                 @map("cancelled_at") @db.Timestamptz(6)
+  cancelledByPersonId String?                   @map("cancelled_by_person_id") @db.Uuid
+  cancellationReason  String?                   @map("cancellation_reason")
+
+  /// Coach-deletion-approval workflow (coaching bookings only).
+  cancellationRequestedAt       DateTime? @map("cancellation_requested_at") @db.Timestamptz(6)
+  cancellationDecisionAt        DateTime? @map("cancellation_decision_at") @db.Timestamptz(6)
+  cancellationDecidedByPersonId String?   @map("cancellation_decided_by_person_id") @db.Uuid
+  cancellationDenialReason      String?   @map("cancellation_denial_reason")
+
+  reminderSentAt DateTime? @map("reminder_sent_at") @db.Timestamptz(6)
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  court                 Court                 @relation(fields: [courtId], references: [id])
+  club                  Club                  @relation(fields: [clubId], references: [id])
+  bookedByPerson        Person                @relation("CourtBookingBookedBy", fields: [bookedByPersonId], references: [id])
+  bookedByHousehold     Household?            @relation(fields: [bookedByHouseholdId], references: [id])
+  payment               Payment?              @relation(fields: [paymentId], references: [id])
+  cancelledByPerson     Person?               @relation("CourtBookingCancelledBy", fields: [cancelledByPersonId], references: [id])
+  cancellationDecidedBy Person?               @relation("CourtBookingCancellationDecidedBy", fields: [cancellationDecidedByPersonId], references: [id])
+  partners              CourtBookingPartner[]
+  paymentLines          PaymentLine[]
+  ladderMatches         LadderMatch[]
+
+  @@index([courtId])
+  @@index([clubId])
+  @@index([startsAt])
+  @@index([bookedByPersonId])
+  @@index([status])
+  @@map("court_bookings")
+}
+
+/// §2.13.2 — Who else is on the booked court (free text + optional FK).
+model CourtBookingPartner {
+  id             String   @id @default(uuid()) @db.Uuid
+  courtBookingId String   @map("court_booking_id") @db.Uuid
+  partnerName    String   @map("partner_name")
+  personId       String?  @map("person_id") @db.Uuid
+  displayOrder   Int      @default(0) @map("display_order")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  courtBooking CourtBooking @relation(fields: [courtBookingId], references: [id], onDelete: Cascade)
+  person       Person?      @relation(fields: [personId], references: [id])
+
+  @@unique([courtBookingId, displayOrder])
+  @@index([courtBookingId])
+  @@map("court_booking_partners")
+}
+
+/// §2.13.3 — Per-club booking rules (one row per club).
+model BookingSettings {
+  clubId                       String                     @id @map("club_id") @db.Uuid
+  bookingDurationMinutes       Int                        @default(60) @map("booking_duration_minutes")
+  startTimeConstraint          BookingStartTimeConstraint @default(on_the_hour) @map("start_time_constraint")
+  opensAtLocalTime             DateTime                   @default(dbgenerated("'09:00'::time")) @map("opens_at_local_time") @db.Time(6)
+  closesAtLocalTime            DateTime                   @default(dbgenerated("'22:00'::time")) @map("closes_at_local_time") @db.Time(6)
+  earliestBookingOffsetMinutes Int                        @default(10) @map("earliest_booking_offset_minutes")
+  latestBookingOffsetDays      Int                        @default(7) @map("latest_booking_offset_days")
+  maxBookingsPerMemberPerDay   Int                        @default(1) @map("max_bookings_per_member_per_day")
+  cancellationOffsetMinutes    Int                        @default(10) @map("cancellation_offset_minutes")
+  partnerCaptureMode           BookingPartnerCaptureMode  @default(free_text) @map("partner_capture_mode")
+  minPartners                  Int                        @default(0) @map("min_partners")
+  maxPartners                  Int                        @default(3) @map("max_partners")
+  allowsMemberRecurringBlocks  Boolean                    @default(false) @map("allows_member_recurring_blocks")
+  requiresPayment              Boolean                    @default(false) @map("requires_payment")
+  defaultPricePerHour          Decimal?                   @map("default_price_per_hour") @db.Decimal(10, 2)
+  confirmationMode             BookingConfirmationMode    @default(member_decides) @map("confirmation_mode")
+  dailyOverviewEmail           String?                    @map("daily_overview_email")
+  reminderOffsetMinutes        Int                        @default(60) @map("reminder_offset_minutes")
+  createdAt                    DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  club Club @relation(fields: [clubId], references: [id])
+
+  @@map("booking_settings")
+}
+
+// ============================================================================
+// 5. SUPPORT ENTITIES
+// ============================================================================
+
+/// Pending Mollie checkout: stores the server action payload until the
+/// webhook marks the payment paid and runs fulfillment.
+model PaymentCheckoutIntent {
+  id              String                      @id @default(uuid()) @db.Uuid
+  paidByPersonId  String                      @map("paid_by_person_id") @db.Uuid
+  amount          Decimal                     @db.Decimal(10, 2)
+  currency        String                      @default("EUR")
+  description     String
+  mollieAccount   String                      @map("mollie_account")
+  returnUrl       String                      @map("return_url")
+  action          Json
+  molliePaymentId String?                     @unique @map("mollie_payment_id")
+  status          PaymentCheckoutIntentStatus @default(open)
+  fulfilledAt     DateTime?                   @map("fulfilled_at") @db.Timestamptz(6)
+  failureReason   String?                     @map("failure_reason")
+  createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  paidByPerson Person @relation(fields: [paidByPersonId], references: [id])
+
+  @@index([paidByPersonId])
+  @@index([status])
+  @@map("payment_checkout_intents")
+}
+
+/// §2.14.1 — A single transaction. Originally Mollie-only; now also used
+/// for AR-style manual invoices (e.g. coach private-lesson billing). For
+/// manual invoices `molliePaymentId` is null and `invoiceNumber` carries
+/// the human-readable identifier.
+model Payment {
+  id                   String        @id @default(uuid()) @db.Uuid
+  molliePaymentId      String?       @map("mollie_payment_id")
+  invoiceNumber        String?       @unique @map("invoice_number")
+  amount               Decimal       @db.Decimal(10, 2)
+  currency             String        @default("EUR")
+  status               PaymentStatus
+  paymentMethod        String?       @map("payment_method")
+  description          String
+  paidByPersonId       String        @map("paid_by_person_id") @db.Uuid
+  /// Null for AR-style invoices that aren't billed to a household
+  /// (e.g. coach private-lesson court rental, billed to the coach
+  /// personally). Set for Mollie / membership payments where the
+  /// household is the financial entity on the hook.
+  paidByHouseholdId    String?       @map("paid_by_household_id") @db.Uuid
+  mollieCheckoutUrl    String?       @map("mollie_checkout_url")
+  mollieWebhookPayload Json?         @map("mollie_webhook_payload")
+  issuedAt             DateTime?     @map("issued_at") @db.Timestamptz(6)
+  dueAt                DateTime?     @map("due_at") @db.Timestamptz(6)
+  paidAt               DateTime?     @map("paid_at") @db.Timestamptz(6)
+  failedAt             DateTime?     @map("failed_at") @db.Timestamptz(6)
+  refundedAt           DateTime?     @map("refunded_at") @db.Timestamptz(6)
+  failureReason        String?       @map("failure_reason")
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  paidByPerson        Person                 @relation("PaymentPaidBy", fields: [paidByPersonId], references: [id])
+  paidByHousehold     Household?             @relation(fields: [paidByHouseholdId], references: [id])
+  lines               PaymentLine[]
+  refunds             Refund[]
+  enrollments         Enrollment[]
+  courtBookings       CourtBooking[]
+  recurringBlocks     RecurringBlock[]
+  ladderEntries       LadderEntry[]
+  creditLedger        HouseholdCredit[]
+  transferResolutions ClassTransferRequest[] @relation("ClassTransferResolutionPayment")
+
+  @@index([paidByPersonId])
+  @@index([paidByHouseholdId])
+  @@index([status])
+  @@map("payments")
+}
+
+/// §2.14.2 — One line of a payment. Exactly one FK target column non-null.
+/// Check constraint enforced via raw SQL in postgres_extras migration.
+/// Targets: enrollment / membership / recurring_block / court_booking /
+/// credit_ledger (the latter records "X EUR of household credit applied"
+/// against an enrollment payment; the offsetting `HouseholdCredit` row
+/// carries the actual ledger entry).
+model PaymentLine {
+  id               String   @id @default(uuid()) @db.Uuid
+  paymentId        String   @map("payment_id") @db.Uuid
+  amount           Decimal  @db.Decimal(10, 2)
+  description      String
+  enrollmentId     String?  @map("enrollment_id") @db.Uuid
+  membershipId     String?  @map("membership_id") @db.Uuid
+  recurringBlockId String?  @map("recurring_block_id") @db.Uuid
+  courtBookingId   String?  @map("court_booking_id") @db.Uuid
+  creditLedgerId   String?  @map("credit_ledger_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  payment        Payment          @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  enrollment     Enrollment?      @relation(fields: [enrollmentId], references: [id])
+  membership     Membership?      @relation(fields: [membershipId], references: [id])
+  recurringBlock RecurringBlock?  @relation(fields: [recurringBlockId], references: [id])
+  courtBooking   CourtBooking?    @relation(fields: [courtBookingId], references: [id])
+  creditLedger   HouseholdCredit? @relation(fields: [creditLedgerId], references: [id])
+
+  @@index([paymentId])
+  @@index([enrollmentId])
+  @@index([membershipId])
+  @@index([recurringBlockId])
+  @@index([courtBookingId])
+  @@index([creditLedgerId])
+  @@map("payment_lines")
+}
+
+/// §2.14.3 — A school we deliver programs through.
+model SchoolPartnership {
+  id                    String                @id @default(uuid()) @db.Uuid
+  name                  String
+  slug                  String                @unique
+  partnershipType       SchoolPartnershipType @map("partnership_type")
+  schoolAddress         String?               @map("school_address")
+  pickupToCourtId       String?               @map("pickup_to_court_id") @db.Uuid
+  onsiteVenueText       String?               @map("onsite_venue_text")
+  billingModel          SchoolBillingModel    @default(parent_direct) @map("billing_model")
+  contactPersonName     String?               @map("contact_person_name")
+  contactEmail          String?               @map("contact_email")
+  contactPhone          String?               @map("contact_phone")
+  relationshipStartedOn DateTime?             @map("relationship_started_on") @db.Date
+  internalNotes         String?               @map("internal_notes")
+  isActive              Boolean               @default(true) @map("is_active")
+  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  pickupToCourt Court?        @relation(fields: [pickupToCourtId], references: [id])
+  classSeries   ClassSeries[]
+
+  @@map("school_partnerships")
+}
+
+/// §2.14.4 — Recurring claim on a court+time slot. Workflow: request -> approve -> invoice -> active.
+model RecurringBlock {
+  id                   String                @id @default(uuid()) @db.Uuid
+  courtId              String                @map("court_id") @db.Uuid
+  clubId               String                @map("club_id") @db.Uuid
+  requesterPersonId    String                @map("requester_person_id") @db.Uuid
+  requesterHouseholdId String?               @map("requester_household_id") @db.Uuid
+  purposeType          RecurringBlockPurpose @map("purpose_type")
+  purposeDescription   String                @map("purpose_description")
+  scope                RecurringBlockScope   @default(full)
+  dayOfWeek            DayOfWeek?            @map("day_of_week")
+  startTime            DateTime              @map("start_time") @db.Time(6)
+  endTime              DateTime              @map("end_time") @db.Time(6)
+  recurrenceRule       String?               @map("recurrence_rule")
+  startsOn             DateTime              @map("starts_on") @db.Date
+  endsOn               DateTime              @map("ends_on") @db.Date
+  excludedDates        DateTime[]            @map("excluded_dates") @db.Date
+  status               RecurringBlockStatus  @default(pending)
+  requestedAt          DateTime              @default(now()) @map("requested_at") @db.Timestamptz(6)
+  decidedByPersonId    String?               @map("decided_by_person_id") @db.Uuid
+  decidedAt            DateTime?             @map("decided_at") @db.Timestamptz(6)
+  deniedReason         String?               @map("denied_reason")
+  priceQuoted          Decimal?              @map("price_quoted") @db.Decimal(10, 2)
+  invoiceStatus        InvoiceStatus         @default(not_required) @map("invoice_status")
+  invoiceNumber        String?               @unique @map("invoice_number")
+  invoiceSentAt        DateTime?             @map("invoice_sent_at") @db.Timestamptz(6)
+  paymentId            String?               @map("payment_id") @db.Uuid
+  activatedAt          DateTime?             @map("activated_at") @db.Timestamptz(6)
+  cancelledAt          DateTime?             @map("cancelled_at") @db.Timestamptz(6)
+  cancelledReason      String?               @map("cancelled_reason")
+  cancelledByPersonId  String?               @map("cancelled_by_person_id") @db.Uuid
+  internalNotes        String?               @map("internal_notes")
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  classSeriesId        String?               @map("class_series_id") @db.Uuid
+
+  court              Court         @relation(fields: [courtId], references: [id])
+  club               Club          @relation(fields: [clubId], references: [id])
+  classSeries        ClassSeries?  @relation(fields: [classSeriesId], references: [id], onDelete: Cascade)
+  requesterPerson    Person        @relation("RecurringBlockRequester", fields: [requesterPersonId], references: [id])
+  requesterHousehold Household?    @relation(fields: [requesterHouseholdId], references: [id])
+  decidedByPerson    Person?       @relation("RecurringBlockDecidedBy", fields: [decidedByPersonId], references: [id])
+  payment            Payment?      @relation(fields: [paymentId], references: [id])
+  cancelledByPerson  Person?       @relation("RecurringBlockCancelledBy", fields: [cancelledByPersonId], references: [id])
+  paymentLines       PaymentLine[]
+
+  @@index([courtId])
+  @@index([clubId])
+  @@index([classSeriesId])
+  @@index([requesterPersonId])
+  @@index([status])
+  @@index([startsOn, endsOn])
+  @@map("recurring_blocks")
+}
+
+// ============================================================================
+// 6. CROSS-CUTTING (R-B additions)
+// ============================================================================
+
+/// §2.15.1 — Insert-only audit trail of writes to business-critical tables.
+model AuditLog {
+  id                String            @id @default(uuid()) @db.Uuid
+  tableName         String            @map("table_name")
+  rowId             String            @map("row_id") @db.Uuid
+  action            AuditAction
+  changedByPersonId String?           @map("changed_by_person_id") @db.Uuid
+  changedAt         DateTime          @default(now()) @map("changed_at") @db.Timestamptz(6)
+  before            Json?
+  after             Json?
+  changeSource      AuditChangeSource @default(web_app) @map("change_source")
+  requestId         String?           @map("request_id") @db.Uuid
+
+  changedByPerson Person? @relation("AuditLogChangedBy", fields: [changedByPersonId], references: [id])
+
+  @@index([tableName, rowId])
+  @@index([changedAt])
+  @@index([changedByPersonId])
+  @@index([requestId])
+  @@map("audit_log")
+}
+
+/// §2.15.2 — Outbound communication log (email/SMS/push/in-app).
+model Notification {
+  id                String              @id @default(uuid()) @db.Uuid
+  recipientPersonId String              @map("recipient_person_id") @db.Uuid
+  recipientEmail    String?             @map("recipient_email")
+  recipientPhone    String?             @map("recipient_phone")
+  channel           NotificationChannel
+  templateKey       String              @map("template_key")
+  subject           String?
+  bodyText          String              @map("body_text")
+  bodyHtml          String?             @map("body_html")
+  relatedTable      String?             @map("related_table")
+  relatedRowId      String?             @map("related_row_id") @db.Uuid
+  status            NotificationStatus  @default(queued)
+  sentAt            DateTime?           @map("sent_at") @db.Timestamptz(6)
+  /// Set when the recipient marks the notification as read in their inbox.
+  /// Drives the unread badge count. Only populated for `in_app` rows.
+  readAt            DateTime?           @map("read_at") @db.Timestamptz(6)
+  failedReason      String?             @map("failed_reason")
+  providerMessageId String?             @map("provider_message_id")
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  recipientPerson Person @relation(fields: [recipientPersonId], references: [id])
+
+  @@index([recipientPersonId])
+  @@index([status])
+  @@index([templateKey, relatedRowId])
+  @@index([recipientPersonId, readAt])
+  @@map("notifications")
+}
+
+/// §2.15.3 — Refunds issued through Mollie (or offline). Insert-only.
+model Refund {
+  id                   String              @id @default(uuid()) @db.Uuid
+  paymentId            String              @map("payment_id") @db.Uuid
+  mollieRefundId       String?             @unique @map("mollie_refund_id")
+  amount               Decimal             @db.Decimal(10, 2)
+  currency             String              @default("EUR")
+  reason               String
+  processedByPersonId  String              @map("processed_by_person_id") @db.Uuid
+  processedAt          DateTime            @default(now()) @map("processed_at") @db.Timestamptz(6)
+  mollieStatus         MollieRefundStatus? @map("mollie_status")
+  mollieWebhookPayload Json?               @map("mollie_webhook_payload")
+  notes                String?
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payment           Payment @relation(fields: [paymentId], references: [id])
+  processedByPerson Person  @relation("RefundProcessedBy", fields: [processedByPersonId], references: [id])
+
+  @@index([paymentId])
+  @@index([processedByPersonId])
+  @@map("refunds")
+}
+
+/// Append-only ledger of EUR-cent movements per household. Positive
+/// rows are credit issued (transfer surplus, refund-as-credit, manual
+/// admin adjustment); negative rows are credit spent against a paid
+/// lesson enrollment. The displayed balance is `SUM(amountCents)`.
+///
+/// Lessons-only by policy: the `enrollment_payment` reason is the only
+/// valid spend, and it must reference an `Enrollment`. Memberships
+/// never debit the ledger. The CHECK constraint
+/// `household_credits_spend_signs` (in the
+/// `20260507120000_household_credit_wallet` migration) keeps signs and
+/// references honest at the DB level.
+model HouseholdCredit {
+  id                  String                @id @default(uuid()) @db.Uuid
+  householdId         String                @map("household_id") @db.Uuid
+  /// Positive = credit issued, negative = credit spent. Stored in EUR
+  /// cents to avoid `Decimal(10,2)` rounding drift.
+  amountCents         Int                   @map("amount_cents")
+  reason              HouseholdCreditReason
+  relatedEnrollmentId String?               @map("related_enrollment_id") @db.Uuid
+  relatedPaymentId    String?               @map("related_payment_id") @db.Uuid
+  /// Set when a credit row was issued/spent as part of a class
+  /// transfer. We don't FK this to `class_transfer_requests` so that
+  /// the ledger row survives transfer-request deletion cleanups.
+  relatedTransferId   String?               @map("related_transfer_id") @db.Uuid
+  createdByPersonId   String                @map("created_by_person_id") @db.Uuid
+  note                String?
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  household         Household     @relation(fields: [householdId], references: [id])
+  relatedEnrollment Enrollment?   @relation(fields: [relatedEnrollmentId], references: [id])
+  relatedPayment    Payment?      @relation(fields: [relatedPaymentId], references: [id])
+  createdByPerson   Person        @relation("HouseholdCreditCreatedBy", fields: [createdByPersonId], references: [id])
+  paymentLines      PaymentLine[]
+
+  @@index([householdId, createdAt])
+  @@index([relatedEnrollmentId])
+  @@index([relatedPaymentId])
+  @@map("household_credits")
+}
+
+/// A parent-initiated request to move a paid enrollment to a different
+/// class. Admin reviews, picks the financial resolution (refund,
+/// credit, or extra bill), and the workflow writes the new enrollment
+/// + ledger/refund/payment rows in one transaction.
+model ClassTransferRequest {
+  id                           String                     @id @default(uuid()) @db.Uuid
+  fromEnrollmentId             String                     @map("from_enrollment_id") @db.Uuid
+  requestedByPersonId          String                     @map("requested_by_person_id") @db.Uuid
+  /// Optional target class series. The parent picks one in the portal
+  /// today, but admin may steer them to a different class at decision
+  /// time, in which case the chosen-at-decision class is recorded on
+  /// the resulting `Enrollment` row instead.
+  requestedTargetClassSeriesId String?                    @map("requested_target_class_series_id") @db.Uuid
+  requestedNote                String?                    @map("requested_note")
+  status                       ClassTransferRequestStatus @default(pending)
+  decidedByPersonId            String?                    @map("decided_by_person_id") @db.Uuid
+  decidedAt                    DateTime?                  @map("decided_at") @db.Timestamptz(6)
+  adminNote                    String?                    @map("admin_note")
+  resultEnrollmentId           String?                    @map("result_enrollment_id") @db.Uuid
+  /// (newPriceProrated − originalPaid) in EUR cents at decision time.
+  /// Positive = parent owes more; negative = parent due credit/refund.
+  deltaCents                   Int?                       @map("delta_cents")
+  resolution                   ClassTransferResolution?
+  resolutionPaymentId          String?                    @map("resolution_payment_id") @db.Uuid
+  resolutionRefundId           String?                    @map("resolution_refund_id") @db.Uuid
+  resolutionCreditId           String?                    @map("resolution_credit_id") @db.Uuid
+  createdAt                    DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  fromEnrollment             Enrollment   @relation("ClassTransferFromEnrollment", fields: [fromEnrollmentId], references: [id])
+  resultEnrollment           Enrollment?  @relation("ClassTransferResultEnrollment", fields: [resultEnrollmentId], references: [id])
+  requestedBy                Person       @relation("ClassTransferRequestRequester", fields: [requestedByPersonId], references: [id])
+  decidedBy                  Person?      @relation("ClassTransferRequestDecidedBy", fields: [decidedByPersonId], references: [id])
+  requestedTargetClassSeries ClassSeries? @relation("ClassTransferRequestedTarget", fields: [requestedTargetClassSeriesId], references: [id])
+  resolutionPayment          Payment?     @relation("ClassTransferResolutionPayment", fields: [resolutionPaymentId], references: [id])
+
+  @@index([status])
+  @@index([fromEnrollmentId])
+  @@index([requestedByPersonId])
+  @@index([decidedAt])
+  @@map("class_transfer_requests")
+}
+
+enum ClassTransferRequestStatus {
+  pending
+  approved
+  rejected
+  cancelled
+
+  @@map("class_transfer_request_status")
+}
+
+enum ClassTransferResolution {
+  /// New class costs the same — no extra movement.
+  exact
+  /// Surplus issued as cash refund.
+  refund
+  /// Surplus banked as household credit.
+  credit
+  /// Parent owes the difference; new Mollie payment created.
+  extra_bill
+
+  @@map("class_transfer_resolution")
+}
+
+/// Per-person token used to subscribe a personal class schedule into
+/// Google Calendar / Apple Calendar via iCal. The token is the secret
+/// (shown once when generated, callable without a session). Rotating /
+/// revoking issues a new row and stamps the old one as revoked.
+model CalendarFeedToken {
+  id            String            @id @default(uuid()) @db.Uuid
+  personId      String            @map("person_id") @db.Uuid
+  token         String            @unique
+  scope         CalendarFeedScope @default(self)
+  /// Friendly label so a user can tell two tokens apart in the UI.
+  label         String?
+  revokedAt     DateTime?         @map("revoked_at") @db.Timestamptz(6)
+  lastFetchedAt DateTime?         @map("last_fetched_at") @db.Timestamptz(6)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId])
+  @@map("calendar_feed_tokens")
+}
+
+enum CalendarFeedScope {
+  /// Just this person's own class schedule.
+  self
+  /// This person + every household member they can see.
+  household
+
+  @@map("calendar_feed_scope")
+}
+
+// ============================================================================
+// 7. ADULT LADDER
+// ============================================================================
+
+/// A named season of the adult ladder. Only one row should be `isActive=true`
+/// at a time. Players join the active season; matches accrue to it; positions
+/// reset when a new season opens. Past seasons are read-only history.
+model LadderSeason {
+  id             String    @id @default(uuid()) @db.Uuid
+  name           String
+  slug           String    @unique
+  startsOn       DateTime  @map("starts_on") @db.Date
+  endsOn         DateTime  @map("ends_on") @db.Date
+  joinDeadline   DateTime? @map("join_deadline") @db.Date
+  /// Entry fee in EUR cents. `0` = free.
+  entryFeeCents  Int       @default(1500) @map("entry_fee_cents")
+  isActive       Boolean   @default(false) @map("is_active")
+  /// How many positions above/below the viewer are challengeable.
+  challengeRange Int       @default(3) @map("challenge_range")
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  entries LadderEntry[]
+  matches LadderMatch[]
+  awards  LadderAward[]
+
+  @@index([isActive])
+  @@map("ladder_seasons")
+}
+
+/// A person's spot in a season's ranking. Position 1 = top of the ladder.
+/// Stats are cached for cheap leaderboard rendering and recomputed on each
+/// match completion.
+model LadderEntry {
+  id            String            @id @default(uuid()) @db.Uuid
+  seasonId      String            @map("season_id") @db.Uuid
+  personId      String            @map("person_id") @db.Uuid
+  position      Int
+  /// Position the entry was first placed at (always equal to `position` at
+  /// creation). Used to compute "Most improved" awards.
+  startPosition Int               @map("start_position")
+  /// Best (lowest) position ever reached this season.
+  peakPosition  Int               @map("peak_position")
+  joinedAt      DateTime          @default(now()) @map("joined_at") @db.Timestamptz(6)
+  /// Payment row for the entry fee. Null if the season was free or for
+  /// admin comp seats.
+  paymentId     String?           @map("payment_id") @db.Uuid
+  status        LadderEntryStatus @default(active)
+  withdrawnAt   DateTime?         @map("withdrawn_at") @db.Timestamptz(6)
+  wins          Int               @default(0)
+  losses        Int               @default(0)
+  matchesPlayed Int               @default(0) @map("matches_played")
+  lastPlayedAt  DateTime?         @map("last_played_at") @db.Timestamptz(6)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  season              LadderSeason         @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  person              Person               @relation(fields: [personId], references: [id])
+  payment             Payment?             @relation(fields: [paymentId], references: [id])
+  availability        LadderAvailability[]
+  matchesAsChallenger LadderMatch[]        @relation("LadderMatchChallenger")
+  matchesAsOpponent   LadderMatch[]        @relation("LadderMatchOpponent")
+  matchesWon          LadderMatch[]        @relation("LadderMatchWinner")
+
+  @@unique([seasonId, personId])
+  @@unique([seasonId, position])
+  @@index([seasonId])
+  @@index([personId])
+  @@map("ladder_entries")
+}
+
+/// A single recurring availability window for a ladder entry. Multiple
+/// rows let a player advertise e.g. "Sat 12-15 + Sun 11-13". Times are
+/// minutes-of-day in Europe/Amsterdam local time (0..1439). `clubId` is
+/// an optional preference; null = either club is fine.
+model LadderAvailability {
+  id          String   @id @default(uuid()) @db.Uuid
+  entryId     String   @map("entry_id") @db.Uuid
+  /// 0=Mon..6=Sun, matching `amsterdamDayOfWeek()` in src/lib/booking/time.ts.
+  dayOfWeek   Int      @map("day_of_week")
+  startMinute Int      @map("start_minute")
+  endMinute   Int      @map("end_minute")
+  clubId      String?  @map("club_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  entry LadderEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  club  Club?       @relation(fields: [clubId], references: [id])
+
+  @@index([entryId])
+  @@index([dayOfWeek])
+  @@map("ladder_availability")
+}
+
+/// A challenge / match between two ladder entries. Winning a challenge
+/// against a higher-ranked opponent triggers a position swap (handled in
+/// the score-confirmation server action). Score is stored as JSON of
+/// per-set games.
+model LadderMatch {
+  id                 String            @id @default(uuid()) @db.Uuid
+  seasonId           String            @map("season_id") @db.Uuid
+  challengerEntryId  String            @map("challenger_entry_id") @db.Uuid
+  opponentEntryId    String            @map("opponent_entry_id") @db.Uuid
+  status             LadderMatchStatus @default(awaiting_opponent)
+  /// Proposed slots (UTC) the challenger offered. Opponent picks one.
+  proposedSlots      DateTime[]        @map("proposed_slots") @db.Timestamptz(6)
+  /// The slot both players agreed on.
+  scheduledAt        DateTime?         @map("scheduled_at") @db.Timestamptz(6)
+  /// Auto-booked court for the agreed slot.
+  courtBookingId     String?           @map("court_booking_id") @db.Uuid
+  winnerEntryId      String?           @map("winner_entry_id") @db.Uuid
+  /// Per-set games as JSON, e.g. `[{a: 6, b: 4}, {a: 4, b: 6}, {a: 7, b: 5}]`
+  /// where `a` is the challenger and `b` is the opponent.
+  scoreJson          Json?             @map("score_json")
+  reportedByPersonId String?           @map("reported_by_person_id") @db.Uuid
+  reportedAt         DateTime?         @map("reported_at") @db.Timestamptz(6)
+  confirmedAt        DateTime?         @map("confirmed_at") @db.Timestamptz(6)
+  /// True after a swap was applied as a result of this match.
+  swapped            Boolean           @default(false)
+  cancelledAt        DateTime?         @map("cancelled_at") @db.Timestamptz(6)
+  cancelledReason    String?           @map("cancelled_reason")
+  disputeReason      String?           @map("dispute_reason")
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  season           LadderSeason  @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  challengerEntry  LadderEntry   @relation("LadderMatchChallenger", fields: [challengerEntryId], references: [id])
+  opponentEntry    LadderEntry   @relation("LadderMatchOpponent", fields: [opponentEntryId], references: [id])
+  winnerEntry      LadderEntry?  @relation("LadderMatchWinner", fields: [winnerEntryId], references: [id])
+  courtBooking     CourtBooking? @relation(fields: [courtBookingId], references: [id])
+  reportedByPerson Person?       @relation("LadderMatchReportedBy", fields: [reportedByPersonId], references: [id])
+
+  @@index([seasonId, status])
+  @@index([challengerEntryId])
+  @@index([opponentEntryId])
+  @@index([scheduledAt])
+  @@map("ladder_matches")
+}
+
+/// Monthly recognition (MVP / Most improved / Iron man). Computed lazily
+/// when the ladder home page is visited; one row per (season, month, kind).
+model LadderAward {
+  id          String          @id @default(uuid()) @db.Uuid
+  seasonId    String          @map("season_id") @db.Uuid
+  /// First day of the month the award covers (date, no time).
+  month       DateTime        @db.Date
+  kind        LadderAwardKind
+  personId    String          @map("person_id") @db.Uuid
+  metricValue Int             @map("metric_value")
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  season LadderSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  person Person       @relation(fields: [personId], references: [id])
+
+  @@unique([seasonId, month, kind])
+  @@index([seasonId, month])
+  @@map("ladder_awards")
+}
+
+/// Heather feedback v1: capture trial-lesson interest from people who
+/// aren't members yet. Filed from a public form (no login) and worked
+/// through an admin queue: contact the family, schedule the trial,
+/// either convert them to an enrollment or close the lead.
+///
+/// Intentionally a flat row — no relation to `Person` — because the
+/// lead may not have a Person yet (and we don't want to silently spawn
+/// half-baked accounts from a public form).
+model TrialInterest {
+  id            String                @id @default(uuid()) @db.Uuid
+  /// Audience the lead is interested in. Drives which programs we'd
+  /// suggest to them and which coach gets the lead.
+  audience      TrialInterestAudience
+  /// Free-text contact name (parent or adult learner — whoever filled
+  /// in the form).
+  contactName   String                @map("contact_name")
+  /// Optional name of the player when the contact is a parent. NULL
+  /// for adult-learner leads.
+  playerName    String?               @map("player_name")
+  /// Approximate age of the player. Captured as a free integer so we
+  /// don't force a DOB on the public form. NULL when the contact is
+  /// the player themselves and didn't share an age.
+  playerAge     Int?                  @map("player_age")
+  email         String
+  phone         String?
+  /// Optional preferred club so the queue can be filtered by venue
+  /// when the trial admin assigns a coach.
+  preferredClub TrialInterestClub?    @map("preferred_club")
+  /// Free-text "what time of day works", "we already play at …", etc.
+  notes         String?
+  status        TrialInterestStatus   @default(new)
+  /// Internal admin notes added while working the lead. Append-only by
+  /// convention but enforced in the UI, not the schema.
+  adminNotes    String?               @map("admin_notes")
+  contactedAt   DateTime?             @map("contacted_at") @db.Timestamptz(6)
+  closedAt      DateTime?             @map("closed_at") @db.Timestamptz(6)
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, createdAt])
+  @@index([audience])
+  @@map("trial_interests")
+}
+
+enum TrialInterestAudience {
+  kids
+  adults
+
+  @@map("trial_interest_audience")
+}
+
+enum TrialInterestClub {
+  triaz
+  randwijck
+  no_preference
+
+  @@map("trial_interest_club")
+}
+
+enum TrialInterestStatus {
+  new
+  in_progress
+  scheduled
+  converted
+  closed
+
+  @@map("trial_interest_status")
+}
+
+/// Per-tenant configuration row. One per organization.
+///
+/// Replaces the in-code ORG_REGISTRY in `src/lib/tenant.ts` and folds in
+/// the deprecated `org_branding` table. Editable at runtime from
+/// `/admin/settings/*` — admins toggle features, rename terminology, swap
+/// industry presets, and update branding without a redeploy.
+///
+/// `features` and `terms` are intentionally `Json` so adding a new flag
+/// or glossary key never requires a schema migration: the application
+/// layer (src/lib/tenant.ts, src/lib/tenant/terms.ts) merges whatever
+/// is stored here on top of code-defined defaults.
+model Organization {
+  slug         String   @id
+  displayName  String   @map("display_name")
+  shortName    String   @map("short_name")
+  country      String   @default("NL")
+  locale       String   @default("nl-NL")
+  currency     String   @default("EUR")
+  productMode  String   @default("club") @map("product_mode")
+  presetSlug   String?  @map("preset_slug")
+  features     Json     @default("{}")
+  terms        Json     @default("{}")
+  logoUrl      String?  @map("logo_url")
+  brandTitle   String?  @map("brand_title")
+  brandSubline String?  @map("brand_subline")
+  /// Human-curated reply-to / "talk to the office" inbox. Used by
+  /// booking-deletion request emails, ladder admin pings, the public
+  /// "contact us" mailto, etc. NULL falls back to placeholder copy
+  /// rather than guessing from the brand domain.
+  officeEmail  String?  @map("office_email")
+  /// When set, preset + merged features/terms are fixed to the code preset;
+  /// JSON `features` / `terms` overrides are ignored until support clears the lock.
+  presetLockedAt   DateTime? @map("preset_locked_at") @db.Timestamptz(6)
+  /// Set together with `presetLockedAt` when an industry preset is committed.
+  terminologyLocked Boolean @default(false) @map("terminology_locked")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("organizations")
+}

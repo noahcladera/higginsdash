@@ -1,11 +1,57 @@
+# dependencies
 node_modules/
-.env
+.pnp
+.pnp.*
+.yarn/*
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# production
+/build
+
+# misc
 .DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env
+.env.*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+# prisma
+/prisma/migrations/dev.db*
+
+# logs
 *.log
-data/google-credentials.json
-data/higgins-tennis-*.json
-data/gcal-config.json
-data/oauth-credentials.json
-data/oauth-token.json
-data/client_secret_*.json
-data/gcal-sync.json
+
+# Local / demo data — not needed to run the deployed portal
+/context/
+/crm-related cvontext/
+*.xls
+*.xlsx
+Registration_Report*.xls
+
+# Cursor IDE
+.cursor/
+
+# Docs / runbooks (optional locally; not required to build)
+handoff/
+design/

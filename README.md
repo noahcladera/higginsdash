@@ -1,126 +1,190 @@
-# Higgins Tennis — Ops Dashboard
+# Higgins
 
-Local-first operations dashboard for Higgins Tennis Amsterdam. Manages class schedules, coach pay, transportation logistics, and finance across seasons.
+Internal operations app for [Higgins Tennis Nederland](https://higginstennis.nl),
+and the shared codebase for a lean "Higgins Programs" packaging aimed at
+youth programs, afterschool organizations, and schools still running on
+spreadsheets.
 
-**Features:**
-- **Transportation (GoCAP)** — Bakfiets pickup route planning with schematic map, day-by-day timeline scrubber, and animated playback for quick day overviews
-- **Calendar** — Week/day/list views, filter by coach or class type
-- **Coaches** — Pay calculator, rate sheet, per-class breakdown
-- **Finance** — P&L table, revenue by location/type
-- **Seasons** — Winter vs Spring comparison across all metrics
+Replaces the SuperSaaS + GoTimmy + ad-hoc-spreadsheet stack with a single
+purpose-built system for memberships, classes, court bookings, and payments.
 
-Runs on Node.js 18+ with minimal dependencies.
+## Product direction — one codebase, two packagings
 
-## Quick Start
+This is **one codebase, two packagings**. We do NOT maintain a fork. We do NOT
+maintain a separate "Higgins USA" branch. Every instance of the product is an
+`Organization` row with a `productMode` flag:
+
+| `productMode` | Who it's for                                        | What's enabled                                                                                    |
+| ------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `club`        | Higgins Tennis NL (and future racket-sport clubs)   | Full surface: memberships, court bookings, recurring blocks, ladder, KNLTB-grade scheduling, etc. |
+| `programs`    | Youth programs, afterschool, schools, music schools | Lean surface: CRM, class/program/camp enrollment, parent billing, coach scheduling, attendance.   |
+
+Club-only models (`Membership`, `CourtBooking`, `RecurringBlock`, `Ladder*`,
+`Court`, `Venue`, `BookingSettings`) stay in the schema. Programs-mode orgs
+simply never write rows there and the routes / nav are hidden.
+
+**Why not fork.** The convolution people blame on Higgins is concentrated in
+~5% of the codebase ([src/lib/pricing.ts](src/lib/pricing.ts) +
+[src/lib/club-theme.ts](src/lib/club-theme.ts) + some hardcoded brand
+literals). The other 95% is generic CRM + enrollment + coaching + billing.
+Forking would force us to maintain two copies of that 95% — a waste. The
+Higgins-specific 5% is config, not code, and we treat it that way.
+
+See [context/market-research/lean-enrollment-strategy.md](context/market-research/lean-enrollment-strategy.md)
+for the full strategy study behind this decision.
+
+## What's here today
+
+Full Higgins portal (Next.js App Router):
+
+- Admin, coach, and member portals
+- Memberships, classes, court booking, ladder, payments (Mollie + demo fallback)
+- Postgres on Supabase + Prisma migrations
+- Supabase Auth (magic links + signup)
+
+## Layout
+
+```text
+.
+├── context/                     historical data + product context (untouched)
+├── design/database.md           the database source-of-truth (30 tables)
+├── prisma/
+│   ├── schema.prisma            Prisma model of every table
+│   ├── seed.ts                  catalog-only seed (clubs, courts, programs, …)
+│   └── sql/postgres_extras.sql  Postgres-only constraints (EXCLUDE, triggers)
+└── src/
+    ├── app/
+    │   ├── login/               magic-link sign-in
+    │   ├── auth/callback/       PKCE GET route + hash invite page → people upsert
+    │   └── (admin)/             gated routes (just a placeholder for now)
+    ├── lib/
+    │   ├── prisma.ts            Prisma client singleton
+    │   ├── supabase/{server,client,middleware}.ts
+    │   └── auth/ensure-person.ts  bridges auth.users → people on first login
+    ├── components/ui/           shadcn primitives
+    └── proxy.ts                 session refresh + /admin gate (Next 16 proxy convention)
+```
+
+## One-time Supabase setup
+
+1. Create a free account at [supabase.com](https://supabase.com).
+2. Create a new project. Region: **West EU (eu-west-1)** — Amsterdam.
+   Pick a strong DB password and save it in 1Password.
+3. Copy `.env.example` → `.env.local`.
+4. From your Supabase project, fill in the values in [`.env.example`](.env.example) (copy to `.env.local`):
+   - **Settings → API**
+     - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
+     - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+     - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (secret)
+   - **Settings → Database → Connection string**
+     - "Connection pooling" mode `transaction`, port `6543` → `DATABASE_URL`
+     - "Direct connection", port `5432` → `DIRECT_URL`
+   - **`NEXT_PUBLIC_SITE_URL`** — same origin you use in the browser (e.g. `http://localhost:3000`). Magic-link `emailRedirectTo` is built from this; it must match **exactly** (including `localhost` vs `127.0.0.1`) or PKCE cookies will not be present when you click the link.
+5. **Settings → Auth → URL Configuration**
+   - Set `Site URL` to `http://localhost:3000` (for dev).
+   - Add `http://localhost:3000/auth/callback` to "Redirect URLs". If you sometimes use `127.0.0.1`, add that origin and `http://127.0.0.1:3000/auth/callback` too.
+
+> Magic-link emails are sent through Supabase's built-in SMTP for free in dev.
+> For prod, swap to Postmark / Resend later via Supabase Auth settings.
+
+**Magic links (PKCE):** request the link and open it in the **same browser** (and same host as `NEXT_PUBLIC_SITE_URL`). Opening the email on your phone while you requested the link on your laptop will fail. PKCE completion runs on a server `GET` to `/auth/callback?code=…` ([`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts)); hash-style invite links are finished on [`/auth/callback/hash`](src/app/auth/callback/hash/page.tsx).
+
+## Run locally
 
 ```bash
-# 1. Put your schedule CSV at:
-#    data/schedule.csv
-#    (already included from your Google Sheets export)
-
-# 2. Start the server
-node server.js
-
-# 3. Open in browser
-open http://localhost:3000
+npm install
+cp .env.example .env.local        # then fill in the values
+npm run db:migrate                # creates initial_schema migration + applies it
+psql "$DIRECT_URL" -f prisma/sql/postgres_extras.sql   # one-off post-migration SQL
+npm run db:seed                   # loads catalog data
+npm run dev                       # boots http://localhost:3000
 ```
 
-With Node 18+ you can use `--watch` for auto-reload on file changes:
+Then visit `http://localhost:3000`. You'll be redirected to `/login`. Type your
+email, click the magic link in your inbox, land on `/admin`. You're the first
+user — your `people` row gets `is_admin = true`.
 
-```bash
-node --watch server.js
-```
+### Note on the postgres_extras.sql step
 
-## Project Structure
+Some constraints in `design/database.md` (the `EXCLUDE` constraint on
+`court_bookings`, the partial unique index on `email_addresses`, the per-table
+`club_id` triggers) cannot be expressed in `schema.prisma`. They live in
+[`prisma/sql/postgres_extras.sql`](prisma/sql/postgres_extras.sql) and are
+applied by hand after the first Prisma migration. For production we'll fold this
+into a hand-edited Prisma migration so it auto-applies — see comments in the
+file.
 
-```
-higgins-tennis-ops/
-├── server.js          ← HTTP server (no deps, pure Node)
-├── data/
-│   ├── parse.js       ← CSV parser (reads your Google Sheets export)
-│   └── schedule.csv   ← Your class schedule (replace to update)
-├── views/             ← HTML pages served at clean URLs
-│   ├── index.html     → /
-│   ├── calendar.html  → /calendar
-│   ├── coaches.html   → /coaches
-│   ├── gocap.html     → /gocap
-│   ├── finance.html   → /finance
-│   └── seasons.html   → /seasons
-└── public/
-    ├── css/main.css   ← Shared design system
-    └── js/shared.js   ← Shared client JS (API helpers, season switcher)
-```
+## Scripts
 
-## API Endpoints
+| Script             | What it does                                       |
+| ------------------ | -------------------------------------------------- |
+| `npm run dev`      | Start the dev server                               |
+| `npm run build`    | Production build                                   |
+| `npm run start`    | Run the production build                           |
+| `npm run lint`     | ESLint                                             |
+| `npm run db:migrate` | `prisma migrate dev` — create + apply migrations |
+| `npm run db:reset` | Wipe + remigrate + reseed (DEV ONLY)               |
+| `npm run db:seed`  | Run `prisma/seed.ts`                               |
+| `npm run db:studio` | Open Prisma Studio (visual DB browser)            |
+| `npm run db:generate` | Regenerate the Prisma client                    |
 
-| Endpoint | Description |
-|---|---|
-| `GET /api/classes` | All classes. Filter: `?season=&type=&coach=&day=` |
-| `GET /api/stats?season=` | Aggregate stats for a season |
-| `GET /api/coaches?season=` | Coach list for a season |
-| `GET /api/seasons` | Available season names |
-| `GET /api/class/:id` | Single class by ID |
-| `POST /api/reload` | Hot-reload the CSV without restart |
+## Adding a table
 
-### Examples
+1. Edit [`prisma/schema.prisma`](prisma/schema.prisma).
+2. `npm run db:migrate -- --name <short_change_description>`
+3. If your change relies on a Postgres-only feature (range types, partial
+   indexes, triggers), add it to
+   [`prisma/sql/postgres_extras.sql`](prisma/sql/postgres_extras.sql) AND
+   create a `--create-only` migration that includes the same SQL so prod gets
+   it automatically.
+4. Update [`design/database.md`](design/database.md) — that doc stays the
+   source-of-truth for the conceptual model. Schema changes that don't make it
+   back into the design doc are bugs.
 
-```bash
-# All Winter GoCAP classes
-curl "http://localhost:3000/api/classes?season=Winter%202026&type=GoCAP"
+## Acceptance checklist (foundation slice v1)
 
-# Season stats
-curl "http://localhost:3000/api/stats?season=Spring%202026"
+- [ ] `npm install` succeeds.
+- [ ] `.env.local` exists with 5 real Supabase values (plus optional
+      `PLATFORM_SUPPORT_EMAILS` — comma-separated staff addresses that can
+      clear tenant preset/terminology locks at `/admin/support/...`).
+- [ ] `npm run db:migrate` succeeds; Supabase Table Editor shows all 30 tables.
+- [ ] `psql "$DIRECT_URL" -f prisma/sql/postgres_extras.sql` succeeds; the
+      `court_bookings_no_overlap` EXCLUDE constraint exists.
+- [ ] `npm run db:seed` succeeds; Supabase shows 2 clubs, 6 courts,
+      2 booking_settings rows, 6 programs, 4 korfball recurring_blocks.
+- [ ] `npm run dev` boots without errors at `http://localhost:3000`.
+- [ ] Visiting `http://localhost:3000` redirects to `/login`.
+- [ ] Submitting your email shows "Check your email for a magic link".
+- [ ] Clicking the magic link redirects to `/admin` showing
+      "Logged in as `<your-email>`".
+- [ ] Supabase Table Editor's `people` table shows one row with your UUID
+      and `is_admin = true`.
+- [ ] Clicking "Sign out" returns you to `/login`.
 
-# Reload after editing the CSV
-curl -X POST http://localhost:3000/api/reload
-```
+## What's NOT here yet
 
-## Google Calendar Sync (optional)
+These are deferred to subsequent slices, in roughly this order:
 
-Create, update, and delete classes in Google Calendar automatically. Coaches with emails in `data/coaches.json` receive calendar invites as attendees. Class details (program, location, participants) are added to the event description. Add or update the `email` field for each coach in `data/coaches.json` to enable invites.
+1. Real data migration from `context/crm/` into `people` / `households` / etc.
+2. Heather's admin Members page (households + members + memberships table view).
+3. Member self-signup (parent creates household + members + buys membership).
+4. Court booking UI + conflict detection logic.
+5. Mollie payment integration.
+6. Class enrollment (GoTimmy replacement).
+7. Recurring blocks workflow (request → approve → invoice → active).
+8. Notifications sending pipeline.
+9. Audit log middleware (auto-write `audit_log` rows on writes).
+## Deploy (Render or Vercel)
 
-### One-time setup (~10 min)
+Git remote: `https://github.com/noahcladera/higginsdash.git`
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com), create a project
-2. Enable **Google Calendar API** (APIs & Services → Library → search "Calendar")
-3. Create a **Service Account**: APIs & Services → Credentials → Create Credentials → Service Account. Download the JSON key
-4. Create a Google Calendar (e.g. "Higgins Tennis") in your Google account
-5. Share that calendar with the service account email (`…@…iam.gserviceaccount.com`) — **Make changes to events**
-6. Save the JSON key as `data/google-credentials.json`
-7. Set the calendar ID: `export GOOGLE_CALENDAR_ID="your-calendar-id@group.calendar.google.com"`
+1. Push this repo to GitHub.
+2. Create a **Web Service** on [Render](https://render.com) (or import on Vercel) from that repo.
+3. Copy every variable from [`.env.example`](.env.example) into the host's environment settings.
+4. Set `NEXT_PUBLIC_SITE_URL` to your public URL (e.g. `https://higgins-portal.onrender.com`).
+5. In **Supabase → Auth → URL configuration**, add that URL and `https://<host>/auth/callback`.
+6. After first deploy, run migrations against the same database:
+   `npx prisma migrate deploy` (locally with production `DATABASE_URL`, or Render shell).
+7. Optional: `npm run db:seed` on an empty database for catalog data.
 
-Calendar ID: Open the calendar in Google Calendar → Settings → Integrate calendar → Calendar ID.
-
-### API endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/gcal/status` | `{ configured: true/false }` |
-| `POST /api/gcal/sync` | Bulk sync: create Google events for instances that don't have one yet |
-
-### Behaviour
-
-- **Create** class/event → Google Calendar event created, coaches added as attendees
-- **Update** class/event → Google Calendar event updated
-- **Delete** class/event → Google Calendar event deleted
-- Sync runs in the background; if Google is unreachable, the instance is still saved locally. Use `POST /api/gcal/sync` to retry.
-
-## Updating the Schedule
-
-1. Export your Google Sheet as CSV
-2. Replace `data/schedule.csv`
-3. Run `curl -X POST http://localhost:3000/api/reload` — no restart needed
-
-## Pages
-
-- **Home** `/` — Command center with stats, week-at-a-glance, fill rates
-- **Calendar** `/calendar` — Week/day/list views, filter by coach or type
-- **Transportation** `/gocap` — Bakfiets dispatch board, day timeline scrubber (11:00–18:00), fullscreen schematic route map with animated playback and combined-bike indicators
-- **Coaches** `/coaches` — Pay calculator, rate sheet, per-class breakdown
-- **Finance** `/finance` — P&L table, revenue by location/type, sortable
-- **Seasons** `/seasons` — Winter vs Spring comparison across all metrics
-
-## Requirements
-
-- Node.js 18 or later (uses `--watch` flag for dev mode)
-- No npm install needed
+Render: this repo includes [`render.yaml`](render.yaml) (build: `npm ci && npx prisma generate && npm run build`, start: `npm run start`).

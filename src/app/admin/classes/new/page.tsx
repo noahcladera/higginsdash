@@ -1,0 +1,91 @@
+import { requireAdmin } from "@/lib/auth/require-admin";
+import { prisma } from "@/lib/prisma";
+import { PageHeader } from "@/components/ui/page-header";
+import { SYSTEM_NO_COACH_PERSON_ID } from "@/lib/system-ids";
+import { createClassSeries } from "../actions";
+import { ClassSeriesForm } from "../class-series-form";
+
+export default async function NewClassPage() {
+  await requireAdmin();
+
+  const [programs, seasons, venues, schools, coachRows] = await Promise.all([
+    prisma.program.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, targetAudience: true },
+    }),
+    prisma.season.findMany({
+      where: { isActive: true },
+      orderBy: [{ name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        audience: true,
+        startsOn: true,
+        endsOn: true,
+        defaultExcludedDates: true,
+      },
+    }),
+    prisma.venue.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, kind: true },
+    }),
+    prisma.school.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.coach.findMany({
+      where: {
+        isActive: true,
+        archivedAt: null,
+        personId: { not: SYSTEM_NO_COACH_PERSON_ID },
+      },
+      include: {
+        person: { select: { firstName: true, lastName: true } },
+      },
+    }),
+  ]);
+
+  const coaches = coachRows
+    .map((c) => ({
+      personId: c.personId,
+      name: [c.person.firstName, c.person.lastName].filter(Boolean).join(" "),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Map Prisma Date columns to ISO `YYYY-MM-DD` strings so the
+  // client-only Schedule step can autofill the `<DateField>`s.
+  const seasonOptions = seasons.map((s) => ({
+    id: s.id,
+    name: s.name,
+    audience: s.audience,
+    startsOn: s.startsOn ? dateToISO(s.startsOn) : "",
+    endsOn: s.endsOn ? dateToISO(s.endsOn) : "",
+    defaultExcludedDates: s.defaultExcludedDates.map((d) => dateToISO(d)),
+  }));
+
+  return (
+    <div className="space-y-8">
+      <PageHeader
+        kicker="Admin · Classes"
+        title="New class"
+        description="Walk through the cascade — audience, format, location, schedule. Every weekly session between the start and end dates gets generated automatically."
+      />
+      <ClassSeriesForm
+        action={createClassSeries}
+        submitLabel="Create class"
+        programs={programs}
+        seasons={seasonOptions}
+        venues={venues}
+        schools={schools}
+        coaches={coaches}
+      />
+    </div>
+  );
+}
+
+function dateToISO(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}

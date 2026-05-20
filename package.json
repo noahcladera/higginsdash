@@ -1,18 +1,71 @@
 {
-  "name": "higgins-tennis-ops",
-  "version": "1.0.0",
-  "description": "Higgins Tennis Amsterdam — Operations Dashboard",
-  "main": "server.js",
+  "name": "higgins",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "postinstall": "node scripts/postinstall.mjs",
+    "db:migrate": "dotenv -e .env.local -- prisma migrate deploy",
+    "db:new": "dotenv -e .env.local -- node scripts/db-new-migration.mjs",
+    "db:reset": "dotenv -e .env.local -- node scripts/db-reset.mjs",
+    "db:status": "dotenv -e .env.local -- prisma migrate status",
+    "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
+    "db:seed-programs-demo": "dotenv -e .env.local -- tsx prisma/seed-programs-demo.ts",
+    "db:studio": "dotenv -e .env.local -- prisma studio",
+    "db:generate": "dotenv -e .env.local -- prisma generate && echo '→ Restart npm run dev if the app was already running.'",
+    "db:wipe-all": "dotenv -e .env.local -- tsx scripts/wipe-all-crm.ts",
+    "db:wipe-bookings": "dotenv -e .env.local -- tsx scripts/wipe-court-bookings.ts",
+    "db:wipe-classes": "dotenv -e .env.local -- tsx scripts/wipe-all-classes.ts",
+    "db:wipe-transactions": "dotenv -e .env.local -- tsx scripts/wipe-transactions.ts",
+    "db:fresh-start": "dotenv -e .env.local -- tsx scripts/fresh-start.ts",
+    "db:seed-examples": "dotenv -e .env.local -- tsx scripts/seed-examples.ts",
+    "db:seed-coaches": "dotenv -e .env.local -- tsx scripts/seed-coaches.ts",
+    "db:seed-real-catalog": "dotenv -e .env.local -- tsx scripts/seed-real-catalog.ts",
+    "db:backfill-class-prices": "dotenv -e .env.local -- tsx scripts/backfill-class-prices.ts",
+    "smoke:gotimmy": "dotenv -e .env.local -- tsx scripts/smoke-gotimmy.ts",
+    "deploy:check": "dotenv -e .env.local -- tsx scripts/verify-deploy-readiness.ts",
+    "auth:set-password": "dotenv -e .env.local -- tsx scripts/supabase-set-password.ts"
   },
-  "engines": {
-    "node": ">=18"
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
-  "license": "UNLICENSED",
   "dependencies": {
-    "googleapis": "^144.0.0",
-    "xlsx": "^0.18.5"
+    "@mollie/api-client": "^4.5.0",
+    "@prisma/client": "^6.19.3",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.103.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.8.0",
+    "next": "^16.2.4",
+    "prisma": "^6.19.3",
+    "radix-ui": "^1.4.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "resend": "^6.12.3",
+    "sharp": "^0.34.5",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.5.0",
+    "uuid": "^13.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^10.0.0",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.4",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^4.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
   }
 }
