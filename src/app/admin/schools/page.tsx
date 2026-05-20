@@ -6,6 +6,7 @@ import { Section } from "@/components/ui/section";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -81,7 +82,13 @@ export default async function AdminSchoolsPage() {
               </TableHeader>
               <TableBody>
                 {schools.map((s) => (
-                  <TableRow key={s.id}>
+                  <TableRow
+                    key={s.id}
+                    className={cn(
+                      !s.isActive &&
+                        "border-l-[3px] border-l-[var(--border-strong)] bg-[var(--surface)]",
+                    )}
+                  >
                     <TableCell>
                       <div className="font-medium">{s.name}</div>
                       <div className="text-xs text-[var(--muted-foreground)]">

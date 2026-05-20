@@ -1,0 +1,25 @@
+sequenceDiagram
+  participant Parent
+  participant Portal
+  participant Mollie
+  participant Office as Heather inbox
+
+  Parent->>Portal: 1. Sign up — account + children
+  Parent->>Portal: 2. Buy club membership — Triaz and/or Randwijck
+  Portal->>Mollie: Pay online
+  Mollie-->>Portal: Confirmed
+  Portal-->>Parent: Membership active — can book courts
+
+  Parent->>Portal: 3. Browse programs — pick class
+  Parent->>Portal: 4. Enroll child — pay lesson fee
+  Portal->>Mollie: Pay online
+  Mollie-->>Portal: Enrollment active
+  Portal-->>Parent: Class on My classes + calendar sync
+
+  opt Age or level mismatch
+    Portal->>Office: Flag — needs review
+    Office->>Portal: Approve or adjust
+  end
+
+  Parent->>Portal: 5. Book court for play — pick partner at Triaz
+  Portal-->>Parent: Booking confirmed + inbox notification

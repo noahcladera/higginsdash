@@ -125,3 +125,50 @@ export function addDays(d: Date, n: number): Date {
 export function timeToHourMinute(t: Date): { hour: number; minute: number } {
   return { hour: t.getUTCHours(), minute: t.getUTCMinutes() };
 }
+
+/** Minutes since midnight for a local {hour, minute} pair. */
+export function localMinutesSinceMidnight(hour: number, minute: number): number {
+  return hour * 60 + minute;
+}
+
+/**
+ * Calendar row starts for a club day: each entry is a bookable start time
+ * where `start + bookingDurationMinutes <= closes`.
+ */
+export function buildBookingTimeSlots(args: {
+  opensAtLocalTime: Date;
+  closesAtLocalTime: Date;
+  startTimeConstraint: "any" | "on_the_hour" | "on_the_half_hour";
+  bookingDurationMinutes: number;
+}): { hour: number; minute: number }[] {
+  const opens = timeToHourMinute(args.opensAtLocalTime);
+  const closes = timeToHourMinute(args.closesAtLocalTime);
+  const opensMin = localMinutesSinceMidnight(opens.hour, opens.minute);
+  const closesMin = localMinutesSinceMidnight(closes.hour, closes.minute);
+  const stepMinutes =
+    args.startTimeConstraint === "on_the_half_hour" ? 30 : 60;
+  const duration = args.bookingDurationMinutes;
+
+  const slots: { hour: number; minute: number }[] = [];
+  for (
+    let t = opensMin;
+    t + duration <= closesMin;
+    t += stepMinutes
+  ) {
+    if (args.startTimeConstraint === "on_the_hour" && t % 60 !== 0) {
+      continue;
+    }
+    slots.push({
+      hour: Math.floor(t / 60),
+      minute: t % 60,
+    });
+  }
+  return slots;
+}
+
+/** Compare two "HH:MM" labels (same-day local times). */
+export function compareLocalTimeLabels(a: string, b: string): number {
+  const [ah, am] = a.split(":").map(Number);
+  const [bh, bm] = b.split(":").map(Number);
+  return localMinutesSinceMidnight(ah, am) - localMinutesSinceMidnight(bh, bm);
+}

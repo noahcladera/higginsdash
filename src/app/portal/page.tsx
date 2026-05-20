@@ -46,7 +46,8 @@ import {
 import { CalendarPagerTransition } from "./_components/calendar-pager-transition";
 import { cn } from "@/lib/utils";
 import { clubTheme } from "@/lib/club-theme";
-import { getCurrentBrand } from "@/lib/tenant";
+import { getCurrentOrg } from "@/lib/tenant";
+import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
 
 /**
  * Member portal landing — adapts to who you are.
@@ -72,8 +73,13 @@ export default async function PortalHomePage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { person, householdId } = await requireMember();
-  const brand = await getCurrentBrand();
+  const org = await getCurrentOrg();
+  const brand = org.brand;
   const sp = (await searchParams) ?? {};
+  const hasLiveEnrollment = await householdHasLiveEnrollment({
+    personId: person.id,
+    householdId,
+  });
 
   // Adults-only completeness check. Children inherit address from
   // their household and don't carry their own emergency contact, so
@@ -146,6 +152,7 @@ export default async function PortalHomePage({
           clubs={clubs}
           recs={{ hero: recs.hero, more: recs.more }}
           brandName={brand.shortName}
+          showTrialEntry={org.features.trialInterest && !hasLiveEnrollment}
         />
       </div>
     );

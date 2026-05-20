@@ -20,6 +20,10 @@ import {
   parsePricingTiers,
   type PricingTier,
 } from "@/lib/classes/pricing-tiers";
+import {
+  parseCampOptions,
+  type CampOptionsConfig,
+} from "@/lib/classes/camp-options";
 
 /**
  * Should a parent be able to see this series in `/portal/programs/*`?
@@ -332,6 +336,7 @@ export async function listPickupSchoolsWithSeries(): Promise<
 export interface CatalogSeriesDetail extends CatalogSeriesCard {
   classType: ClassType;
   pricingTiers: PricingTier[] | null;
+  campOptions: CampOptionsConfig | null;
   publicNotes: string | null;
   programDescription: string | null;
   coverImageUrl: string | null;
@@ -443,6 +448,7 @@ export async function getVisibleSeriesById(
           },
         },
       },
+      campOptions: true,
       _count: {
         select: {
           enrollments: {
@@ -478,6 +484,7 @@ export async function getVisibleSeriesById(
     ...card,
     classType: s.classType,
     pricingTiers: parsePricingTiers(s.pricingTiers),
+    campOptions: parseCampOptions(s.campOptions),
     publicNotes: s.publicNotes,
     programDescription: s.program.descriptionPublic,
     coverImageUrl: s.program.coverImageUrl,

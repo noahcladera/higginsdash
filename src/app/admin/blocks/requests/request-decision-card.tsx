@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusSurface } from "@/components/ui/status-surface";
 import { decideRecurringBlockRequest } from "@/lib/booking/actions";
 import type { RecurringConflictDate } from "@/lib/booking/recurring";
 import { toast } from "@/lib/feedback";
@@ -99,11 +101,15 @@ export function RecurringRequestCard({ request }: RequestProps) {
   const hasLiveClashes = liveClashes.length > 0;
 
   return (
-    <div className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+    <StatusSurface
+      tone="warning"
+      className="rounded-[var(--radius-lg)] p-5 shadow-[var(--shadow-sm)]"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold">
-            {request.coachName}
+          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+            <span>{request.coachName}</span>
+            <StatusBadge tone="warning">Pending</StatusBadge>
             {request.isZzp && (
               <Badge variant="outline" className="ml-2">
                 ZZP
@@ -223,7 +229,7 @@ export function RecurringRequestCard({ request }: RequestProps) {
           </Button>
         )}
       </div>
-    </div>
+    </StatusSurface>
   );
 }
 

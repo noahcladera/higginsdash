@@ -77,7 +77,7 @@ export default async function AdminEventsPage({
                     <tr key={s.id}>
                       <td className="px-4 py-3">
                         <Link
-                          href={`/admin/classes/${s.id}`}
+                          href={`/admin/events/${s.id}`}
                           className="text-[var(--triaz-ink)] underline-offset-4 hover:underline"
                         >
                           {s.name}

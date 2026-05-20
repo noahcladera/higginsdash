@@ -12,6 +12,10 @@ import {
   resolveEventCheckoutPrice,
 } from "@/lib/classes/pricing-tiers";
 import {
+  parseCampOptions,
+  resolveCampCheckoutPrice,
+} from "@/lib/classes/camp-options";
+import {
   ageBracketFromAge,
   computeEnrollmentPricing,
   type EnrollmentPricingBreakdown,
@@ -65,6 +69,11 @@ const CreateInput = z.object({
   studentPersonId: z.string().uuid(),
   /** Required when the series has more than one sub-group. */
   groupId: z.string().uuid().optional(),
+  campOptionId: z.string().optional(),
+  campDropInDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   /**
    * Set when the parent acknowledged "my child is outside the age band
    * but I want to enroll anyway". Bypasses the age range check and
@@ -142,6 +151,8 @@ export async function createEnrollment(
     classSeriesId: string;
     studentPersonId: string;
     groupId?: string;
+    campOptionId?: string;
+    campDropInDate?: string;
     ageOverrideAck?: boolean;
   },
   paymentContext?: EnrollmentPaymentContext,
@@ -182,6 +193,7 @@ export async function createEnrollment(
       pricePerSeries: true,
       classType: true,
       pricingTiers: true,
+      campOptions: true,
       venue: {
         select: { club: { select: { id: true, slug: true } } },
       },
@@ -369,6 +381,25 @@ export async function createEnrollment(
 
   const pricingTiers = parsePricingTiers(series.pricingTiers);
   const isEvent = series.classType === "event";
+  const isCamp = series.classType === "camp";
+  const campOptions = parseCampOptions(series.campOptions);
+  const campOptionId = parsed.data.campOptionId;
+  const campSelectedOption = campOptionId
+    ? campOptions?.options.find((o) => o.id === campOptionId) ?? null
+    : null;
+  if (isCamp && !campSelectedOption) {
+    return { ok: false, error: "Pick a camp option before signing up." };
+  }
+  if (
+    isCamp &&
+    campSelectedOption?.attendanceKind.startsWith("daily_drop_in_") &&
+    !parsed.data.campDropInDate
+  ) {
+    return { ok: false, error: "Pick a drop-in date before signing up." };
+  }
+  const campSkipsMembershipRequirement =
+    isCamp &&
+    (campSelectedOption?.attendanceKind.startsWith("daily_drop_in_") ?? false);
   const checkoutPrice = isEvent
     ? resolveEventCheckoutPrice({
         pricePerSeries:
@@ -378,6 +409,17 @@ export async function createEnrollment(
         pricingTiers,
         hasActiveMembership,
       }).amountEur
+    : isCamp
+      ? resolveCampCheckoutPrice({
+          campOptions,
+          selection: campSelectedOption
+            ? {
+                optionId: campSelectedOption.id,
+                dropInDateIso: parsed.data.campDropInDate,
+              }
+            : null,
+          hasActiveMembership,
+        })
     : series.pricePerSeries != null
       ? Number(series.pricePerSeries)
       : null;
@@ -392,6 +434,12 @@ export async function createEnrollment(
     isReturningHousehold,
     suppressMembershipAddOn:
       isEvent && eventHasMemberPricingTier(pricingTiers),
+    campSelectionPrice: isCamp ? checkoutPrice : null,
+    campSelectionKind: isCamp
+      ? campSelectedOption?.attendanceKind.startsWith("daily_drop_in_")
+        ? "daily_drop_in"
+        : "full_week"
+      : null,
   });
 
   // Idempotency: surface the existing row instead of failing if the
@@ -548,6 +596,9 @@ export async function createEnrollment(
       // present here, otherwise we refuse and the parent has to go
       // pay the membership before the lesson seat can be saved.
       if (initialStatus === "pending_payment" && !hasActiveMembership) {
+        if (campSkipsMembershipRequirement) {
+          // Daily drop-ins intentionally do not include membership.
+        } else {
         const willGrantMembership =
           !!paymentContext &&
           paymentContext.kind === "lesson_plus_membership" &&
@@ -557,6 +608,7 @@ export async function createEnrollment(
           breakdown.membershipAddOn > 0;
         if (!willGrantMembership) {
           return { ok: false as const, reason: "needs_membership" as const };
+        }
         }
       }
 

@@ -1,0 +1,10 @@
+flowchart LR
+  Login[Login — email link]
+  Login --> Router{Who are you?}
+  Router -->|Office staff| Admin["/admin — Heather and William"]
+  Router -->|Coach or ZZP| CoachApp["/coach — schedule and courts"]
+  Router -->|Member or parent| Portal["/portal — family, classes, booking"]
+
+  Admin --> Tasks[People, classes, calendar, inbox, payments]
+  CoachApp --> CoachTasks[My classes, book court, hours, receipts]
+  Portal --> MemberTasks[Membership, programs, book court, inbox]

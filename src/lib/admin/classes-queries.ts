@@ -10,13 +10,13 @@ import type { ClassSummaryProps } from "@/app/admin/classes/_components/class-su
  * scope through `classSeries`.
  *
  * `kind` controls the classType bucket:
- *   - "class" (default) — everything *except* `event` rows. The events
- *     surface (`/admin/events`) owns those.
+ *   - "class" (default) — everything except `event` + `camp` rows.
  *   - "event" — just `event` rows.
+ *   - "camp" — just `camp` rows.
  */
 export function buildClassSeriesWhere(
   filters: AdminClassesFilters,
-  kind: "class" | "event" = "class",
+  kind: "class" | "event" | "camp" = "class",
 ): Prisma.ClassSeriesWhereInput {
   const now = new Date();
   const parts: Prisma.ClassSeriesWhereInput[] = [];
@@ -28,8 +28,10 @@ export function buildClassSeriesWhere(
 
   if (kind === "event") {
     parts.push({ classType: "event" });
+  } else if (kind === "camp") {
+    parts.push({ classType: "camp" });
   } else {
-    parts.push({ classType: { not: "event" } });
+    parts.push({ classType: { notIn: ["event", "camp"] } });
   }
 
   // Time visibility (legacy behaviour)
@@ -338,7 +340,7 @@ export async function listSessionsForAdmin(
 /** Class series rows for the admin list table. */
 export async function listSeriesForAdmin(
   filters: AdminClassesFilters,
-  kind: "class" | "event" = "class",
+  kind: "class" | "event" | "camp" = "class",
 ) {
   const where = buildClassSeriesWhere(filters, kind);
 
@@ -372,7 +374,7 @@ export async function countSessionsInCalendarRange(
   filters: AdminClassesFilters,
   rangeStart: Date,
   rangeEnd: Date,
-  kind: "class" | "event" = "class",
+  kind: "class" | "event" | "camp" = "class",
 ): Promise<number> {
   const seriesWhere = buildClassSeriesWhere(filters, kind);
 

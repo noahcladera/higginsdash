@@ -4,7 +4,9 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusSurface } from "@/components/ui/status-surface";
+import { transferStatusTone } from "@/lib/ui/status-tone";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 
 /**
@@ -86,9 +88,11 @@ export default async function AdminTransfersPage() {
             {pending.map((r) => {
               const studentName = `${r.fromEnrollment.student.person.firstName} ${r.fromEnrollment.student.person.lastName}`.trim();
               return (
-                <li
+                <StatusSurface
                   key={r.id}
-                  className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-4 shadow-[var(--shadow-sm)]"
+                  as="li"
+                  tone="warning"
+                  className="rounded-[var(--radius-lg)] p-4 shadow-[var(--shadow-sm)]"
                 >
                   <Link
                     href={`/admin/transfers/${r.id}`}
@@ -112,11 +116,9 @@ export default async function AdminTransfersPage() {
                         </p>
                       )}
                     </div>
-                    <Badge tone="warning" variant="soft">
-                      Pending
-                    </Badge>
+                    <StatusBadge tone="warning">Pending</StatusBadge>
                   </Link>
-                </li>
+                </StatusSurface>
               );
             })}
           </ul>
@@ -138,7 +140,7 @@ export default async function AdminTransfersPage() {
               <tbody className="divide-y divide-[var(--border)]">
                 {recent.map((r) => {
                   const studentName = `${r.fromEnrollment.student.person.firstName} ${r.fromEnrollment.student.person.lastName}`.trim();
-                  const outcome =
+                  const outcomeLabel =
                     r.status === "approved"
                       ? `Approved · ${r.resolution ?? "—"}${
                           r.deltaCents != null
@@ -158,7 +160,20 @@ export default async function AdminTransfersPage() {
                           {studentName} · {r.fromEnrollment.classSeries.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3">{outcome}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <StatusBadge tone={transferStatusTone(r.status)}>
+                            {r.status === "approved"
+                              ? "Approved"
+                              : r.status === "rejected"
+                                ? "Rejected"
+                                : "Cancelled"}
+                          </StatusBadge>
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            {outcomeLabel}
+                          </span>
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-[var(--muted-foreground)]">
                         {r.decidedBy
                           ? `${r.decidedBy.firstName} ${r.decidedBy.lastName}`.trim()

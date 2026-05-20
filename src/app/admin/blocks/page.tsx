@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
+import { blockStatusTone } from "@/lib/ui/status-tone";
 import {
   Table,
   TableBody,
@@ -278,17 +279,9 @@ function BlockSubsection({
                 </TableCell>
               )}
               <TableCell>
-                {b.status === "active" ? (
-                  <Badge tone="success" variant="soft">
-                    active
-                  </Badge>
-                ) : b.status === "cancelled" ? (
-                  <Badge tone="neutral" variant="soft">
-                    cancelled
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">{b.status}</Badge>
-                )}
+                <Badge tone={blockStatusTone(b.status)} variant="soft" className="capitalize">
+                  {b.status}
+                </Badge>
               </TableCell>
               <TableCell className="text-right">
                 {b.status === "active" && <CancelBlockButton id={b.id} />}

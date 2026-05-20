@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,10 @@ import {
   resolveEventCheckoutPrice,
   type PricingTier,
 } from "@/lib/classes/pricing-tiers";
+import {
+  resolveCampCheckoutPrice,
+  type CampOptionsConfig,
+} from "@/lib/classes/camp-options";
 import { computeEnrollmentPricing } from "@/lib/portal/enrollment-pricing";
 import { startCheckout as beginCheckout } from "@/lib/payments/start-checkout";
 import {
@@ -69,7 +73,9 @@ export function EnrollPanel({
   groups,
   pricePerSeries,
   isEvent = false,
+  isCamp = false,
   pricingTiers = null,
+  campOptions = null,
   /**
    * Sessions serialized as ISO strings — Server Components can't pass
    * Date instances across the boundary cleanly, and we only need the
@@ -81,6 +87,8 @@ export function EnrollPanel({
   householdCreditCents = 0,
   brandName,
   privateLessonLabel,
+  showTrialCta = false,
+  classLabel = "Class",
 }: {
   seriesId: string;
   seriesName: string;
@@ -100,7 +108,9 @@ export function EnrollPanel({
   groups: EnrollGroup[];
   pricePerSeries: number | null;
   isEvent?: boolean;
+  isCamp?: boolean;
   pricingTiers?: PricingTier[] | null;
+  campOptions?: CampOptionsConfig | null;
   sessionStartsAtIso: string[];
   venueClubSlug: "triaz" | "randwijck" | null;
   /**
@@ -119,6 +129,10 @@ export function EnrollPanel({
   brandName: string;
   /** Tenant private-lesson singular label, plural form derived in copy. */
   privateLessonLabel: string;
+  /** Whether the viewer should see trial-request fallback prompts. */
+  showTrialCta?: boolean;
+  /** Tenant singular label for class-like offerings. */
+  classLabel?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -186,6 +200,34 @@ export function EnrollPanel({
     ? selectedGroupId || autoGroupId
     : groups[0]?.id ?? "";
 
+  const campOptionsForSelected = useMemo(() => {
+    if (!campOptions || !selected) return [];
+    return campOptions.options.filter(
+      (o) => !o.forMembers || selected.hasActiveMembership,
+    );
+  }, [campOptions, selected]);
+  const [selectedCampOptionId, setSelectedCampOptionId] = useState<string>(
+    campOptions?.options[0]?.id ?? "",
+  );
+  const selectedCampOption = campOptions?.options.find(
+    (o) => o.id === selectedCampOptionId,
+  );
+  const campNeedsDropInDate =
+    selectedCampOption?.attendanceKind.startsWith("daily_drop_in_") ?? false;
+  const [selectedDropInDate, setSelectedDropInDate] = useState<string>(
+    campOptions?.dropInDates[0] ?? "",
+  );
+  useEffect(() => {
+    if (!isCamp) return;
+    if (
+      selectedCampOptionId &&
+      campOptionsForSelected.some((o) => o.id === selectedCampOptionId)
+    ) {
+      return;
+    }
+    setSelectedCampOptionId(campOptionsForSelected[0]?.id ?? "");
+  }, [isCamp, selectedCampOptionId, campOptionsForSelected]);
+
   // Re-compute the breakdown when the parent picks a different
   // candidate — membership coverage and age bracket vary per kid, so
   // the total can change. We recompute on every render with `now =
@@ -193,6 +235,16 @@ export function EnrollPanel({
   // matter are time-based (a session crossing into "past" mid-page);
   // calling `Date.now()` once per render is plenty fast.
   const effectivePricePerSeries = useMemo(() => {
+    if (isCamp && selected && selectedCampOptionId) {
+      return resolveCampCheckoutPrice({
+        campOptions,
+        selection: {
+          optionId: selectedCampOptionId,
+          dropInDateIso: selectedDropInDate || undefined,
+        },
+        hasActiveMembership: selected.hasActiveMembership,
+      });
+    }
     if (!isEvent || !pricingTiers?.length) return pricePerSeries;
     if (!selected) return pricePerSeries;
     return resolveEventCheckoutPrice({
@@ -200,7 +252,16 @@ export function EnrollPanel({
       pricingTiers,
       hasActiveMembership: selected.hasActiveMembership,
     }).amountEur;
-  }, [isEvent, pricingTiers, pricePerSeries, selected]);
+  }, [
+    isCamp,
+    campOptions,
+    selectedCampOptionId,
+    selectedDropInDate,
+    isEvent,
+    pricingTiers,
+    pricePerSeries,
+    selected,
+  ]);
 
   const breakdown = useMemo(() => {
     if (!selected) return null;
@@ -214,6 +275,12 @@ export function EnrollPanel({
       isReturningHousehold,
       suppressMembershipAddOn:
         isEvent && eventHasMemberPricingTier(pricingTiers),
+      campSelectionPrice: isCamp ? effectivePricePerSeries : null,
+      campSelectionKind: isCamp
+        ? campNeedsDropInDate
+          ? "daily_drop_in"
+          : "full_week"
+        : null,
     });
   }, [
     selected,
@@ -222,6 +289,8 @@ export function EnrollPanel({
     venueClubSlug,
     isReturningHousehold,
     isEvent,
+    isCamp,
+    campNeedsDropInDate,
     pricingTiers,
   ]);
 
@@ -278,6 +347,9 @@ export function EnrollPanel({
           classSeriesId: seriesId,
           studentPersonId: selected.personId,
           groupId: effectiveGroupId || undefined,
+          campOptionId: isCamp ? selectedCampOptionId || undefined : undefined,
+          campDropInDate:
+            isCamp && campNeedsDropInDate ? selectedDropInDate || undefined : undefined,
           ageOverrideAck: !selected.ageOk ? true : undefined,
         });
         if (res.ok) {
@@ -313,6 +385,11 @@ export function EnrollPanel({
               classSeriesId: seriesId,
               studentPersonId: selected.personId,
               groupId: effectiveGroupId || undefined,
+                      campOptionId: isCamp ? selectedCampOptionId || undefined : undefined,
+                      campDropInDate:
+                        isCamp && campNeedsDropInDate
+                          ? selectedDropInDate || undefined
+                          : undefined,
               ageOverrideAck: !selected.ageOk ? true : undefined,
               creditCentsApplied: creditCentsApplied || undefined,
             },
@@ -331,6 +408,32 @@ export function EnrollPanel({
     (!effectiveGroupId ||
       eligibleGroupsForSelected.length === 0 ||
       (groupForSelected?.isFull ?? false));
+  const campBlocksEnroll =
+    isCamp &&
+    (!selectedCampOptionId || (campNeedsDropInDate && !selectedDropInDate));
+  const showTrialFallback =
+    showTrialCta &&
+    (candidates.length === 0 ||
+      !enrollmentOpenNow ||
+      (isFull && !waitlistEnabled) ||
+      !selected ||
+      !!selected.existing ||
+      groupBlocksEnroll ||
+      campBlocksEnroll ||
+      (!selected.ageOk && !ageOverrideAck));
+  const trialHref = (() => {
+    const params = new URLSearchParams({ seriesId });
+    if (selected) {
+      params.set("audience", selected.relation === "you" ? "adults" : "kids");
+      if (selected.relation === "child") {
+        params.set("playerPersonId", selected.personId);
+      }
+    }
+    if (venueClubSlug) {
+      params.set("preferredClub", venueClubSlug);
+    }
+    return `/portal/request-trial?${params.toString()}`;
+  })();
 
   // Two-step checkout fires when the selected candidate needs a
   // membership to enroll (per-club coverage), the venue is one of our
@@ -488,6 +591,44 @@ export function EnrollPanel({
         </fieldset>
       )}
 
+      {isCamp && campOptions && (
+        <fieldset className="space-y-2">
+          <legend className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+            Camp option
+          </legend>
+          <select
+            value={selectedCampOptionId}
+            onChange={(e) => setSelectedCampOptionId(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-1 text-sm"
+          >
+            <option value="" disabled>
+              Pick an option…
+            </option>
+            {campOptionsForSelected.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          {campNeedsDropInDate && (
+            <select
+              value={selectedDropInDate}
+              onChange={(e) => setSelectedDropInDate(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-1 text-sm"
+            >
+              <option value="" disabled>
+                Pick a drop-in date…
+              </option>
+              {(campOptions?.dropInDates ?? []).map((iso) => (
+                <option key={iso} value={iso}>
+                  {iso}
+                </option>
+              ))}
+            </select>
+          )}
+        </fieldset>
+      )}
+
       {!showWaitlist &&
         breakdown &&
         selected &&
@@ -540,7 +681,8 @@ export function EnrollPanel({
             !enrollmentOpenNow ||
             !!selected.existing ||
             (!selected.ageOk && !ageOverrideAck) ||
-            groupBlocksEnroll
+            groupBlocksEnroll ||
+            campBlocksEnroll
           }
           pending={pending}
           onLessonRun={(payload) => {
@@ -560,6 +702,11 @@ export function EnrollPanel({
                       classSeriesId: seriesId,
                       studentPersonId: selected.personId,
                       groupId: effectiveGroupId || undefined,
+                      campOptionId: isCamp ? selectedCampOptionId || undefined : undefined,
+                      campDropInDate:
+                        isCamp && campNeedsDropInDate
+                          ? selectedDropInDate || undefined
+                          : undefined,
                       ageOverrideAck: !selected.ageOk ? true : undefined,
                       creditCentsApplied: creditCentsApplied || undefined,
                     },
@@ -583,7 +730,8 @@ export function EnrollPanel({
             !selected ||
             !!selected?.existing ||
             (!selected?.ageOk && !ageOverrideAck) ||
-            groupBlocksEnroll
+            groupBlocksEnroll ||
+            campBlocksEnroll
           }
         >
           {enrollAction}
@@ -598,6 +746,24 @@ export function EnrollPanel({
 
       {error && (
         <p className="text-sm text-[var(--destructive)]">{error}</p>
+      )}
+
+      {showTrialFallback && (
+        <div className="rounded-md border border-[var(--triaz)]/30 bg-[var(--triaz-soft)] px-3 py-3 text-xs text-[var(--foreground)]">
+          <p className="font-medium">
+            Need help choosing? Request a trial for this class first.
+          </p>
+          <p className="mt-1 text-[var(--muted-foreground)]">
+            We can suggest a trial {classLabel.toLowerCase()} and guide you to the
+            best group.
+          </p>
+          <Link
+            href={trialHref}
+            className="mt-2 inline-flex font-semibold text-[var(--triaz-ink)] underline-offset-4 hover:underline"
+          >
+            Request a trial →
+          </Link>
+        </div>
       )}
 
       <p className="text-[11px] text-[var(--muted-foreground)]">

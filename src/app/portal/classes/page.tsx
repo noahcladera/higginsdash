@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { ClassIcon } from "@/components/icons";
 import { formatSkillLevel } from "@/lib/skill-levels";
-import { getTerms } from "@/lib/tenant";
 import { getUpcomingSessionsForStudents } from "@/lib/portal/queries";
 import {
   computeClassTiming,
@@ -19,6 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 import { WithdrawButton } from "./_withdraw-button";
 import { SkipSessionButton } from "./_skip-session-button";
+import { getCurrentOrg } from "@/lib/tenant";
+import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
 
 /**
  * Member "My classes" page — covers both the adult-student view and
@@ -49,7 +50,8 @@ export default async function PortalClassesPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const t = await getTerms();
+  const org = await getCurrentOrg();
+  const t = org.terms;
   const sp = (await searchParams) ?? {};
   const enrolledFlag = firstString(sp.enrolled);
   const enrolledSeriesId = firstString(sp.series);
@@ -98,6 +100,11 @@ export default async function PortalClassesPage({
   }
 
   const { person, householdId } = await requireMember();
+  const hasLiveEnrollment = await householdHasLiveEnrollment({
+    personId: person.id,
+    householdId,
+  });
+  const showTrialCta = org.features.trialInterest && !hasLiveEnrollment;
 
   // Build the set of student person IDs the viewer can see: themselves
   // (if a student) + every child in the household. If neither, send
@@ -258,9 +265,16 @@ export default async function PortalClassesPage({
                     : `Browse lessons to sign ${fallbackName} up.`
                 }
                 action={
-                  <Button asChild tone="triaz" size="sm">
-                    <Link href="/portal/programs">Browse lessons</Link>
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button asChild tone="triaz" size="sm">
+                      <Link href="/portal/programs">Browse lessons</Link>
+                    </Button>
+                    {showTrialCta && (
+                      <Button asChild size="sm" variant="outline">
+                        <Link href="/portal/request-trial">Request a trial</Link>
+                      </Button>
+                    )}
+                  </div>
                 }
               />
             ) : (

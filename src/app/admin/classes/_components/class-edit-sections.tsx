@@ -15,7 +15,9 @@ import { AgeAndLevelField } from "./age-and-level-field";
 import { GroupsField, type GroupRow } from "./groups-field";
 import { EventStaffField } from "./event-staff-field";
 import { EventPricingField } from "./event-pricing-field";
+import { CampOptionsField } from "./camp-options-field";
 import type { PricingTier } from "@/lib/classes/pricing-tiers";
+import type { CampOptionsConfig } from "@/lib/classes/camp-options";
 import type { SkillLevelValue } from "@/lib/skill-levels";
 
 /**
@@ -34,8 +36,10 @@ type VenueOption = {
   id: string;
   name: string;
   kind: "club" | "school" | "rented_court";
+  clubId?: string | null;
 };
 type SchoolOption = { id: string; name: string };
+type CourtOption = { id: string; name: string; clubId: string };
 type SeasonOption = {
   id: string;
   name: string;
@@ -237,6 +241,12 @@ export function ScheduleSectionEditor({
   defaultEndsOn,
   defaultExcludedDates,
   defaultSeasonId,
+  defaultCourtId,
+  defaultCourtBlockStartTime,
+  defaultCourtBlockEndTime,
+  venueKind,
+  venueClubId,
+  courts,
   audience,
   seasons,
   showSeason = true,
@@ -249,6 +259,12 @@ export function ScheduleSectionEditor({
   defaultEndsOn: string;
   defaultExcludedDates: string[];
   defaultSeasonId: string | null;
+  defaultCourtId: string | null;
+  defaultCourtBlockStartTime: string | null;
+  defaultCourtBlockEndTime: string | null;
+  venueKind: "club" | "school" | "rented_court";
+  venueClubId: string | null;
+  courts: CourtOption[];
   audience: "kids" | "adults" | "mixed";
   seasons: SeasonOption[];
   /** False for events — seasons are for regular classes only. */
@@ -263,6 +279,19 @@ export function ScheduleSectionEditor({
     () => new Set(defaultExcludedDates),
   );
   const [seasonId, setSeasonId] = useState<string>(defaultSeasonId ?? "");
+  const [courtId, setCourtId] = useState<string>(defaultCourtId ?? "");
+  const [courtBlockStartTime, setCourtBlockStartTime] = useState<string>(
+    defaultCourtBlockStartTime ?? defaultStartTime,
+  );
+  const [courtBlockEndTime, setCourtBlockEndTime] = useState<string>(
+    defaultCourtBlockEndTime ?? defaultEndTime,
+  );
+  const [acknowledgeCourtConflicts, setAcknowledgeCourtConflicts] =
+    useState(false);
+  const courtOptions = useMemo(() => {
+    if (venueKind !== "club" || !venueClubId) return [];
+    return courts.filter((court) => court.clubId === venueClubId);
+  }, [courts, venueKind, venueClubId]);
 
   // Mirror the Naming editor's audience-fallback rule: filter to the
   // matching audience (plus any free-form / currently-pinned season) and
@@ -323,6 +352,12 @@ export function ScheduleSectionEditor({
     });
   }, [startsOn, endsOn, dayOfWeek]);
 
+  useEffect(() => {
+    if (!courtId) return;
+    if (courtOptions.some((court) => court.id === courtId)) return;
+    setCourtId("");
+  }, [courtId, courtOptions]);
+
   function toggleExcluded(iso: string) {
     setExcluded((prev) => {
       const next = new Set(prev);
@@ -345,6 +380,22 @@ export function ScheduleSectionEditor({
         type="hidden"
         name="seasonId"
         value={showSeason ? seasonId : ""}
+      />
+      <input type="hidden" name="defaultCourtId" value={courtId} />
+      <input
+        type="hidden"
+        name="courtBlockStartTime"
+        value={courtId ? courtBlockStartTime : ""}
+      />
+      <input
+        type="hidden"
+        name="courtBlockEndTime"
+        value={courtId ? courtBlockEndTime : ""}
+      />
+      <input
+        type="hidden"
+        name="acknowledgeCourtConflicts"
+        value={acknowledgeCourtConflicts ? "true" : "false"}
       />
 
       {showSeason && (
@@ -423,6 +474,78 @@ export function ScheduleSectionEditor({
             required
           />
         </FieldBlock>
+      </div>
+      <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3">
+        <FieldBlock
+          label="Court (optional)"
+          optional
+          hint={
+            venueKind === "club"
+              ? "Select a court to reserve it for this class. Leave empty to avoid blocking a court."
+              : "Court selection is only available for club venues."
+          }
+        >
+          <select
+            value={courtId}
+            onChange={(e) => {
+              const next = e.target.value;
+              setCourtId(next);
+              if (next) {
+                setCourtBlockStartTime(startTime);
+                setCourtBlockEndTime(endTime);
+              }
+            }}
+            className={selectClass}
+            disabled={venueKind !== "club"}
+          >
+            <option value="">No court selected</option>
+            {courtOptions.map((court) => (
+              <option key={court.id} value={court.id}>
+                {court.name}
+              </option>
+            ))}
+          </select>
+        </FieldBlock>
+        {courtId && (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FieldBlock
+                label="Court block start"
+                hint="When this court starts being reserved."
+              >
+                <Input
+                  type="time"
+                  value={courtBlockStartTime}
+                  onChange={(e) => setCourtBlockStartTime(e.target.value)}
+                  required
+                />
+              </FieldBlock>
+              <FieldBlock
+                label="Court block end"
+                hint="When this court becomes available again."
+              >
+                <Input
+                  type="time"
+                  value={courtBlockEndTime}
+                  onChange={(e) => setCourtBlockEndTime(e.target.value)}
+                  required
+                />
+              </FieldBlock>
+            </div>
+            <label className="inline-flex items-start gap-2 text-xs text-[var(--muted-foreground)]">
+              <input
+                type="checkbox"
+                checked={acknowledgeCourtConflicts}
+                onChange={(e) =>
+                  setAcknowledgeCourtConflicts(e.currentTarget.checked)
+                }
+                className="mt-0.5 h-3.5 w-3.5"
+              />
+              If this overlaps existing bookings/classes, allow save and skip
+              only conflicting dates.
+            </label>
+          </>
+        )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <FieldBlock label="Starts on">
@@ -819,6 +942,21 @@ export function EventPricingSectionEditor({
     <>
       <input type="hidden" name="classSeriesId" value={classSeriesId} />
       <EventPricingField defaultTiers={defaultTiers} />
+    </>
+  );
+}
+
+export function CampPricingSectionEditor({
+  classSeriesId,
+  defaultOptions,
+}: {
+  classSeriesId: string;
+  defaultOptions: CampOptionsConfig | null;
+}) {
+  return (
+    <>
+      <input type="hidden" name="classSeriesId" value={classSeriesId} />
+      <CampOptionsField defaultOptions={defaultOptions} />
     </>
   );
 }

@@ -150,8 +150,9 @@ type EffectiveBookerResult =
   | { ok: false; error: string };
 
 /**
- * Resolves who the booking is for. Admins must always pick someone else;
- * coaches and members book only for themselves.
+ * Resolves who the booking is for. Front-desk admins must pick someone else;
+ * admin+coach users booking from /coach/book may omit `bookedForPersonId` and
+ * book for themselves. Coaches and members always book only for themselves.
  */
 async function resolveEffectiveBooker(
   actor: ResolvedActor,
@@ -159,6 +160,30 @@ async function resolveEffectiveBooker(
 ): Promise<EffectiveBookerResult> {
   if (actor.role === "admin") {
     if (!input.bookedForPersonId) {
+      const self = await prisma.person.findUnique({
+        where: { id: actor.personId },
+        include: {
+          coach: { select: { isActive: true } },
+          zzpCoach: { select: { isActive: true } },
+        },
+      });
+      const isActiveCoach =
+        !!self?.coach?.isActive || !!self?.zzpCoach?.isActive;
+      if (isActiveCoach) {
+        const isZzpCoach =
+          !self!.coach?.isActive && !!self!.zzpCoach?.isActive;
+        return {
+          ok: true,
+          actorPersonId: actor.personId,
+          bookerEmail: actor.email,
+          booker: {
+            personId: actor.personId,
+            householdId: actor.householdId,
+            role: "coach",
+            isZzpCoach,
+          },
+        };
+      }
       return { ok: false, error: "Choose who this booking is for." };
     }
 

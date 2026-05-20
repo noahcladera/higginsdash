@@ -1,0 +1,32 @@
+flowchart TB
+  subgraph before [Today — many tools]
+    Parent1[Parent or member]
+    GT[GoTimmy — classes and signups]
+    SS[SuperSaaS — court booking]
+    XL[Excel — membership batches]
+    OLD[Old Triaz membership DB — manual re-entry]
+    GCal[Google Calendar — rosters and parent contacts]
+    Email[Email and WhatsApp — everything else]
+    Parent1 --> GT
+    Parent1 --> SS
+    Heather1[Heather] --> GT
+    Heather1 --> SS
+    Heather1 --> XL
+    Heather1 --> OLD
+    Heather1 --> GCal
+    William1[William] --> Email
+  end
+
+  subgraph after [Higgins portal — one system]
+    Parent2[Parent or member]
+    Portal[Member portal — signup, pay, book, enroll]
+    DB[(One database — who everyone is)]
+    Admin[Admin — Heather]
+    Coach[Coach app]
+    Pay[Mollie — card and iDEAL]
+    Parent2 --> Portal
+    Portal --> DB
+    Admin --> DB
+    Coach --> DB
+    Portal --> Pay
+  end

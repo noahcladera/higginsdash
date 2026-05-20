@@ -47,6 +47,8 @@ export type DemoCheckoutAction =
         classSeriesId: string;
         studentPersonId: string;
         groupId?: string;
+        campOptionId?: string;
+        campDropInDate?: string;
         /**
          * Set when the parent acknowledged the age cross-check warning.
          * The server-side action stamps `requiresReview = true` so the
@@ -74,6 +76,8 @@ export type DemoCheckoutAction =
         classSeriesId: string;
         studentPersonId: string;
         groupId?: string;
+        campOptionId?: string;
+        campDropInDate?: string;
         ageOverrideAck?: boolean;
         creditCentsApplied?: number;
       };

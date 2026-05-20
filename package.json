@@ -27,6 +27,12 @@
     "db:backfill-class-prices": "dotenv -e .env.local -- tsx scripts/backfill-class-prices.ts",
     "smoke:gotimmy": "dotenv -e .env.local -- tsx scripts/smoke-gotimmy.ts",
     "deploy:check": "dotenv -e .env.local -- tsx scripts/verify-deploy-readiness.ts",
+    "db:migrate:prod": "dotenv -e .env.production.local -- prisma migrate deploy",
+    "db:status:prod": "dotenv -e .env.production.local -- prisma migrate status",
+    "db:seed:prod": "dotenv -e .env.production.local -- tsx prisma/seed.ts",
+    "db:extras": "dotenv -e .env.local -- bash -c 'psql \"$DIRECT_URL\" -f prisma/sql/postgres_extras.sql'",
+    "db:extras:prod": "dotenv -e .env.production.local -- bash -c 'psql \"$DIRECT_URL\" -f prisma/sql/postgres_extras.sql'",
+    "deploy:check:prod": "dotenv -e .env.production.local -- tsx scripts/verify-deploy-readiness.ts",
     "auth:set-password": "dotenv -e .env.local -- tsx scripts/supabase-set-password.ts"
   },
   "prisma": {

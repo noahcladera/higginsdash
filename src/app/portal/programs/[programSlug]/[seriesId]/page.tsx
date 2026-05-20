@@ -21,7 +21,8 @@ import {
 } from "./_enroll-panel";
 import { listClassUpdatesForSeries } from "@/lib/class-updates/queries";
 import { ClassUpdateList } from "@/components/class-updates/class-update-list";
-import { getCurrentBrand, getTerms } from "@/lib/tenant";
+import { getCurrentOrg } from "@/lib/tenant";
+import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
 
 /**
  * Series detail page — the "info + enroll" stop on the catalog flow.
@@ -40,7 +41,12 @@ export default async function SeriesDetailPage({
 }) {
   const { person, householdId } = await requireMember();
   const { programSlug, seriesId } = await params;
-  const [brand, terms] = await Promise.all([getCurrentBrand(), getTerms()]);
+  const [org, hasLiveEnrollment] = await Promise.all([
+    getCurrentOrg(),
+    householdHasLiveEnrollment({ personId: person.id, householdId }),
+  ]);
+  const { brand, terms, features } = org;
+  const showTrialCta = features.trialInterest && !hasLiveEnrollment;
 
   const program = await getProgramBySlug(programSlug);
   if (!program) notFound();
@@ -261,6 +267,8 @@ export default async function SeriesDetailPage({
             description={
               series.classType === "event"
                 ? "Event price. Members with an active club membership see the member rate automatically at checkout."
+                : series.classType === "camp"
+                  ? "Camp option pricing. Pick week/drop-in + member status in the enrollment panel for the exact total."
                 : "Sticker price for the full series. We prorate automatically if it's already started — see your total in the panel."
             }
           >
@@ -373,13 +381,17 @@ export default async function SeriesDetailPage({
             closesAt={series.enrollmentClosesAt}
             pricePerSeries={series.pricePerSeries}
             isEvent={series.classType === "event"}
+            isCamp={series.classType === "camp"}
             pricingTiers={series.pricingTiers}
+            campOptions={series.campOptions}
             sessionStartsAtIso={series.sessions.map((s) =>
               s.startsAt.toISOString(),
             )}
             venueClubSlug={series.venueClubSlug}
             isReturningHousehold={isReturning}
             householdCreditCents={householdCreditCents}
+            showTrialCta={showTrialCta}
+            classLabel={terms.class.singular}
             groups={series.groups.map<EnrollGroup>((g) => ({
               id: g.id,
               name: g.name,

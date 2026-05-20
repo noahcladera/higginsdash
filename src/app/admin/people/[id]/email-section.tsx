@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -85,12 +86,16 @@ function EmailRowItem({
           >
             {email.address}
           </span>
-          {email.isPrimary && <Badge variant="default">primary</Badge>}
+          {email.isPrimary && (
+            <Badge variant="outline" tone="neutral">
+              primary
+            </Badge>
+          )}
           <Badge variant="outline">{email.kind}</Badge>
           {email.isVerified && (
-            <Badge variant="secondary">verified</Badge>
+            <StatusBadge tone="success">verified</StatusBadge>
           )}
-          {isArchived && <Badge variant="outline">archived</Badge>}
+          {isArchived && <StatusBadge tone="neutral">archived</StatusBadge>}
         </div>
         {error && (
           <p className="text-xs text-[var(--destructive)]">{error}</p>

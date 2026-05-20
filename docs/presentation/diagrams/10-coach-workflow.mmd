@@ -1,0 +1,12 @@
+flowchart LR
+  Invite[Heather sends coach invite email]
+  Invite --> Accept[Coach accepts — account created]
+  Accept --> Work[Coach workspace]
+
+  Work --> Classes[See my classes and rosters]
+  Work --> Book[Book court — personal or lesson]
+  Work --> Sub[Request sub if sick — Heather approves]
+  Work --> Hours[Hours and receipts — ZZP invoicing path]
+
+  Book --> Lesson[Lesson booking — max 2 students on court]
+  Book --> Personal[Personal play — same rules as members]

@@ -297,7 +297,7 @@ async function seedBookingSettings(clubs: {
     create: {
       clubId: clubs.triaz.id,
       bookingDurationMinutes: 60,
-      startTimeConstraint: "on_the_hour",
+      startTimeConstraint: "on_the_half_hour",
       opensAtLocalTime: new Date("1970-01-01T09:00:00Z"),
       closesAtLocalTime: new Date("1970-01-01T22:00:00Z"),
       earliestBookingOffsetMinutes: 10,
@@ -314,7 +314,7 @@ async function seedBookingSettings(clubs: {
       dailyOverviewEmail: null,
       reminderOffsetMinutes: 60,
     },
-    update: {},
+    update: { startTimeConstraint: "on_the_half_hour" },
   });
 
   // Randwijck: paid, 2/day, 08:00–22:00, 2-day cancel cutoff, auto_email
@@ -323,7 +323,7 @@ async function seedBookingSettings(clubs: {
     create: {
       clubId: clubs.randwijck.id,
       bookingDurationMinutes: 60,
-      startTimeConstraint: "on_the_hour",
+      startTimeConstraint: "on_the_half_hour",
       opensAtLocalTime: new Date("1970-01-01T08:00:00Z"),
       closesAtLocalTime: new Date("1970-01-01T22:00:00Z"),
       earliestBookingOffsetMinutes: 10,
@@ -340,7 +340,7 @@ async function seedBookingSettings(clubs: {
       dailyOverviewEmail: "higginstennisnloffice@gmail.com",
       reminderOffsetMinutes: 60,
     },
-    update: {},
+    update: { startTimeConstraint: "on_the_half_hour" },
   });
 }
 

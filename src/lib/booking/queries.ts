@@ -9,10 +9,10 @@ import { prisma } from "@/lib/prisma";
 import {
   amsterdamHourUtc,
   amsterdamMidnightUtc,
+  buildBookingTimeSlots,
   formatLocalDate,
   formatLocalHour,
   parseLocalDate,
-  timeToHourMinute,
   addDays,
 } from "./time";
 import { recurringBlockHits } from "./rules";
@@ -77,7 +77,7 @@ export interface CalendarCourt {
   isLit: boolean;
   surface: string;
   qualityTier: string;
-  /** Slot index → state for each day in the week (length: days × hours). */
+  /** Slot index → state for each day in the week (length: days × time rows). */
   slots: CalendarSlot[];
 }
 
@@ -90,7 +90,7 @@ export interface CalendarWeek {
   endDate: string;
   /** Local-day labels in display order. */
   days: { date: string; weekday: string }[];
-  /** Local-hour labels (e.g. ['09:00','10:00',...,'21:00']). */
+  /** Local start-time labels (e.g. ['09:00','09:30',...,'21:00']). */
   hours: string[];
   courts: CalendarCourt[];
 }
@@ -180,13 +180,12 @@ export async function getCalendarWeek(args: {
     ],
   );
 
-  // Collect local hours from opens..closes.
-  const opens = timeToHourMinute(settings.opensAtLocalTime);
-  const closes = timeToHourMinute(settings.closesAtLocalTime);
-  const hourSlots: { hour: number; minute: number }[] = [];
-  for (let h = opens.hour; h < closes.hour; h++) {
-    hourSlots.push({ hour: h, minute: 0 });
-  }
+  const timeSlots = buildBookingTimeSlots({
+    opensAtLocalTime: settings.opensAtLocalTime,
+    closesAtLocalTime: settings.closesAtLocalTime,
+    startTimeConstraint: settings.startTimeConstraint,
+    bookingDurationMinutes: settings.bookingDurationMinutes,
+  });
 
   // Day headers.
   const dayHeaders: { date: string; weekday: string }[] = [];
@@ -206,7 +205,7 @@ export async function getCalendarWeek(args: {
     buildCourtSlots({
       court,
       dayHeaders,
-      hourSlots,
+      timeSlots,
       settings,
       bookings,
       classes,
@@ -224,7 +223,7 @@ export async function getCalendarWeek(args: {
     startDate: formatLocalDate(startUtc),
     endDate: formatLocalDate(addDays(startUtc, days - 1)),
     days: dayHeaders,
-    hours: hourSlots.map(
+    hours: timeSlots.map(
       (s) =>
         `${String(s.hour).padStart(2, "0")}:${String(s.minute).padStart(2, "0")}`,
     ),
@@ -235,7 +234,7 @@ export async function getCalendarWeek(args: {
 function buildCourtSlots(args: {
   court: Court;
   dayHeaders: { date: string; weekday: string }[];
-  hourSlots: { hour: number; minute: number }[];
+  timeSlots: { hour: number; minute: number }[];
   settings: BookingSettings;
   bookings: (CourtBooking & {
     bookedByPerson: { firstName: string; lastName: string };
@@ -261,7 +260,7 @@ function buildCourtSlots(args: {
   const slots: CalendarSlot[] = [];
   for (const day of args.dayHeaders) {
     const local = parseLocalDate(day.date);
-    for (const slot of args.hourSlots) {
+    for (const slot of args.timeSlots) {
       const startsAtUtc = amsterdamHourUtc(
         local.year,
         local.month,

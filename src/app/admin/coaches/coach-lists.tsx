@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { DAY_OF_WEEK_LABEL, formatMinuteOfDay } from "@/lib/ladder/rules";
 import {
@@ -180,6 +181,11 @@ function CoachListSection({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">{roleLabel}</Badge>
+                {(roleLabel === "Staff coach"
+                  ? row.staffCommercials?.isActive === false
+                  : row.zzpCommercials?.isActive === false) && (
+                  <StatusBadge tone="warning">Inactive</StatusBadge>
+                )}
                 {row.isStaff && row.isZzp ? (
                   <Badge variant="outline">Also {roleLabel === "Staff coach" ? "ZZP" : "staff"}</Badge>
                 ) : null}

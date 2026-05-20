@@ -14,6 +14,7 @@ import {
 } from "./_components/coach-assignment-field";
 import { EventStaffField } from "./_components/event-staff-field";
 import { EventPricingField } from "./_components/event-pricing-field";
+import { CampOptionsField } from "./_components/camp-options-field";
 import { AgeAndLevelField } from "./_components/age-and-level-field";
 import { GroupsField, type GroupRow } from "./_components/groups-field";
 import { deriveSeriesName as buildAutoName } from "@/lib/classes/series-name";
@@ -52,8 +53,10 @@ type VenueOption = {
   id: string;
   name: string;
   kind: "club" | "school" | "rented_court";
+  clubId?: string | null;
 };
 type SchoolOption = { id: string; name: string };
+type CourtOption = { id: string; name: string; clubId: string };
 type SeasonOption = {
   id: string;
   name: string;
@@ -75,6 +78,7 @@ export function ClassSeriesForm({
   seasons,
   venues,
   schools,
+  courts,
   coaches,
   kind = "class",
 }: {
@@ -84,13 +88,14 @@ export function ClassSeriesForm({
   seasons: SeasonOption[];
   venues: VenueOption[];
   schools: SchoolOption[];
+  courts: CourtOption[];
   coaches: CoachOption[];
   /**
    * Optional discriminator. `event` mode preselects the at-club /
    * adult cascade and forces `classType=event` so the same form can
    * power `/admin/events/new` without rebuilding the wizard.
    */
-  kind?: "class" | "event";
+  kind?: "class" | "event" | "camp";
 }) {
   const t = useTerms();
   const [audience, setAudience] = useState<Audience>(
@@ -106,6 +111,12 @@ export function ClassSeriesForm({
   const [dayOfWeek, setDayOfWeek] = useState<DayKey>("mon");
   const [startTime, setStartTime] = useState<string>("16:00");
   const [endTime, setEndTime] = useState<string>("17:00");
+  const [defaultCourtId, setDefaultCourtId] = useState<string>("");
+  const [courtBlockStartTime, setCourtBlockStartTime] =
+    useState<string>("16:00");
+  const [courtBlockEndTime, setCourtBlockEndTime] = useState<string>("17:00");
+  const [acknowledgeCourtConflicts, setAcknowledgeCourtConflicts] =
+    useState(false);
   const [startsOn, setStartsOn] = useState<string>("");
   const [endsOn, setEndsOn] = useState<string>("");
   const [excludedDates, setExcludedDates] = useState<Set<string>>(
@@ -248,6 +259,16 @@ export function ClassSeriesForm({
   const seasonOptions = useMemo(() => {
     return seasons.filter((s) => s.audience === audience);
   }, [seasons, audience]);
+  const selectedVenue = useMemo(
+    () => venues.find((v) => v.id === venueId) ?? null,
+    [venues, venueId],
+  );
+  const venueClubId =
+    selectedVenue?.kind === "club" ? (selectedVenue.clubId ?? null) : null;
+  const courtOptions = useMemo(() => {
+    if (!venueClubId) return [];
+    return courts.filter((c) => c.clubId === venueClubId);
+  }, [courts, venueClubId]);
 
   // Live preview of what the server will write into `class_series.name`.
   // The form does NOT submit a `name` field — the server re-derives the
@@ -321,6 +342,12 @@ export function ClassSeriesForm({
     });
   }, [startsOn, endsOn, dayOfWeek]);
 
+  useEffect(() => {
+    if (!defaultCourtId) return;
+    if (courtOptions.some((court) => court.id === defaultCourtId)) return;
+    setDefaultCourtId("");
+  }, [defaultCourtId, courtOptions]);
+
   // When branch selections change, reset the venue/school state so
   // stale hidden values can't leak through validation.
   function pickAudience(next: Audience) {
@@ -347,7 +374,7 @@ export function ClassSeriesForm({
       | "roster"
       | "pricing",
   ) =>
-    kind === "event"
+    kind === "event" || kind === "camp"
       ? eventStepNumber(slot)
       : stepNumber({ audience, format, afterschoolMode }, slot);
   function pickFormat(next: Format) {
@@ -409,7 +436,8 @@ export function ClassSeriesForm({
   // In event mode we override the derived classType so the cascade
   // doesn't accidentally write `group_lesson` for what is clearly an
   // event row.
-  const submittedClassType = kind === "event" ? "event" : classType;
+  const submittedClassType =
+    kind === "event" ? "event" : kind === "camp" ? "camp" : classType;
 
   return (
     <form action={action} className="space-y-6">
@@ -418,6 +446,22 @@ export function ClassSeriesForm({
       <input type="hidden" name="deliveryMode" value={deliveryMode} />
       <input type="hidden" name="schoolId" value={schoolId} />
       <input type="hidden" name="excludedDates" value={excludedCsv} />
+      <input type="hidden" name="defaultCourtId" value={defaultCourtId} />
+      <input
+        type="hidden"
+        name="courtBlockStartTime"
+        value={defaultCourtId ? courtBlockStartTime : ""}
+      />
+      <input
+        type="hidden"
+        name="courtBlockEndTime"
+        value={defaultCourtId ? courtBlockEndTime : ""}
+      />
+      <input
+        type="hidden"
+        name="acknowledgeCourtConflicts"
+        value={acknowledgeCourtConflicts ? "true" : "false"}
+      />
       {deliveryMode !== "pickup" && (
         <input type="hidden" name="pickupAt" value="" />
       )}
@@ -460,7 +504,7 @@ export function ClassSeriesForm({
       )}
 
       {/* STEP 2 — Format (youth only) ----------------------------------- */}
-      {kind !== "event" && audience === "youth" && (
+      {kind === "class" && audience === "youth" && (
         <Step
           n={2}
           title="At-club or afterschool?"
@@ -478,7 +522,7 @@ export function ClassSeriesForm({
       )}
 
       {/* STEP 3 — Afterschool mode (youth + afterschool only) ----------- */}
-      {kind !== "event" && audience === "youth" && format === "afterschool" && (
+      {kind === "class" && audience === "youth" && format === "afterschool" && (
         <Step
           n={3}
           title="Pickup or on-site?"
@@ -600,7 +644,7 @@ export function ClassSeriesForm({
           name="seasonId"
           value={kind === "event" ? "" : seasonId}
         />
-        {kind !== "event" && (
+        {kind === "class" && (
           <Field
             label="Season"
             optional
@@ -657,6 +701,78 @@ export function ClassSeriesForm({
               required
             />
           </Field>
+        </div>
+        <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3">
+          <Field
+            label={`${t.court.singular} (optional)`}
+            hint={
+              venueClubId
+                ? `Select a ${t.court.singular.toLowerCase()} to block it for this ${t.class.singular.toLowerCase()}. Leave empty to avoid blocking any ${t.court.plural.toLowerCase()}.`
+                : `Pick a ${t.club.singular.toLowerCase()} venue first to choose a ${t.court.singular.toLowerCase()}.`
+            }
+            optional
+          >
+            <select
+              value={defaultCourtId}
+              onChange={(e) => {
+                const next = e.target.value;
+                setDefaultCourtId(next);
+                if (next) {
+                  setCourtBlockStartTime(startTime);
+                  setCourtBlockEndTime(endTime);
+                }
+              }}
+              className={selectClass}
+              disabled={!venueClubId}
+            >
+              <option value="">No {t.court.singular.toLowerCase()} selected</option>
+              {courtOptions.map((court) => (
+                <option key={court.id} value={court.id}>
+                  {court.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {defaultCourtId && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label={`${t.court.singular} block start`}
+                  hint={`When this ${t.court.singular.toLowerCase()} starts being reserved.`}
+                >
+                  <Input
+                    type="time"
+                    value={courtBlockStartTime}
+                    onChange={(e) => setCourtBlockStartTime(e.target.value)}
+                    required
+                  />
+                </Field>
+                <Field
+                  label={`${t.court.singular} block end`}
+                  hint={`When this ${t.court.singular.toLowerCase()} becomes available again.`}
+                >
+                  <Input
+                    type="time"
+                    value={courtBlockEndTime}
+                    onChange={(e) => setCourtBlockEndTime(e.target.value)}
+                    required
+                  />
+                </Field>
+              </div>
+              <label className="inline-flex items-start gap-2 text-xs text-[var(--muted-foreground)]">
+                <input
+                  type="checkbox"
+                  checked={acknowledgeCourtConflicts}
+                  onChange={(e) =>
+                    setAcknowledgeCourtConflicts(e.currentTarget.checked)
+                  }
+                  className="mt-0.5 h-3.5 w-3.5"
+                />
+                If this overlaps existing bookings/classes, allow save and skip
+                only conflicting dates.
+              </label>
+            </>
+          )}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Starts on">
@@ -839,7 +955,7 @@ export function ClassSeriesForm({
       </Step>
 
       {/* STEP — Groups -------------------------------------------------- */}
-      {kind !== "event" && (
+      {kind === "class" && (
       <Step
         n={step("groups")}
         title="Groups"
@@ -959,11 +1075,15 @@ export function ClassSeriesForm({
         hint={
           kind === "event"
             ? "Set the event price. Add a member price if members pay less — it is applied automatically at checkout."
+            : kind === "camp"
+              ? "Set week and optional drop-in prices. Member prices are applied automatically when a student already has active membership."
             : "Defaults to EUR 35 per session — the catalog total members see is this number times the live session count. Leave blank to bill manually (the portal then shows 'Contact the office for pricing' and skips checkout)."
         }
       >
         {kind === "event" ? (
           <EventPricingField />
+        ) : kind === "camp" ? (
+          <CampOptionsField />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Per-session price (EUR)" optional>

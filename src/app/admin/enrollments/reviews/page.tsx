@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { enrollmentStatusTone } from "@/lib/ui/status-tone";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -168,19 +170,16 @@ export default async function EnrollmentReviewsPage() {
                       {formatReason(e.reviewReason)}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        tone={
-                          e.status === "active"
-                            ? "success"
-                            : e.status === "waitlist"
-                              ? "warning"
-                              : "neutral"
-                        }
-                        variant="soft"
-                        className="capitalize"
-                      >
-                        {e.status.replace("_", " ")}
-                      </Badge>
+                      <div className="flex flex-col items-start gap-1">
+                        <StatusBadge tone="warning">Needs review</StatusBadge>
+                        <Badge
+                          tone={enrollmentStatusTone(e.status)}
+                          variant="soft"
+                          className="capitalize"
+                        >
+                          {e.status.replace("_", " ")}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell className="text-xs text-[var(--muted-foreground)]">
                       {e.enrolledOn.toLocaleDateString("en-NL", {

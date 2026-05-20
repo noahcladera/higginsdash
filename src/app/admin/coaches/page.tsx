@@ -6,6 +6,8 @@ import { Section } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "@/components/icons";
 import { getCurrentBrand, getTerms } from "@/lib/tenant";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusSurface } from "@/components/ui/status-surface";
 import { revokeCoachInviteForm, resendCoachInviteForm } from "./actions";
 import { CoachLists, type CoachRow } from "./coach-lists";
 
@@ -77,12 +79,17 @@ export default async function AdminCoachesPage() {
         ) : (
           <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
             {pendingInvites.map((inv) => (
-              <li
+              <StatusSurface
                 key={inv.id}
+                as="li"
+                tone="warning"
                 className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <div className="font-medium">{inv.email}</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{inv.email}</span>
+                    <StatusBadge tone="warning">Pending</StatusBadge>
+                  </div>
                   <div className="text-sm text-[var(--muted-foreground)]">
                     {inv.role === "staff_coach" ? "Staff coach" : "ZZP coach"} ·
                     expires {inv.expiresAt.toISOString().slice(0, 10)}
@@ -102,7 +109,7 @@ export default async function AdminCoachesPage() {
                     </Button>
                   </form>
                 </div>
-              </li>
+              </StatusSurface>
             ))}
           </ul>
         )}

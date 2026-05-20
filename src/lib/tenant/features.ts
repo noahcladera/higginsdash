@@ -49,6 +49,8 @@ export interface FeatureFlags {
   classSubgroups: boolean;
   /** One-off or short-run offerings (workshops, intensives, showcases). */
   events: boolean;
+  /** Dedicated camp management surfaces with camp-specific options/pricing. */
+  camps: boolean;
   /** Stage or difficulty metadata on offerings and learners. */
   levels: boolean;
   /** Structured progression and reviews on top of levels. */
@@ -148,6 +150,7 @@ export const BASE_FEATURE_FLAGS: FeatureFlags = {
   classSeries: false,
   classSubgroups: false,
   events: false,
+  camps: false,
   levels: false,
   levelProgression: false,
   recurringBlocks: false,
@@ -312,6 +315,13 @@ export const FEATURE_FLAG_GROUPS: ReadonlyArray<FeatureFlagGroup> = [
         label: "Events",
         description:
           "Single-session or short-run workshops, showcases, open days, or trips — anything that does not use the weekly series pattern.",
+      },
+      {
+        key: "camps",
+        label: "Camps",
+        description:
+          "Dedicated camp flows (half/full-week and optional daily drop-in options) under their own admin surface.",
+        requires: ["classes"],
       },
       {
         key: "levels",

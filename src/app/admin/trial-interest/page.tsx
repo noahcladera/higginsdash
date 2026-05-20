@@ -23,14 +23,7 @@ import { updateTrialInterest } from "./actions";
 import { ContactButton } from "@/components/contacts/contact-button";
 import type { PersonContactGroup } from "@/lib/contacts/queries";
 import { getCurrentBrand, getTerms } from "@/lib/tenant";
-
-const STATUS_TONE: Record<TrialInterestStatus, "warning" | "joint" | "success" | "neutral"> = {
-  new: "warning",
-  in_progress: "joint",
-  scheduled: "joint",
-  converted: "success",
-  closed: "neutral",
-};
+import { TRIAL_INTEREST_STATUS_TONE } from "@/lib/ui/status-tone";
 
 const STATUS_LABEL: Record<TrialInterestStatus, string> = {
   new: "New",
@@ -69,6 +62,17 @@ export default async function TrialInterestQueuePage({
       : { status: { in: ["new", "in_progress", "scheduled"] } },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     take: 200,
+    include: {
+      person: {
+        select: { firstName: true, lastName: true },
+      },
+      classSeries: {
+        select: {
+          name: true,
+          program: { select: { name: true } },
+        },
+      },
+    },
   });
 
   const openCount = rows.filter(
@@ -112,6 +116,7 @@ export default async function TrialInterestQueuePage({
                 <TableHead>Contact</TableHead>
                 <TableHead>Player</TableHead>
                 <TableHead>Audience / club</TableHead>
+                <TableHead>Class</TableHead>
                 <TableHead>Notes</TableHead>
                 <TableHead className="w-20 text-right">Age</TableHead>
                 <TableHead className="w-32">Received</TableHead>
@@ -122,9 +127,16 @@ export default async function TrialInterestQueuePage({
               {rows.map((r) => (
                 <TableRow key={r.id} className="align-top">
                   <TableCell>
-                    <Badge tone={STATUS_TONE[r.status]} variant="soft">
+                    <Badge tone={TRIAL_INTEREST_STATUS_TONE[r.status]} variant="soft">
                       {STATUS_LABEL[r.status]}
                     </Badge>
+                    {r.isRepeat && (
+                      <div className="mt-1">
+                        <Badge tone="warning" variant="outline">
+                          Repeat request #{r.priorTrialCount + 1}
+                        </Badge>
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm">
                     <div className="flex items-start justify-between gap-2">
@@ -138,6 +150,12 @@ export default async function TrialInterestQueuePage({
                         {r.phone && (
                           <div className="text-xs text-[var(--muted-foreground)]">
                             {r.phone}
+                          </div>
+                        )}
+                        {r.person && (
+                          <div className="text-xs text-[var(--muted-foreground)]">
+                            Linked person:{" "}
+                            {`${r.person.firstName} ${r.person.lastName}`.trim()}
                           </div>
                         )}
                       </div>
@@ -175,6 +193,18 @@ export default async function TrialInterestQueuePage({
                       <div className="text-xs text-[var(--muted-foreground)]">
                         {CLUB_LABEL[r.preferredClub]}
                       </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {r.classSeries ? (
+                      <div>
+                        <div className="font-medium">{r.classSeries.name}</div>
+                        <div className="text-xs text-[var(--muted-foreground)]">
+                          {r.classSeries.program.name}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-[var(--muted-foreground)]">—</span>
                     )}
                   </TableCell>
                   <TableCell className="text-xs text-[var(--muted-foreground)] whitespace-pre-wrap break-words max-w-[260px]">

@@ -8,7 +8,7 @@ import { ClassSeriesForm } from "../class-series-form";
 export default async function NewClassPage() {
   await requireAdmin();
 
-  const [programs, seasons, venues, schools, coachRows] = await Promise.all([
+  const [programs, seasons, venues, schools, courts, coachRows] = await Promise.all([
     prisma.program.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
@@ -29,12 +29,17 @@ export default async function NewClassPage() {
     prisma.venue.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, kind: true },
+      select: { id: true, name: true, kind: true, clubId: true },
     }),
     prisma.school.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    }),
+    prisma.court.findMany({
+      where: { isActive: true },
+      orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, clubId: true },
     }),
     prisma.coach.findMany({
       where: {
@@ -80,6 +85,7 @@ export default async function NewClassPage() {
         seasons={seasonOptions}
         venues={venues}
         schools={schools}
+        courts={courts}
         coaches={coaches}
       />
     </div>

@@ -63,6 +63,7 @@ export function NonMemberHome({
   clubs,
   recs,
   brandName,
+  showTrialEntry = true,
 }: {
   firstName: string | null;
   isParent: boolean;
@@ -73,6 +74,7 @@ export function NonMemberHome({
   /** Active tenant brand name, used in the welcome kicker. Defaults to a
    *  generic label so callers that haven't been updated still render. */
   brandName?: string;
+  showTrialEntry?: boolean;
 }) {
   const greeting = greetingWord();
   const headline = isParent
@@ -112,7 +114,12 @@ export function NonMemberHome({
       />
 
       {/* 2 — Lessons teaser leads the page now */}
-      <LessonsTeaser hero={recs.hero} more={recs.more} isParent={isParent} />
+      <LessonsTeaser
+        hero={recs.hero}
+        more={recs.more}
+        isParent={isParent}
+        showTrialEntry={showTrialEntry}
+      />
 
       {/* 3 — Headline price strip */}
       <PriceAnchorStrip />
@@ -314,10 +321,12 @@ function LessonsTeaser({
   hero,
   more,
   isParent,
+  showTrialEntry,
 }: {
   hero: ProgramRec[];
   more: ProgramRec[];
   isParent: boolean;
+  showTrialEntry: boolean;
 }) {
   const hasAny = hero.length > 0 || more.length > 0;
   return (
@@ -360,16 +369,18 @@ function LessonsTeaser({
             </span>
           </Link>
         )}
-        <p className="text-xs text-[var(--muted-foreground)]">
-          Not sure where to start?{" "}
-          <Link
-            href="/trial"
-            className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-          >
-            Request a trial lesson
-          </Link>{" "}
-          and we&apos;ll match you with the right group.
-        </p>
+        {showTrialEntry && (
+          <p className="text-xs text-[var(--muted-foreground)]">
+            Not sure where to start?{" "}
+            <Link
+              href="/portal/request-trial"
+              className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+            >
+              Request a trial lesson
+            </Link>{" "}
+            and we&apos;ll match you with the right group.
+          </p>
+        )}
       </div>
     </Section>
   );

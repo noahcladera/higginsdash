@@ -62,7 +62,11 @@ import { AdminCreateBookingDialog } from "./admin-create-booking-dialog";
 import type { CoachOption } from "./admin-create-booking-dialog";
 import { getCourtVisual } from "./court-visuals";
 import { useTerms } from "@/components/tenant/terms-provider";
-import { formatLocalDate, formatLocalHour } from "@/lib/booking/time";
+import {
+  formatLocalDate,
+  formatLocalHour,
+  localMinutesSinceMidnight,
+} from "@/lib/booking/time";
 
 export type ViewerRole = "admin" | "coach" | "member";
 
@@ -148,13 +152,21 @@ export function CourtCalendarGrid({
 
   // Day view falls back to the first day of the first row for the header.
   const day = rowDays[0]?.[0] ?? data.days[0];
-  const { todayLocalDate, currentHourLabel } = useMemo(() => {
+  const slotDurationMin = data.settings.bookingDurationMinutes;
+  const denseGrid = data.hours.length > 20;
+  const { todayLocalDate, nowMinutes } = useMemo(() => {
     const now = new Date();
+    const [h, m] = formatLocalHour(now).split(":").map(Number);
     return {
       todayLocalDate: formatLocalDate(now),
-      currentHourLabel: formatLocalHour(now).slice(0, 2) + ":00",
+      nowMinutes: localMinutesSinceMidnight(h, m),
     };
   }, []);
+
+  const rowStartMinutes = (hhmm: string) => {
+    const [h, m] = hhmm.split(":").map(Number);
+    return localMinutesSinceMidnight(h, m);
+  };
 
   const slotsByCourtDayHour = useMemo(() => {
     const map = new Map<string, CalendarSlot>();
@@ -457,8 +469,12 @@ export function CourtCalendarGrid({
               </thead>
               <tbody>
                 {data.hours.map((hour, hourIdx) => {
+                  const rowMin = rowStartMinutes(hour);
                   const isNowRow =
-                    todayInThisRow && hour === currentHourLabel;
+                    todayInThisRow &&
+                    rowMin <= nowMinutes &&
+                    nowMinutes < rowMin + slotDurationMin;
+                  const isHalfHourRow = hour.endsWith(":30");
                   return (
                     <tr
                       key={hour}
@@ -466,7 +482,9 @@ export function CourtCalendarGrid({
                     >
                       <td
                         className={cn(
-                          "px-2 py-1.5 font-mono text-xs text-[var(--muted-foreground)]",
+                          "px-2 font-mono text-xs text-[var(--muted-foreground)]",
+                          denseGrid ? "py-1" : "py-1.5",
+                          isHalfHourRow && "text-[var(--muted-foreground)]/70",
                           isNowRow && "font-semibold text-red-600",
                         )}
                       >
@@ -482,7 +500,8 @@ export function CourtCalendarGrid({
                           const isToday = d.date === todayLocalDate;
                           const dimPast =
                             d.date < todayLocalDate ||
-                            (isToday && hour < currentHourLabel);
+                            (isToday &&
+                              rowMin + slotDurationMin <= nowMinutes);
                           const showNowLine = isNowRow && isToday;
                           if (!slot) {
                             return (
@@ -532,7 +551,7 @@ export function CourtCalendarGrid({
                               dayBoundary={dayBoundary}
                               dimPast={dimPast}
                               showNowLine={showNowLine}
-                              compact={isWeek}
+                              compact={isWeek || denseGrid}
                               widthClass={visual?.widthClass}
                               surfaceTintClass={visual?.surfaceTintClass}
                               onClick={() => {
@@ -729,10 +748,11 @@ function SlotCell({
   widthClass?: string;
   surfaceTintClass?: string;
 }) {
+  const cellPy = compact ? "py-1" : "py-1.5";
   const baseCell = cn(
     dayBoundary
-      ? "border-l-2 border-l-[var(--border-strong)] px-2 py-1.5 text-xs leading-tight"
-      : "border-l border-[var(--border)] px-2 py-1.5 text-xs leading-tight",
+      ? `border-l-2 border-l-[var(--border-strong)] px-2 ${cellPy} text-xs leading-tight`
+      : `border-l border-[var(--border)] px-2 ${cellPy} text-xs leading-tight`,
     widthClass,
     dimPast && "opacity-60",
     showNowLine && "shadow-[inset_0_2px_0_0_rgb(239,68,68)]",

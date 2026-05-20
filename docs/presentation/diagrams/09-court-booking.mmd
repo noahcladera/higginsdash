@@ -1,0 +1,16 @@
+flowchart TD
+  Q{Active member at this club?}
+  Q -->|No| Join[Prompt — get membership first]
+  Q -->|Yes| Pick[Pick day, hour, court]
+  Pick --> Rules{Rules check}
+  Rules -->|Already 1 booking today| Block[Sorry — one play booking per day]
+  Rules -->|Slot taken| Block2[Pick another slot]
+  Rules -->|Korfball block / class block| Block3[Court blocked — office reserved]
+  Rules -->|OK| Book[Confirm booking]
+  Book --> Email[Email + inbox notification]
+
+  subgraph whoBooks [Who books]
+    Member[Member — personal play]
+    Coach[Coach — lesson on calendar]
+    Admin[Heather — books on behalf of member or coach]
+  end

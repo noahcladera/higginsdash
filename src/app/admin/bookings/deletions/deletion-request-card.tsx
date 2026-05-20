@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { decideBookingCancellation } from "@/lib/booking/actions";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusSurface } from "@/components/ui/status-surface";
 import { useActionFeedback } from "@/lib/feedback";
 
 interface Props {
@@ -53,12 +55,16 @@ export function DeletionRequestCard({ booking }: Props) {
   const startsAtLocal = formatLocal(booking.startsAt);
 
   return (
-    <div className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+    <StatusSurface
+      tone="warning"
+      className="rounded-[var(--radius-lg)] p-5 shadow-[var(--shadow-sm)]"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold">
-            {booking.coachName}
-            <span className="ml-2 text-xs font-normal text-[var(--muted-foreground)]">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+            <span>{booking.coachName}</span>
+            <StatusBadge tone="warning">Pending</StatusBadge>
+            <span className="text-xs font-normal text-[var(--muted-foreground)]">
               · {booking.clubName} · {booking.courtName}
             </span>
           </div>
@@ -118,7 +124,7 @@ export function DeletionRequestCard({ booking }: Props) {
           {isPending ? "..." : "Approve & cancel"}
         </Button>
       </div>
-    </div>
+    </StatusSurface>
   );
 }
 

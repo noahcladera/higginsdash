@@ -34,6 +34,18 @@ const SubmitSchema = z.object({
     .max(2000)
     .optional()
     .transform((v) => (v && v.length > 0 ? v : null)),
+  personId: z
+    .string()
+    .uuid()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 0 ? v : null)),
+  classSeriesId: z
+    .string()
+    .uuid()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 0 ? v : null)),
 });
 
 export type SubmitTrialInterestInput = z.input<typeof SubmitSchema>;
@@ -58,6 +70,12 @@ export async function submitTrialInterest(
     };
   }
   const data = parsed.data;
+  let priorTrialCount = 0;
+  if (data.personId) {
+    priorTrialCount = await prisma.trialInterest.count({
+      where: { personId: data.personId },
+    });
+  }
 
   try {
     await prisma.trialInterest.create({
@@ -71,6 +89,10 @@ export async function submitTrialInterest(
         preferredClub: data.preferredClub ?? undefined,
         notes: data.notes,
         status: "new",
+        personId: data.personId,
+        classSeriesId: data.classSeriesId,
+        priorTrialCount,
+        isRepeat: priorTrialCount > 0,
       },
     });
   } catch (e) {

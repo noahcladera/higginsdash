@@ -1,0 +1,16 @@
+flowchart TB
+  Start[Heather logs into Admin]
+  Start --> Dash[Dashboard — needs attention]
+  Dash --> Inbox[Inbox — unread items]
+  Dash --> Pending[Queues with badges]
+
+  Pending --> T1[Trial requests — new leads]
+  Pending --> T2[Enrollment reviews — age or level flags]
+  Pending --> T3[Coach sub requests — who covers class]
+  Pending --> T4[Transfer requests — move kid to another class]
+  Pending --> T5[Cancellation requests — coach lesson deletion]
+  Pending --> T6[Membership cancellations]
+
+  Start --> Cal[Court calendar — book for member or coach]
+  Start --> HH[Households — fix membership, credits, family]
+  Start --> Classes[Classes and seasons — setup and rosters]

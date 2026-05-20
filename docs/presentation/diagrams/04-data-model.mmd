@@ -1,0 +1,22 @@
+erDiagram
+  Household ||--o{ Person : contains
+  Person ||--o| Membership : may_have
+  Membership }o--|| Club : at_Triaz_or_Randwijck
+  Person ||--o{ Enrollment : takes
+  Enrollment }o--|| ClassSeries : for
+  ClassSeries ||--o{ ClassSession : meets_weekly
+  Person ||--o{ CourtBooking : books
+  CourtBooking }o--|| Court : on
+
+  Household {
+    string family_billing
+  }
+  Person {
+    string parent_or_player
+  }
+  Membership {
+    string active_or_expired
+  }
+  Club {
+    string Triaz_or_Randwijck
+  }

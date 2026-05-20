@@ -3,6 +3,7 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { getUnreadCount } from "@/lib/inbox/queries";
 import { getCurrentOrg } from "@/lib/tenant";
+import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
 
 export interface PortalNavItem {
   href: string;
@@ -95,9 +96,10 @@ async function _getPortalNavSections(
   hasActiveMembership: boolean,
 ): Promise<PortalNavSections> {
   const conditional: PortalNavItem[] = [];
-  const [unreadCount, org] = await Promise.all([
+  const [unreadCount, org, hasLiveEnrollment] = await Promise.all([
     getUnreadCount(personId),
     getCurrentOrg(),
+    householdHasLiveEnrollment({ personId, householdId }),
   ]);
   const f = org.features;
   const t = org.terms;
@@ -165,6 +167,14 @@ async function _getPortalNavSections(
       href: "/portal/programs",
       label: capitalize(t.enrollment.singular),
       hint: `Find a ${t.class.singular.toLowerCase()} — browse ${t.program.plural.toLowerCase()} and ${t.enrollVerb.toLowerCase()}`,
+    });
+  }
+  if (f.trialInterest && !hasLiveEnrollment) {
+    playItems.push({
+      href: "/portal/request-trial",
+      label: "Request trial",
+      hint: `Try a ${t.class.singular.toLowerCase()} before you ${t.enrollVerb.toLowerCase()}`,
+      emphasis: "primary",
     });
   }
   if (eventsEnabled) {

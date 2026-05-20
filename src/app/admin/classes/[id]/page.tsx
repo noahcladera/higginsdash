@@ -56,6 +56,7 @@ import {
   EventNamingSectionEditor,
   EventCoachesSectionEditor,
   EventPricingSectionEditor,
+  CampPricingSectionEditor,
   RosterLimitsSectionEditor,
   PricingSectionEditor,
   AgeAndLevelSectionEditor,
@@ -67,6 +68,7 @@ import {
 } from "@/lib/skill-levels";
 import type { GroupRow } from "../_components/groups-field";
 import { parsePricingTiers } from "@/lib/classes/pricing-tiers";
+import { parseCampOptions } from "@/lib/classes/camp-options";
 
 const DAY_LONG: Record<
   "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun",
@@ -90,12 +92,13 @@ export default async function EditClassPage({
   const { id } = await params;
   const [brand, terms] = await Promise.all([getCurrentBrand(), getTerms()]);
 
-  const [series, programs, seasons, venues, schools, coachRows] =
+  const [series, programs, seasons, venues, schools, courts, coachRows] =
     await Promise.all([
       prisma.classSeries.findUnique({
         where: { id },
         include: {
           venue: true,
+          defaultCourt: { select: { id: true, name: true } },
           school: {
             select: { id: true, name: true, coachArriveAtHubMinutes: true },
           },
@@ -154,12 +157,17 @@ export default async function EditClassPage({
       prisma.venue.findMany({
         where: { isActive: true },
         orderBy: { name: "asc" },
-        select: { id: true, name: true, kind: true },
+        select: { id: true, name: true, kind: true, clubId: true },
       }),
       prisma.school.findMany({
         where: { isActive: true },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
+      }),
+      prisma.court.findMany({
+        where: { isActive: true },
+        orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, clubId: true },
       }),
       prisma.coach.findMany({
         where: {
@@ -193,6 +201,7 @@ export default async function EditClassPage({
   const leadDefault = leadIsPlaceholder ? "" : leadPersonId;
   const assistantsDefault = assistantRows.map((r) => r.coachPersonId);
   const isEvent = series.classType === "event";
+  const isCamp = series.classType === "camp";
   const eventStaffIds = [
     ...(leadDefault ? [leadDefault] : []),
     ...assistantsDefault,
@@ -209,6 +218,7 @@ export default async function EditClassPage({
           },
         ]
       : []);
+  const campOptions = parseCampOptions(series.campOptions);
 
   const leadCoachName = leadIsPlaceholder
     ? "NO COACH YET"
@@ -515,6 +525,15 @@ export default async function EditClassPage({
             dayOfWeek={dayOfWeek}
             startTimeHHMM={startTimeHHMM}
             endTimeHHMM={endTimeHHMM}
+            courtName={series.defaultCourt?.name ?? null}
+            courtBlockStartHHMM={
+              series.courtBlockStartTime
+                ? timeToHHMM(series.courtBlockStartTime)
+                : null
+            }
+            courtBlockEndHHMM={
+              series.courtBlockEndTime ? timeToHHMM(series.courtBlockEndTime) : null
+            }
             startsOnISO={startsOnISO}
             endsOnISO={endsOnISO}
             excludedCount={excludedDatesISO.length}
@@ -532,6 +551,18 @@ export default async function EditClassPage({
             defaultEndsOn={endsOnISO}
             defaultExcludedDates={excludedDatesISO}
             defaultSeasonId={series.seasonId}
+            defaultCourtId={series.defaultCourtId}
+            defaultCourtBlockStartTime={
+              series.courtBlockStartTime
+                ? timeToHHMM(series.courtBlockStartTime)
+                : null
+            }
+            defaultCourtBlockEndTime={
+              series.courtBlockEndTime ? timeToHHMM(series.courtBlockEndTime) : null
+            }
+            venueKind={series.venue.kind}
+            venueClubId={series.venue.clubId}
+            courts={courts}
             audience={audienceForUI}
             seasons={seasonOptions}
             showSeason={series.classType !== "event"}
@@ -734,6 +765,11 @@ export default async function EditClassPage({
             <EventPricingSectionEditor
               classSeriesId={series.id}
               defaultTiers={pricingTiers}
+            />
+          ) : isCamp ? (
+            <CampPricingSectionEditor
+              classSeriesId={series.id}
+              defaultOptions={campOptions}
             />
           ) : (
             <PricingSectionEditor
@@ -1094,6 +1130,9 @@ function ScheduleReadout({
   dayOfWeek,
   startTimeHHMM,
   endTimeHHMM,
+  courtName,
+  courtBlockStartHHMM,
+  courtBlockEndHHMM,
   startsOnISO,
   endsOnISO,
   excludedCount,
@@ -1103,6 +1142,9 @@ function ScheduleReadout({
   dayOfWeek: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
   startTimeHHMM: string;
   endTimeHHMM: string;
+  courtName: string | null;
+  courtBlockStartHHMM: string | null;
+  courtBlockEndHHMM: string | null;
   startsOnISO: string;
   endsOnISO: string;
   excludedCount: number;
@@ -1130,6 +1172,18 @@ function ScheduleReadout({
         Runs {formatDateRange(startsOnISO, endsOnISO)} · {sessionsTotal} sessions
         {excludedCount > 0 && ` · ${excludedCount} excluded`}
       </div>
+      {courtName ? (
+        <div className="text-xs text-[var(--muted-foreground)]">
+          Court: {courtName}
+          {courtBlockStartHHMM && courtBlockEndHHMM
+            ? ` · blocked ${courtBlockStartHHMM}-${courtBlockEndHHMM}`
+            : ""}
+        </div>
+      ) : (
+        <div className="text-xs text-[var(--muted-foreground)]">
+          No court selected.
+        </div>
+      )}
     </div>
   );
 }

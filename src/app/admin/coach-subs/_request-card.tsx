@@ -11,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusSurface } from "@/components/ui/status-surface";
 import { useActionFeedback } from "@/lib/feedback";
 import { assignCoachSub, denyCoachSub } from "@/lib/coach-subs/actions";
 
@@ -97,12 +99,16 @@ export function CoachSubRequestCard({
   };
 
   return (
-    <div className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+    <StatusSurface
+      tone="warning"
+      className="rounded-[var(--radius-lg)] p-5 shadow-[var(--shadow-sm)]"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold">
-            {request.requesterName}
-            <span className="ml-2 text-xs font-normal text-[var(--muted-foreground)]">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+            <span>{request.requesterName}</span>
+            <StatusBadge tone="warning">Pending</StatusBadge>
+            <span className="text-xs font-normal text-[var(--muted-foreground)]">
               · {request.programName} · {request.seriesName}
               {request.courtName ? ` · ${request.courtName}` : ""}
             </span>
@@ -185,7 +191,7 @@ export function CoachSubRequestCard({
           {error}
         </p>
       )}
-    </div>
+    </StatusSurface>
   );
 }
 

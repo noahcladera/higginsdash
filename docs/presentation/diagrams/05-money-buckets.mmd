@@ -1,0 +1,18 @@
+flowchart TB
+  subgraph triazMoney [Triaz membership fees]
+    M1[Member buys Triaz membership]
+    M1 --> MollieT[Mollie — Triaz account]
+  end
+
+  subgraph higginsMoney [Everything else at Higgins]
+    M2[Randwijck membership]
+    M3[Class enrollment]
+    M4[Court booking if paid]
+    M5[Ladder fee]
+    M6[Coach court rental invoices]
+    M2 --> MollieH[Mollie — Higgins account]
+    M3 --> MollieH
+    M4 --> MollieH
+    M5 --> MollieH
+    M6 --> MollieH
+  end

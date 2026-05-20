@@ -6,6 +6,7 @@ import { Section } from "@/components/ui/section";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -80,7 +81,13 @@ export default async function AdminVenuesPage() {
               </TableHeader>
               <TableBody>
                 {venues.map((v) => (
-                  <TableRow key={v.id}>
+                  <TableRow
+                    key={v.id}
+                    className={cn(
+                      !v.isActive &&
+                        "border-l-[3px] border-l-[var(--border-strong)] bg-[var(--surface)]",
+                    )}
+                  >
                     <TableCell>
                       <div className="font-medium">{v.name}</div>
                       <div className="text-xs text-[var(--muted-foreground)]">

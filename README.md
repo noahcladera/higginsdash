@@ -8,6 +8,8 @@ spreadsheets.
 Replaces the SuperSaaS + GoTimmy + ad-hoc-spreadsheet stack with a single
 purpose-built system for memberships, classes, court bookings, and payments.
 
+**Owner / ops walkthrough (slides + demo):** see [`docs/stakeholder-guide.md`](docs/stakeholder-guide.md).
+
 ## Product direction — one codebase, two packagings
 
 This is **one codebase, two packagings**. We do NOT maintain a fork. We do NOT

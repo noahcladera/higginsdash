@@ -38,7 +38,8 @@ import { CreditStrip } from "@/components/credits/credit-strip";
 import type { ClassDeliveryMode } from "@prisma/client";
 import { BrowseAll, type BrowseAllParams } from "./_components/browse-all";
 import { AudiencePromoStrip } from "./_components/audience-promo";
-import { getCurrentBrand, getTerms } from "@/lib/tenant";
+import { getCurrentOrg } from "@/lib/tenant";
+import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
 
 export default async function ProgramsCatalogPage({
   searchParams,
@@ -52,21 +53,23 @@ export default async function ProgramsCatalogPage({
   const { person, householdId } = await requireMember();
   const sp = await searchParams;
 
-  const [recs, prices, memberships, creditBalanceCents, brand, terms] =
+  const [recs, prices, memberships, creditBalanceCents, org, hasLiveEnrollment] =
     await Promise.all([
       getRecommendationsForViewer(person.id, householdId),
       getCheapestSeriesPriceByBucket(),
       getMembershipsForHousehold(householdId),
       householdId ? getHouseholdCreditBalanceCents(householdId) : Promise.resolve(0),
-      getCurrentBrand(),
-      getTerms(),
+      getCurrentOrg(),
+      householdHasLiveEnrollment({ personId: person.id, householdId }),
     ]);
+  const { brand, terms, features } = org;
 
   const hasChildren = recs.children.length > 0;
   const isParent = hasChildren;
   const hasActiveMembership = memberships.some(
     (m) => m.status === "active" && m.daysUntilExpiry >= 0,
   );
+  const showTrialCta = features.trialInterest && !hasLiveEnrollment;
 
   // The wizard derives its current step from these params. Leave
   // `audience` undefined when no choice has been made yet so Step 1
@@ -117,6 +120,23 @@ export default async function ProgramsCatalogPage({
         </div>
       )}
 
+      {showTrialCta && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--triaz)]/30 bg-[var(--surface)] px-4 py-4 text-sm shadow-[var(--shadow-sm)]">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--triaz-ink)]">
+              New here?
+            </p>
+            <p className="text-[var(--foreground)]">
+              Request a trial {terms.class.singular.toLowerCase()} and we&apos;ll match
+              you with the right group before you {terms.enrollVerb.toLowerCase()}.
+            </p>
+          </div>
+          <Button asChild tone="triaz" size="sm" variant="solid">
+            <Link href="/portal/request-trial">Request a trial</Link>
+          </Button>
+        </div>
+      )}
+
       <RecommendedPrograms
         hero={recs.hero}
         more={recs.more}
@@ -124,10 +144,10 @@ export default async function ProgramsCatalogPage({
       />
 
       <Section
-        title="Three quick paths in"
-        description="Tap the audience that fits. We'll filter the rest down for you."
+        title="Who are you enrolling?"
+        description="Pick a starting point — we'll filter the catalog below."
       >
-        <AudiencePromoStrip prices={prices} />
+        <AudiencePromoStrip prices={prices} hasChildren={hasChildren} />
       </Section>
 
       <Section

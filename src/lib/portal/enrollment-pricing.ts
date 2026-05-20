@@ -64,6 +64,15 @@ export interface EnrollmentPricingInput {
    * explicit member price tier).
    */
   suppressMembershipAddOn?: boolean;
+  /**
+   * Camp-mode override. When set, pricing comes from the chosen camp
+   * option (week/drop-in) instead of the derived series/session math.
+   */
+  campSelectionPrice?: number | null;
+  /**
+   * Daily drop-ins never include or auto-grant memberships.
+   */
+  campSelectionKind?: "full_week" | "daily_drop_in" | null;
 }
 
 export interface EnrollmentPricingBreakdown {
@@ -103,6 +112,27 @@ export function computeEnrollmentPricing(
     (s) => s.startsAt.getTime() <= input.now.getTime(),
   ).length;
   const remainingSessions = Math.max(0, totalSessions - pastSessions);
+
+  if (input.campSelectionPrice != null) {
+    const payableLesson = roundEur(input.campSelectionPrice);
+    const addOn = membershipAddOnFor({
+      ...input,
+      suppressMembershipAddOn:
+        input.suppressMembershipAddOn || input.campSelectionKind === "daily_drop_in",
+    });
+    return {
+      totalSessions,
+      pastSessions,
+      remainingSessions,
+      pricePerSession: null,
+      fullSeriesPrice: payableLesson,
+      missedDeduction: 0,
+      payableLesson,
+      membershipAddOn: addOn,
+      total: payableLesson + (addOn ?? 0),
+      policy: "starts_at",
+    };
+  }
 
   // No price set on the series → office handles pricing manually. We
   // still report the session counts so the UI can communicate scope,

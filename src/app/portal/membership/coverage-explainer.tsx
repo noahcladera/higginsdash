@@ -184,7 +184,7 @@ export function CoverageExplainer() {
           ]}
           unlocks={[
             "Book courts at no charge (subject to availability and your daily quota).",
-            "Book up to 7 days ahead, on the hour, 60-minute slots.",
+            "Book up to 7 days ahead, on the hour or half-hour, 60-minute slots.",
             "Join group lessons, camps, and programs at Triaz.",
             "Year-round play — Triaz never closes for winter.",
             "Tue & Wed evenings share the venue with the korfball club; some courts may be blocked then.",
@@ -212,7 +212,7 @@ export function CoverageExplainer() {
           ]}
           unlocks={[
             "Book clay courts as a member (each booking is charged per hour).",
-            "Book up to 7 days ahead, on the hour, 60-minute slots.",
+            "Book up to 7 days ahead, on the hour or half-hour, 60-minute slots.",
             "Join lessons and camps hosted at Randwijck.",
             "Request season-long recurring court rentals (office approval + invoice).",
             "Stricter cancellation: at least two days before your slot.",

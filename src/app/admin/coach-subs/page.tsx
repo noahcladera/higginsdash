@@ -3,6 +3,8 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { coachSubOutcomeTone } from "@/lib/ui/status-tone";
 import { CoachSubRequestCard } from "./_request-card";
 
 /**
@@ -123,11 +125,17 @@ export default async function CoachSubsPage() {
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
                 {recent.map((r) => {
-                  const outcome =
+                  const outcomeDetail =
                     r.status === "filled"
                       ? `Filled by ${r.filledByCoach?.firstName ?? "—"} ${
                           r.filledByCoach?.lastName ?? ""
                         }`.trim()
+                      : r.status === "cancelled"
+                        ? "Cancelled"
+                        : "Expired";
+                  const outcomeLabel =
+                    r.status === "filled"
+                      ? "Filled"
                       : r.status === "cancelled"
                         ? "Cancelled"
                         : "Expired";
@@ -144,7 +152,18 @@ export default async function CoachSubsPage() {
                       <td className="px-4 py-3 text-[var(--muted-foreground)]">
                         {`${r.requesterCoach.firstName} ${r.requesterCoach.lastName}`.trim()}
                       </td>
-                      <td className="px-4 py-3">{outcome}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <StatusBadge tone={coachSubOutcomeTone(r.status)}>
+                            {outcomeLabel}
+                          </StatusBadge>
+                          {r.status === "filled" && (
+                            <span className="text-xs text-[var(--muted-foreground)]">
+                              {outcomeDetail}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 tabular text-xs text-[var(--muted-foreground)]">
                         {formatLocal(r.updatedAt)}
                       </td>

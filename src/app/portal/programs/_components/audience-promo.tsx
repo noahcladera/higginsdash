@@ -7,6 +7,9 @@
  * exactly the classes they care about. The "From €X" subhead is
  * sourced from `getCheapestSeriesPriceByBucket` so the price stays
  * honest if the catalog shifts.
+ *
+ * Youth and School pickup tiles mirror the Browse wizard: locked when
+ * the household has no children on the account.
  */
 
 import Link from "next/link";
@@ -21,7 +24,28 @@ export interface AudiencePromoPrices {
   pickup: number | null;
 }
 
-export function AudiencePromoStrip({ prices }: { prices: AudiencePromoPrices }) {
+const noChildrenNote = (
+  <span>
+    No children on this account yet.{" "}
+    <Link
+      href="/portal/family?addChild=1"
+      className="font-semibold text-[var(--triaz-ink)] underline-offset-4 hover:underline"
+    >
+      Add a child
+    </Link>{" "}
+    to enroll one.
+  </span>
+);
+
+export function AudiencePromoStrip({
+  prices,
+  hasChildren,
+}: {
+  prices: AudiencePromoPrices;
+  hasChildren: boolean;
+}) {
+  const youthLocked = !hasChildren;
+
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <PromoTile
@@ -31,6 +55,8 @@ export function AudiencePromoStrip({ prices }: { prices: AudiencePromoPrices }) 
         title="Youth"
         description="Group lessons for kids — at our courts or with school pickup."
         priceLabel={priceLabel(prices.youth)}
+        locked={youthLocked}
+        lockedNote={noChildrenNote}
       />
       <PromoTile
         tone="randwijck"
@@ -47,6 +73,8 @@ export function AudiencePromoStrip({ prices }: { prices: AudiencePromoPrices }) 
         title="School pickup"
         description="We collect your kid at school and bring them door to court."
         priceLabel={priceLabel(prices.pickup)}
+        locked={youthLocked}
+        lockedNote={noChildrenNote}
       />
     </div>
   );
@@ -98,6 +126,8 @@ function PromoTile({
   title,
   description,
   priceLabel,
+  locked = false,
+  lockedNote,
 }: {
   tone: PromoTone;
   href: string;
@@ -105,50 +135,120 @@ function PromoTile({
   title: string;
   description: string;
   priceLabel: string | null;
+  locked?: boolean;
+  lockedNote?: React.ReactNode;
 }) {
   const t = TONE_STYLES[tone];
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "group flex flex-col gap-3 rounded-[var(--radius-lg)] border border-transparent p-5 shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]",
-        t.surface,
-        t.border,
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <div
-          aria-hidden
-          className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-            t.icon,
-            t.iconText,
-          )}
-        >
-          {icon}
+  const shell = cn(
+    "flex flex-col gap-3 rounded-[var(--radius-lg)] border border-transparent p-5 shadow-[var(--shadow-sm)]",
+    t.surface,
+    locked
+      ? "cursor-not-allowed select-none opacity-60"
+      : cn("group transition-all hover:shadow-[var(--shadow-md)]", t.border),
+  );
+
+  const inner = (
+    <>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            aria-hidden
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+              t.icon,
+              t.iconText,
+            )}
+          >
+            {icon}
+          </div>
+          <h3 className="font-display text-xl font-medium tracking-tight">
+            {title}
+          </h3>
         </div>
-        <h3 className="font-display text-xl font-medium tracking-tight">
-          {title}
-        </h3>
+        {locked ? (
+          <LockGlyph className="shrink-0 text-[var(--muted-foreground)]" />
+        ) : (
+          <ArrowGlyph className="shrink-0 text-[var(--muted-foreground)] transition-transform group-hover:translate-x-0.5" />
+        )}
       </div>
       <p className="text-sm text-[var(--muted-foreground)]">{description}</p>
-      <div className="mt-auto flex items-center justify-between text-xs">
-        {priceLabel ? (
+      <div className="mt-auto flex flex-wrap items-end justify-between gap-2 text-xs">
+        {locked && lockedNote ? (
+          <div className="text-xs leading-relaxed text-[var(--foreground)]">
+            {lockedNote}
+          </div>
+        ) : priceLabel ? (
           <span className="font-display text-base font-medium tabular tracking-tight text-[var(--foreground)]">
             {priceLabel}
           </span>
         ) : (
           <span />
         )}
-        <span
-          className={cn(
-            "font-semibold transition-transform group-hover:translate-x-0.5",
-            t.cta,
-          )}
-        >
-          Browse →
-        </span>
+        {!locked && (
+          <span
+            className={cn(
+              "ml-auto font-semibold transition-transform group-hover:translate-x-0.5",
+              t.cta,
+            )}
+          >
+            Browse →
+          </span>
+        )}
       </div>
+    </>
+  );
+
+  if (locked) {
+    return (
+      <div className={shell} aria-disabled data-state="locked">
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Link href={href} className={shell}>
+      {inner}
     </Link>
+  );
+}
+
+function LockGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <rect x="4" y="11" width="16" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 018 0v3" />
+    </svg>
+  );
+}
+
+function ArrowGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M5 12h14" />
+      <path d="M13 5l7 7-7 7" />
+    </svg>
   );
 }

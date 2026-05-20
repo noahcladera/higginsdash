@@ -640,6 +640,7 @@ model Person {
   classTransferRequestsRequested   ClassTransferRequest[]  @relation("ClassTransferRequestRequester")
   classTransferRequestsDecided     ClassTransferRequest[]  @relation("ClassTransferRequestDecidedBy")
   calendarFeedTokens               CalendarFeedToken[]
+  trialInterests                   TrialInterest[]
 
   @@index([archivedAt])
   @@index([lastName, firstName])
@@ -1300,6 +1301,11 @@ model ClassSeries {
   dayOfWeek                  DayOfWeek?            @map("day_of_week")
   startTime                  DateTime              @map("start_time") @db.Time(6)
   endTime                    DateTime              @map("end_time") @db.Time(6)
+  /// Optional court-occupancy window used when a default court is assigned.
+  /// Lets admin reserve a narrower / shifted court block without changing
+  /// the class's own schedule metadata.
+  courtBlockStartTime        DateTime?             @map("court_block_start_time") @db.Time(6)
+  courtBlockEndTime          DateTime?             @map("court_block_end_time") @db.Time(6)
   /// Pickup mode only: kids-out-of-school time (HH:MM). Coach must be at
   /// Triaz `school.coachArriveAtHubMinutes` earlier to grab the
   /// gocab/stint. Class starts at `startTime` once the coach has ridden
@@ -1324,6 +1330,9 @@ model ClassSeries {
   /// JSON array: `{ id, label, amountEur, note?, forMembers? }[]`.
   /// Primary checkout price stays on `pricePerSeries` (first / non-member tier).
   pricingTiers               Json?                 @map("pricing_tiers") @db.JsonB
+  /// Optional camp enrollment matrix. JSON object:
+  /// `{ options: [{ id, label, attendanceKind, amountEur, forMembers? }], dropInEnabled, dropInDates }`.
+  campOptions                Json?                 @map("camp_options") @db.JsonB
   defaultCoachPayRate        Decimal?              @map("default_coach_pay_rate") @db.Decimal(10, 2)
   defaultCourtCostPerSession Decimal?              @map("default_court_cost_per_session") @db.Decimal(10, 2)
   status                     ClassSeriesStatus     @default(draft)
@@ -1357,6 +1366,7 @@ model ClassSeries {
   groups            ClassSeriesGroup[]
   transferRequests  ClassTransferRequest[] @relation("ClassTransferRequestedTarget")
   updates           ClassUpdate[]
+  trialInterests    TrialInterest[]
 
   @@index([programId])
   @@index([seasonId])
@@ -2302,11 +2312,11 @@ model LadderAward {
 /// through an admin queue: contact the family, schedule the trial,
 /// either convert them to an enrollment or close the lead.
 ///
-/// Intentionally a flat row — no relation to `Person` — because the
-/// lead may not have a Person yet (and we don't want to silently spawn
-/// half-baked accounts from a public form).
+/// Public leads can still be anonymous, so person/series links stay nullable.
 model TrialInterest {
   id            String                @id @default(uuid()) @db.Uuid
+  personId      String?               @map("person_id") @db.Uuid
+  classSeriesId String?               @map("class_series_id") @db.Uuid
   /// Audience the lead is interested in. Drives which programs we'd
   /// suggest to them and which coach gets the lead.
   audience      TrialInterestAudience
@@ -2328,6 +2338,8 @@ model TrialInterest {
   /// Free-text "what time of day works", "we already play at …", etc.
   notes         String?
   status        TrialInterestStatus   @default(new)
+  priorTrialCount Int                 @default(0) @map("prior_trial_count")
+  isRepeat      Boolean               @default(false) @map("is_repeat")
   /// Internal admin notes added while working the lead. Append-only by
   /// convention but enforced in the UI, not the schema.
   adminNotes    String?               @map("admin_notes")
@@ -2336,8 +2348,13 @@ model TrialInterest {
   createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  person        Person?               @relation(fields: [personId], references: [id])
+  classSeries   ClassSeries?          @relation(fields: [classSeriesId], references: [id])
+
   @@index([status, createdAt])
   @@index([audience])
+  @@index([personId, createdAt])
+  @@index([classSeriesId])
   @@map("trial_interests")
 }
 

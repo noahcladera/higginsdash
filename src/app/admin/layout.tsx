@@ -100,30 +100,39 @@ export default async function AdminLayout({
   }
 
   // ─── Programs ──────────────────────────────────────────────────────────
-  const classesItems: ShellNavGroup["items"] = [];
+  const programItems: ShellNavGroup["items"] = [];
   if (f.classes) {
-    classesItems.push({
+    programItems.push({
       href: "/admin/classes",
       label: t.class.plural,
       icon: <ClassIcon size={16} />,
     });
   }
   if (f.events) {
-    classesItems.push({
+    programItems.push({
       href: "/admin/events",
       label: "Events",
       icon: <CalendarIcon size={16} />,
     });
   }
+  if (f.camps) {
+    programItems.push({
+      href: "/admin/camps",
+      label: "Camps",
+      icon: <CalendarIcon size={16} />,
+    });
+  }
   if (f.seasons) {
-    classesItems.push({
+    programItems.push({
       href: "/admin/seasons",
       label: t.season.plural,
       icon: <CalendarIcon size={16} />,
     });
   }
+
+  const requestItems: ShellNavGroup["items"] = [];
   if (f.coachSubs) {
-    classesItems.push({
+    requestItems.push({
       href: "/admin/coach-subs",
       label: "Sub requests",
       icon: <TicketIcon size={16} />,
@@ -131,7 +140,7 @@ export default async function AdminLayout({
     });
   }
   if (f.classTransfers) {
-    classesItems.push({
+    requestItems.push({
       href: "/admin/transfers",
       label: "Transfer requests",
       icon: <TicketIcon size={16} />,
@@ -139,25 +148,34 @@ export default async function AdminLayout({
     });
   }
   if (f.trialInterest) {
-    classesItems.push({
+    requestItems.push({
       href: "/admin/trial-interest",
       label: "Trial requests",
       icon: <TicketIcon size={16} />,
       badge: pending.trialInterests,
     });
   }
+
+  const spacesItems: ShellNavGroup["items"] = [];
   if (f.venues) {
-    classesItems.push({
+    spacesItems.push({
       href: "/admin/venues",
       label: t.venue.plural,
       icon: <MapPinIcon size={16} />,
     });
   }
   if (f.schoolPartnerships) {
-    classesItems.push({
+    spacesItems.push({
       href: "/admin/schools",
-      label: "Schools",
+      label: t.school.plural,
       icon: <MapPinIcon size={16} />,
+    });
+  }
+  if (f.courts) {
+    spacesItems.push({
+      href: "/admin/courts",
+      label: t.court.plural,
+      icon: <CardIcon size={16} />,
     });
   }
 
@@ -208,16 +226,6 @@ export default async function AdminLayout({
     });
   }
 
-  // ─── Catalog (spaces) ──────────────────────────────────────────────────
-  const catalogItems: ShellNavGroup["items"] = [];
-  if (f.courts) {
-    catalogItems.push({
-      href: "/admin/courts",
-      label: t.court.plural,
-      icon: <CardIcon size={16} />,
-    });
-  }
-
   // ─── Finance ───────────────────────────────────────────────────────────
   const financeItems: ShellNavGroup["items"] = [];
   if (f.payments) {
@@ -262,10 +270,11 @@ export default async function AdminLayout({
   const allGroups: ShellNavGroup[] = [
     { label: "Overview", items: overviewItems },
     { label: "People", items: peopleItems },
-    { label: t.class.plural, items: classesItems },
+    { label: "Programs", items: programItems },
+    { label: "Requests", items: requestItems },
+    { label: "Spaces", items: spacesItems },
     { label: t.membership.plural, items: membershipItems },
     { label: "Bookings", items: bookingItems },
-    { label: "Catalog", items: catalogItems },
     { label: "Finance", items: financeItems },
     { label: "Settings", items: settingsItems },
   ];
