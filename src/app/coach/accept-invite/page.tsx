@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { acceptCoachInvite } from "./actions";
 import { getCurrentBrand, getTerms } from "@/lib/tenant";
+import { ensurePersonForAuthUser } from "@/lib/auth/ensure-person";
 
 function buildErrorMessages(
   brandShortName: string,
@@ -83,6 +84,20 @@ export default async function CoachAcceptInvitePage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Make sure the signed-in auth user has a matching `people` row before
+  // the Activate button runs. Catching keeps the page renderable so a
+  // Prisma blip surfaces as visible copy, not a redacted RSC digest.
+  if (user) {
+    try {
+      await ensurePersonForAuthUser({
+        authUserId: user.id,
+        email: user.email ?? null,
+      });
+    } catch (err) {
+      console.error("[coach/accept-invite] ensurePersonForAuthUser", err);
+    }
+  }
 
   const loginNext = `/coach/accept-invite?token=${encodeURIComponent(token)}`;
 

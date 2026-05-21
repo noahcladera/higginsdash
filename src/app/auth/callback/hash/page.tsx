@@ -1,10 +1,9 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { finishAuthCallback } from "@/app/auth/callback/actions";
 
 const EXPIRED_LINK_MESSAGE =
   "This sign-in link is invalid or has expired. Ask an admin to resend the invite.";
@@ -23,9 +22,21 @@ function readAuthErrorFromLocation(
   return hp.get("error_description") ?? hp.get("error");
 }
 
+function safeRelativePath(path: string | null): string {
+  if (!path) return "/";
+  if (!path.startsWith("/")) return "/";
+  if (path.startsWith("//")) return "/";
+  return path;
+}
+
 /**
  * Hash / implicit invite flow. PKCE `?code=` is handled in
  * {@link ../route.ts} before this page runs.
+ *
+ * After `setSession` succeeds we perform a full document navigation so the
+ * destination page picks up auth via cookies + middleware. Server actions
+ * mid-flight while client cookies are still propagating cause opaque RSC
+ * digest errors in production — full nav avoids that whole class of bugs.
  */
 export default function AuthCallbackHashPage() {
   return (
@@ -46,7 +57,6 @@ function Pending() {
 }
 
 function CallbackHashInner() {
-  const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const ranRef = useRef(false);
@@ -93,32 +103,16 @@ function CallbackHashInner() {
         return;
       }
 
-      if (typeof window !== "undefined" && window.location.hash) {
-        window.history.replaceState(
-          null,
-          "",
-          window.location.pathname + window.location.search,
-        );
-      }
-
-      router.refresh();
-
-      const result = await finishAuthCallback(explicitNext);
-      if (!result.ok) {
-        setError(
-          result.error === "no_session"
-            ? EXPIRED_LINK_MESSAGE
-            : result.error,
-        );
-        return;
-      }
-      router.replace(result.next);
+      const target = safeRelativePath(explicitNext);
+      // Full document navigation so the destination page picks up auth via
+      // cookies + middleware. Avoids server-action / cookie-sync timing bugs.
+      window.location.assign(target);
     }
 
     run().catch((e: unknown) => {
       setError(e instanceof Error ? e.message : "Could not complete sign in.");
     });
-  }, [params, router]);
+  }, [params]);
 
   if (error) {
     return (
