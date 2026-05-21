@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateField } from "@/components/ui/date-field";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScheduleCalendar } from "./_components/schedule-calendar";
+import { ClassCreateWizard } from "./_components/class-create-wizard";
 import {
   CoachAssignmentField,
   type CoachOption,
@@ -17,27 +17,56 @@ import { EventPricingField } from "./_components/event-pricing-field";
 import { CampOptionsField } from "./_components/camp-options-field";
 import { AgeAndLevelField } from "./_components/age-and-level-field";
 import { GroupsField, type GroupRow } from "./_components/groups-field";
+import {
+  isYouthPickupLesson,
+  useSplitGroupsLesson,
+} from "@/lib/classes/class-form-mode";
 import { deriveSeriesName as buildAutoName } from "@/lib/classes/series-name";
 import type { SkillLevelValue } from "@/lib/skill-levels";
 import { useTerms } from "@/components/tenant/terms-provider";
 
 /**
- * Create form for a ClassSeries, as a progressive cascade:
+ * Create form for a ClassSeries, walked as a one-step-per-screen wizard:
  *
  *   1. Audience          (Adult | Youth)
  *   2. Format            (At club | Afterschool)          — youth only
  *   3. Mode              (Pickup | On-site)               — youth afterschool only
  *   4. Location          (school + venue, or just venue)
  *   5. Schedule          (day / time / start-end + interactive excluded-dates calendar)
- *   6. Naming            (series name + optional season + optional program)
- *   7. Coaches           (lead + assistants)
- *   8. Roster            (max / min students + internal notes)
+ *   6. Age & level
+ *   7. Naming            (series name + optional season + optional program)
+ *   8. Split groups?     (Regular | Multiple)             — youth pickup only
+ *   9. Coaches           (flat list, or lead + assistants when split)
+ *  10. Groups            (per-group caps / coaches)       — only when split
+ *  11. Roster            (max / min students + cover etc.)
+ *  12. Pricing
  *
  * `classType`, `deliveryMode`, and `excludedDates` are *derived* and
  * submitted as hidden inputs — the server never sees the cascade state
  * directly. For `pickup`, the Program dropdown is hidden entirely; the
  * server auto-resolves the canonical "kids-group" program.
+ *
+ * Every step renders into the same persistent `<form>`, but only the
+ * active step is visible (display:none on the others). This preserves
+ * field-component state (GroupsField rows, coach picks, etc.) across
+ * Back/Next without re-mounting.
  */
+
+type StepId =
+  | "audience"
+  | "format"
+  | "afterschoolMode"
+  | "location"
+  | "schedule"
+  | "age"
+  | "naming"
+  | "splitGroups"
+  | "coaches"
+  | "groups"
+  | "roster"
+  | "pricing";
+
+type WizardStep = { id: StepId; title: string; hint?: string };
 
 type Audience = "adult" | "youth";
 type Format = "at_club" | "afterschool";
@@ -136,12 +165,23 @@ export function ClassSeriesForm({
   const [seriesLevels, setSeriesLevels] = useState<SkillLevelValue[]>([]);
   const [groupRows, setGroupRows] = useState<GroupRow[]>([]);
 
+  // Split-into-groups opt-in. Off by default so the standard pickup
+  // class is a single group; admin flips this on when they want
+  // multiple groups in the same court block (different age bands /
+  // end times). Auto-resets to false when leaving youth pickup.
+  const [splitIntoGroups, setSplitIntoGroups] = useState(false);
+
   // Manual-name escape hatch — mirrors the edit-page Naming card. When
   // `useOverride` is on the form submits `useOverride=true` plus a
   // `nameOverride` text input which the server stores verbatim.
   const [useOverride, setUseOverride] = useState(false);
   const [nameOverride, setNameOverride] = useState("");
   const [eventMaxStudents, setEventMaxStudents] = useState(20);
+  const [maxStudents, setMaxStudents] = useState(8);
+
+  // Wizard navigation.
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const handleAgeChange = useCallback(
     (band: { minAge: number | null; maxAge: number | null }) => {
@@ -237,6 +277,24 @@ export function ClassSeriesForm({
     afterschoolMode,
   );
 
+  const youthPickup =
+    kind === "class" &&
+    isYouthPickupLesson({ audience, deliveryMode });
+
+  // The "complex" UI (lead/assistants, per-group coaches, derived max)
+  // only appears when the admin explicitly opts into splitting a youth
+  // pickup class into multiple groups.
+  const useSplitGroupsUI = useSplitGroupsLesson({
+    youthPickup,
+    splitIntoGroups,
+  });
+
+  // Auto-clear the split-into-groups opt-in whenever we leave youth
+  // pickup, so an Adult class never silently carries it forward.
+  useEffect(() => {
+    if (!youthPickup && splitIntoGroups) setSplitIntoGroups(false);
+  }, [youthPickup, splitIntoGroups]);
+
   // Which venues are eligible at this point in the tree.
   const clubVenues = useMemo(
     () => venues.filter((v) => v.kind === "club"),
@@ -289,11 +347,13 @@ export function ClassSeriesForm({
       seriesMinAge: seriesAges.minAge,
       seriesMaxAge: seriesAges.maxAge,
       seriesEligibleSkillLevels: seriesLevels,
-      groups: groupRows.map((r) => ({
-        minAge: parseAgeInput(r.minAge),
-        maxAge: parseAgeInput(r.maxAge),
-        eligibleSkillLevels: r.eligibleSkillLevels,
-      })),
+      groups: useSplitGroupsUI
+        ? groupRows.map((r) => ({
+            minAge: parseAgeInput(r.minAge),
+            maxAge: parseAgeInput(r.maxAge),
+            eligibleSkillLevels: r.eligibleSkillLevels,
+          }))
+        : [],
     });
   }, [
     audience,
@@ -311,6 +371,7 @@ export function ClassSeriesForm({
     seriesAges,
     seriesLevels,
     groupRows,
+    useSplitGroupsUI,
   ]);
 
   // Prune excluded dates that fall outside the current [startsOn, endsOn]
@@ -363,20 +424,6 @@ export function ClassSeriesForm({
     }
   }
 
-  const step = (
-    slot:
-      | "location"
-      | "schedule"
-      | "age"
-      | "groups"
-      | "naming"
-      | "coach"
-      | "roster"
-      | "pricing",
-  ) =>
-    kind === "event" || kind === "camp"
-      ? eventStepNumber(slot)
-      : stepNumber({ audience, format, afterschoolMode }, slot);
   function pickFormat(next: Format) {
     if (next === format) return;
     setFormat(next);
@@ -387,6 +434,7 @@ export function ClassSeriesForm({
       setSchoolId("");
     }
   }
+
   function pickAfterschoolMode(next: AfterschoolMode) {
     if (next === afterschoolMode) return;
     setAfterschoolMode(next);
@@ -439,8 +487,170 @@ export function ClassSeriesForm({
   const submittedClassType =
     kind === "event" ? "event" : kind === "camp" ? "camp" : classType;
 
+  // Build the ordered step list. Branches drop in/out when cascade
+  // selections change (e.g. youth → format step, pickup → splitGroups
+  // step, split → groups step). currentStepIndex is clamped below
+  // whenever the list shrinks.
+  const steps = useMemo<WizardStep[]>(() => {
+    const isClass = kind === "class";
+    const list: WizardStep[] = [];
+    list.push({
+      id: "audience",
+      title: kind === "event" ? "Audience" : "Who's this class for?",
+      hint:
+        kind === "event"
+          ? "Who is this event for? Level options below will match this choice."
+          : "Adult classes always run at Triaz or Randwijck. Youth classes can be at-club or afterschool.",
+    });
+    if (isClass && audience === "youth") {
+      list.push({
+        id: "format",
+        title: "At-club or afterschool?",
+        hint: `At-club = ${t.parent.plural} bring ${t.student.plural.toLowerCase()} to your ${t.club.singular.toLowerCase()} venue(s). Afterschool = collection at ${t.school.singular.toLowerCase()} (pickup) or teaching on-site.`,
+      });
+    }
+    if (isClass && audience === "youth" && format === "afterschool") {
+      list.push({
+        id: "afterschoolMode",
+        title: "Pickup or on-site?",
+        hint: `Pickup = ${t.coach.singular} travels from the hub to collect ${t.student.plural.toLowerCase()}. On-site = the ${t.class.singular.toLowerCase()} runs at the partner ${t.school.singular.toLowerCase()}.`,
+      });
+    }
+    list.push({
+      id: "location",
+      title: locationTitle(deliveryMode),
+      hint: locationHint(deliveryMode),
+    });
+    list.push({
+      id: "schedule",
+      title: "Schedule",
+      hint: "Pick the weekday and time. The calendar previews every session — click any green date to mark it as a no-lesson day.",
+    });
+    list.push({
+      id: "age",
+      title: kind === "event" ? "Level" : "Who can sign up?",
+      hint:
+        kind === "event"
+          ? "Optional — sets the age band and skill levels parents see when signing up."
+          : "Optional but helpful — sets the age band and level bracket parents see on the portal. Leave blank to allow anyone.",
+    });
+    list.push({
+      id: "naming",
+      title: "Naming",
+      hint:
+        kind === "event"
+          ? "How this event appears to parents on the portal."
+          : `Shown to ${t.parent.plural.toLowerCase()} and ${t.coach.plural.toLowerCase()}. The series name is derived from the cascade — tick 'Use custom name' to override.`,
+    });
+    if (youthPickup) {
+      list.push({
+        id: "splitGroups",
+        title: "Split into groups?",
+        hint: `Most pickup ${t.class.plural.toLowerCase()} are a single group. Split when one ${t.court.singular.toLowerCase()} block hosts two age bands or two end times.`,
+      });
+    }
+    list.push({
+      id: "coaches",
+      title: kind === "event" ? "Who is running the event?" : t.coach.plural,
+      hint:
+        kind === "event"
+          ? "Select staff running this event. You can add more once the first person is chosen."
+          : useSplitGroupsUI
+            ? `Pick the lead and any assistants. Leave lead as "No ${t.coach.singular.toLowerCase()} yet" to staff later.`
+            : `Pick who is teaching. Add more ${t.coach.plural.toLowerCase()} once the first is chosen, or leave blank to staff later.`,
+    });
+    if (useSplitGroupsUI) {
+      list.push({
+        id: "groups",
+        title: "Groups",
+        hint: `Each group keeps its own age window, roster cap, and assigned ${t.coach.singular.toLowerCase()}. The series end time tracks the latest group end.`,
+      });
+    }
+    list.push({
+      id: "roster",
+      title: "Roster limits",
+      hint:
+        kind === "event"
+          ? "How many people can sign up for this event."
+          : useSplitGroupsUI
+            ? "The total max comes from the sum of your group capacities. Set per-group caps in the Groups step."
+            : "How many students can enroll in this class.",
+    });
+    list.push({
+      id: "pricing",
+      title: "Pricing",
+      hint:
+        kind === "event"
+          ? "Set the event price. Add a member price if members pay less — it is applied automatically at checkout."
+          : kind === "camp"
+            ? "Set week and optional drop-in prices. Member prices are applied automatically when a student already has active membership."
+            : "Defaults to EUR 35 per session — the catalog total members see is this number times the live session count. Leave blank to bill manually.",
+    });
+    return list;
+  }, [
+    kind,
+    audience,
+    format,
+    deliveryMode,
+    youthPickup,
+    useSplitGroupsUI,
+    t,
+  ]);
+
+  // Clamp the active step when the list shrinks (e.g. switching from
+  // youth to adult drops the format/mode/splitGroups steps).
+  useEffect(() => {
+    if (currentStepIndex > steps.length - 1) {
+      setCurrentStepIndex(Math.max(0, steps.length - 1));
+    }
+  }, [steps.length, currentStepIndex]);
+
+  const currentStep = steps[currentStepIndex] ?? steps[0];
+  const isLastStep = currentStepIndex === steps.length - 1;
+
+  function goNext() {
+    const container = stepRefs.current[currentStepIndex];
+    if (container) {
+      const fields = container.querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >("input, select, textarea");
+      for (const f of fields) {
+        if (!f.checkValidity()) {
+          f.reportValidity();
+          return;
+        }
+      }
+    }
+    if (currentStepIndex < steps.length - 1) {
+      setCurrentStepIndex((i) => i + 1);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+  }
+
+  function goBack() {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex((i) => i - 1);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (!isLastStep) {
+      e.preventDefault();
+      goNext();
+    }
+  }
+
   return (
-    <form action={action} className="space-y-6">
+    <form
+      action={action}
+      onSubmit={handleSubmit}
+      className="space-y-6"
+    >
       {/* Derived hidden values — server never sees the cascade state directly. */}
       <input type="hidden" name="classType" value={submittedClassType} />
       <input type="hidden" name="deliveryMode" value={deliveryMode} />
@@ -470,46 +680,55 @@ export function ClassSeriesForm({
         <input type="hidden" name="programId" value="" />
       )}
 
-      {/* STEP 1 — Audience ---------------------------------------------- */}
-      {kind === "event" ? (
-        <Step
-          n={1}
-          title="Audience"
-          hint="Who is this event for? Level options below will match this choice."
-        >
-          <Pills
-            value={audience}
-            onChange={(v) => pickAudience(v as Audience)}
-            options={[
-              { value: "youth", label: "Youth" },
-              { value: "adult", label: "Adult" },
-            ]}
-          />
-        </Step>
-      ) : (
-        <Step
-          n={1}
-          title="Who's this class for?"
-          hint="Adult classes always run at Triaz or Randwijck. Youth classes can be at-club or afterschool."
-        >
-          <Pills
-            value={audience}
-            onChange={(v) => pickAudience(v as Audience)}
-            options={[
-              { value: "adult", label: "Adult" },
-              { value: "youth", label: "Youth" },
-            ]}
-          />
-        </Step>
-      )}
+      <ClassCreateWizard
+        stepIndex={currentStepIndex}
+        totalSteps={steps.length}
+        stepTitle={currentStep?.title ?? ""}
+        stepHint={currentStep?.hint}
+        onBack={goBack}
+        onNext={goNext}
+        isLast={isLastStep}
+        submitLabel={submitLabel}
+      >
+        {steps.map((s, idx) => (
+          <div
+            key={s.id}
+            ref={(el) => {
+              stepRefs.current[idx] = el;
+            }}
+            style={{ display: idx === currentStepIndex ? "block" : "none" }}
+            className="space-y-4"
+          >
+            {renderStepBody(s.id)}
+          </div>
+        ))}
+      </ClassCreateWizard>
+    </form>
+  );
 
-      {/* STEP 2 — Format (youth only) ----------------------------------- */}
-      {kind === "class" && audience === "youth" && (
-        <Step
-          n={2}
-          title="At-club or afterschool?"
-          hint={`At-club = ${t.parent.plural} bring ${t.student.plural.toLowerCase()} to your ${t.club.singular.toLowerCase()} venue(s). Afterschool = collection at ${t.school.singular.toLowerCase()} (pickup) or teaching on-site.`}
-        >
+  function renderStepBody(id: StepId) {
+    switch (id) {
+      case "audience":
+        return (
+          <Pills
+            value={audience}
+            onChange={(v) => pickAudience(v as Audience)}
+            options={
+              kind === "event"
+                ? [
+                    { value: "youth", label: "Youth" },
+                    { value: "adult", label: "Adult" },
+                  ]
+                : [
+                    { value: "adult", label: "Adult" },
+                    { value: "youth", label: "Youth" },
+                  ]
+            }
+          />
+        );
+
+      case "format":
+        return (
           <Pills
             value={format}
             onChange={(v) => pickFormat(v as Format)}
@@ -518,16 +737,10 @@ export function ClassSeriesForm({
               { value: "afterschool", label: "Afterschool" },
             ]}
           />
-        </Step>
-      )}
+        );
 
-      {/* STEP 3 — Afterschool mode (youth + afterschool only) ----------- */}
-      {kind === "class" && audience === "youth" && format === "afterschool" && (
-        <Step
-          n={3}
-          title="Pickup or on-site?"
-          hint={`Pickup = ${t.coach.singular} travels from the hub to collect ${t.student.plural.toLowerCase()}. On-site = the ${t.class.singular.toLowerCase()} runs at the partner ${t.school.singular.toLowerCase()}.`}
-        >
+      case "afterschoolMode":
+        return (
           <Pills
             value={afterschoolMode}
             onChange={(v) => pickAfterschoolMode(v as AfterschoolMode)}
@@ -536,16 +749,71 @@ export function ClassSeriesForm({
               { value: "onsite", label: "On-site" },
             ]}
           />
-        </Step>
-      )}
+        );
 
-      {/* STEP 4 — Location ---------------------------------------------- */}
-      <Step
-        n={step("location")}
-        title={locationTitle(deliveryMode)}
-        hint={locationHint(deliveryMode)}
-      >
-        {deliveryMode === "pickup" ? (
+      case "splitGroups":
+        return (
+          <div className="space-y-3">
+            <Pills
+              value={splitIntoGroups ? "split" : "single"}
+              onChange={(v) => setSplitIntoGroups(v === "split")}
+              options={[
+                { value: "single", label: "Regular class" },
+                { value: "split", label: "Multiple groups" },
+              ]}
+            />
+            <p className="text-xs text-[var(--muted-foreground)]">
+              {splitIntoGroups
+                ? `You'll set per-group age bands, end times, capacities, and assigned ${t.coach.plural.toLowerCase()} on the next steps.`
+                : `One roster, one age band, one ${t.coach.singular.toLowerCase()} list. Most pickup ${t.class.plural.toLowerCase()} only need this.`}
+            </p>
+          </div>
+        );
+
+      case "location":
+        return renderLocationBody();
+
+      case "schedule":
+        return renderScheduleBody();
+
+      case "age":
+        return (
+          <AgeAndLevelField
+            audience={audience === "adult" ? "adults" : "kids"}
+            onChange={handleAgeChange}
+            onLevelsChange={handleLevelsChange}
+          />
+        );
+
+      case "naming":
+        return renderNamingBody();
+
+      case "coaches":
+        return renderCoachesBody();
+
+      case "groups":
+        return (
+          <GroupsField
+            audience={audience === "adult" ? "adults" : "kids"}
+            seriesEndTime={endTime}
+            coachOptions={coachRoster}
+            onChange={handleGroupsChange}
+          />
+        );
+
+      case "roster":
+        return renderRosterBody();
+
+      case "pricing":
+        return renderPricingBody();
+
+      default:
+        return null;
+    }
+  }
+
+  function renderLocationBody() {
+    return deliveryMode === "pickup" ? (
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="School">
               <select
@@ -630,15 +898,12 @@ export function ClassSeriesForm({
               ))}
             </select>
           </Field>
-        )}
-      </Step>
+        );
+  }
 
-      {/* STEP 5 — Schedule + interactive calendar ----------------------- */}
-      <Step
-        n={step("schedule")}
-        title="Schedule"
-        hint={`Pick the weekday and time. The calendar previews every session — click any green date to mark it as a no-lesson day.`}
-      >
+  function renderScheduleBody() {
+    return (
+      <>
         <input
           type="hidden"
           name="seasonId"
@@ -806,59 +1071,38 @@ export function ClassSeriesForm({
           excluded={excludedDates}
           onToggle={toggleExcluded}
         />
-      </Step>
+      </>
+    );
+  }
 
-      {/* STEP — Age & level -------------------------------------------- */}
-      <Step
-        n={step("age")}
-        title={kind === "event" ? "Level" : "Who can sign up?"}
-        hint={
-          kind === "event"
-            ? "Optional — sets the age band and skill levels parents see when signing up."
-            : "Optional but helpful — sets the age band and level bracket parents see on the portal. Leave blank to allow anyone."
-        }
-      >
-        <AgeAndLevelField
-          audience={audience === "adult" ? "adults" : "kids"}
-          onChange={handleAgeChange}
-          onLevelsChange={handleLevelsChange}
-        />
-      </Step>
-
-      {/* STEP — Naming ------------------------------------------------- */}
-      <Step
-        n={step("naming")}
-        title="Naming"
-        hint={
-          kind === "event"
-            ? "How this event appears to parents on the portal."
-            : `Shown to ${t.parent.plural.toLowerCase()} and ${t.coach.plural.toLowerCase()}. The series name is derived from the cascade above — change Day, Time, Venue, Program, Season, Ages, or Levels to update it. Tick 'Use custom name' for a manual override.`
-        }
-      >
-        {kind === "event" ? (
-          <>
-            <Field label="Event name" hint="Short title parents will see in the list.">
-              <Input
-                name="eventName"
-                maxLength={160}
-                placeholder="e.g. Summer social"
-                required
-              />
-            </Field>
-            <Field
-              label="Description"
-              hint="Tell parents what to expect — format, what to bring, skill level, etc."
-            >
-              <Textarea
-                name="publicNotes"
-                rows={4}
-                placeholder="A friendly round-robin social for all levels…"
-                required
-              />
-            </Field>
-          </>
-        ) : (
-          <>
+  function renderNamingBody() {
+    if (kind === "event") {
+      return (
+        <>
+          <Field label="Event name" hint="Short title parents will see in the list.">
+            <Input
+              name="eventName"
+              maxLength={160}
+              placeholder="e.g. Summer social"
+              required
+            />
+          </Field>
+          <Field
+            label="Description"
+            hint="Tell parents what to expect — format, what to bring, skill level, etc."
+          >
+            <Textarea
+              name="publicNotes"
+              rows={4}
+              placeholder="A friendly round-robin social for all levels…"
+              required
+            />
+          </Field>
+        </>
+      );
+    }
+    return (
+      <>
         <input
           type="hidden"
           name="useOverride"
@@ -866,7 +1110,7 @@ export function ClassSeriesForm({
         />
         <Field
           label="Series name"
-          hint="Auto-derived from the class parameters above. Tick 'Use custom name' to override."
+          hint="Auto-derived from the class parameters. Tick 'Use custom name' to override."
         >
           {useOverride ? (
             <div className="space-y-1">
@@ -929,110 +1173,98 @@ export function ClassSeriesForm({
             Pickup lessons are always the Kids group lesson program — no need to pick one.
           </p>
         )}
-          </>
-        )}
-      </Step>
+      </>
+    );
+  }
 
-      {/* STEP — Coaches ------------------------------------------------ */}
-      <Step
-        n={step("coach")}
-        title={kind === "event" ? "Who is running the event?" : t.coach.plural}
-        hint={
-          kind === "event"
-            ? "Select staff running this event. You can add more once the first person is chosen."
-            : `Pick the lead and any assistants. Leave lead as "No ${t.coach.singular.toLowerCase()} yet" to staff later.`
-        }
-      >
-        {kind === "event" ? (
-          <EventStaffField coaches={coaches} />
-        ) : (
-          <CoachAssignmentField
-            coaches={coaches}
-            isPickup={deliveryMode === "pickup"}
-            onRosterChange={handleRosterChange}
+  function renderCoachesBody() {
+    if (kind === "event") {
+      return <EventStaffField coaches={coaches} />;
+    }
+    if (useSplitGroupsUI) {
+      return (
+        <CoachAssignmentField
+          coaches={coaches}
+          isPickup
+          onRosterChange={handleRosterChange}
+        />
+      );
+    }
+    return (
+      <EventStaffField
+        coaches={coaches}
+        memberLabel={t.coach.singular}
+        addAnotherLabel={`Add another ${t.coach.singular.toLowerCase()}`}
+      />
+    );
+  }
+
+  function renderRosterBody() {
+    return (
+      <>
+        {kind !== "event" && useSplitGroupsUI && (
+          <input
+            type="hidden"
+            name="maxStudents"
+            value={Math.max(
+              1,
+              groupRows.reduce(
+                (sum, r) => sum + (Number(r.maxStudents) || 0),
+                0,
+              ),
+            )}
           />
         )}
-      </Step>
-
-      {/* STEP — Groups -------------------------------------------------- */}
-      {kind === "class" && (
-      <Step
-        n={step("groups")}
-        title="Groups"
-        hint={`A ${t.class.singular.toLowerCase()} is one group by default. Add a second when the same ${t.court.singular.toLowerCase()} block has two age bands or two end times (e.g. AICS Wednesday with the small kids leaving earlier). Each group keeps its own age window, roster cap, and assigned ${t.coach.singular.toLowerCase()} (required once you have 2+ groups). The series end time tracks the latest group end.`}
-      >
-        <GroupsField
-          audience={audience === "adult" ? "adults" : "kids"}
-          seriesEndTime={endTime}
-          coachOptions={coachRoster}
-          onChange={handleGroupsChange}
-        />
-      </Step>
-      )}
-
-      {/* STEP 8 — Roster limits ----------------------------------------- */}
-      <Step
-        n={step("roster")}
-        title="Roster limits"
-        hint={
-          kind === "event"
-            ? "How many people can sign up for this event."
-            : "The total max comes from the sum of your group capacities above. Set per-group caps in the Groups step."
-        }
-      >
-        {/*
-         * `maxStudents` on ClassSeries is now derived: it's the sum of
-         * each group's `maxStudents`. We submit it via a hidden input so
-         * the server schema stays the same, but the admin no longer
-         * types it — they edit per-group caps in the Groups step
-         * (single source of truth). Falls back to 1 when groups haven't
-         * been filled in yet so the field is never empty on submit.
-         */}
-        <input
-          type="hidden"
-          name="maxStudents"
-          value={
-            kind === "event"
-              ? eventMaxStudents
-              : Math.max(
-                  1,
-                  groupRows.reduce(
-                    (sum, r) => sum + (Number(r.maxStudents) || 0),
-                    0,
-                  ),
-                )
-          }
-        />
         <div className="grid gap-4 sm:grid-cols-2">
           {kind === "event" ? (
-            <Field label="Max participants" hint="Total spots available.">
+            <>
+              <input type="hidden" name="maxStudents" value={eventMaxStudents} />
+              <Field label="Max participants" hint="Total spots available.">
+                <Input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={eventMaxStudents}
+                  onChange={(e) =>
+                    setEventMaxStudents(
+                      Math.max(1, Number.parseInt(e.target.value, 10) || 1),
+                    )
+                  }
+                  required
+                />
+              </Field>
+            </>
+          ) : useSplitGroupsUI ? (
+            <div className="space-y-1.5">
+              <Label>Max students (derived)</Label>
+              <div className="flex h-9 items-center rounded-md border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--muted-foreground)] tabular-nums">
+                {groupRows.reduce(
+                  (sum, r) => sum + (Number(r.maxStudents) || 0),
+                  0,
+                )}
+              </div>
+              <p className="text-[11px] text-[var(--muted-foreground)]">
+                Sum of {groupRows.length} group
+                {groupRows.length === 1 ? "" : "s"}. Edit per-group caps in the
+                Groups step to change this.
+              </p>
+            </div>
+          ) : (
+            <Field label="Max students" hint="Total spots available.">
               <Input
+                name="maxStudents"
                 type="number"
                 min={1}
                 max={200}
-                value={eventMaxStudents}
+                value={maxStudents}
                 onChange={(e) =>
-                  setEventMaxStudents(
+                  setMaxStudents(
                     Math.max(1, Number.parseInt(e.target.value, 10) || 1),
                   )
                 }
                 required
               />
             </Field>
-          ) : (
-          <div className="space-y-1.5">
-            <Label>Max students (derived)</Label>
-            <div className="flex h-9 items-center rounded-md border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--muted-foreground)] tabular-nums">
-              {groupRows.reduce(
-                (sum, r) => sum + (Number(r.maxStudents) || 0),
-                0,
-              )}
-            </div>
-            <p className="text-[11px] text-[var(--muted-foreground)]">
-              Sum of {groupRows.length} group{groupRows.length === 1 ? "" : "s"}.
-              Edit per-group caps above to change this.
-            </p>
-          </div>
           )}
           <Field label="Min students" hint="Leave blank if no minimum." optional>
             <Input
@@ -1066,48 +1298,29 @@ export function ClassSeriesForm({
             defaultValue=""
           />
         </Field>
-      </Step>
+      </>
+    );
+  }
 
-      {/* STEP 9 — Pricing ----------------------------------------------- */}
-      <Step
-        n={step("pricing")}
-        title="Pricing"
-        hint={
-          kind === "event"
-            ? "Set the event price. Add a member price if members pay less — it is applied automatically at checkout."
-            : kind === "camp"
-              ? "Set week and optional drop-in prices. Member prices are applied automatically when a student already has active membership."
-            : "Defaults to EUR 35 per session — the catalog total members see is this number times the live session count. Leave blank to bill manually (the portal then shows 'Contact the office for pricing' and skips checkout)."
-        }
-      >
-        {kind === "event" ? (
-          <EventPricingField />
-        ) : kind === "camp" ? (
-          <CampOptionsField />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Per-session price (EUR)" optional>
-              <Input
-                name="pricePerSessionEur"
-                type="number"
-                min={0}
-                step={0.5}
-                max={10000}
-                defaultValue={35}
-                placeholder="35"
-              />
-            </Field>
-          </div>
-        )}
-      </Step>
-
-      <div className="flex items-center justify-end gap-2">
-        <Button tone="triaz" type="submit">
-          {submitLabel}
-        </Button>
+  function renderPricingBody() {
+    if (kind === "event") return <EventPricingField />;
+    if (kind === "camp") return <CampOptionsField />;
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Per-session price (EUR)" optional>
+          <Input
+            name="pricePerSessionEur"
+            type="number"
+            min={0}
+            step={0.5}
+            max={10000}
+            defaultValue={35}
+            placeholder="35"
+          />
+        </Field>
       </div>
-    </form>
-  );
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1129,60 +1342,6 @@ function deriveDerivatives(
     return { deliveryMode: "pickup", classType: "school_pickup" };
   }
   return { deliveryMode: "onsite", classType: "school_onsite" };
-}
-
-function stepNumber(
-  state: { audience: Audience; format: Format; afterschoolMode: AfterschoolMode },
-  slot:
-    | "location"
-    | "schedule"
-    | "age"
-    | "groups"
-    | "naming"
-    | "coach"
-    | "roster"
-    | "pricing",
-): number {
-  // Count how many branch questions preceded the given slot.
-  let n = 1; // step 1 is audience
-  if (state.audience === "youth") n += 1; // format
-  if (state.audience === "youth" && state.format === "afterschool") n += 1; // mode
-  const offsets = {
-    location: 1,
-    schedule: 2,
-    age: 3,
-    naming: 4,
-    coach: 5,
-    groups: 6,
-    roster: 7,
-    pricing: 8,
-  } as const;
-  return n + offsets[slot];
-}
-
-/** Step numbers for the event create wizard (no format/mode/groups). */
-function eventStepNumber(
-  slot:
-    | "location"
-    | "schedule"
-    | "age"
-    | "groups"
-    | "naming"
-    | "coach"
-    | "roster"
-    | "pricing",
-): number {
-  const offsets = {
-    location: 2,
-    schedule: 3,
-    age: 4,
-    naming: 5,
-    coach: 6,
-    groups: 6,
-    roster: 7,
-    pricing: 8,
-  } as const;
-  return offsets[slot];
 }
 
 function locationTitle(mode: "at_club" | "onsite" | "pickup"): string {
@@ -1290,35 +1449,6 @@ function parseIso(iso: string): Date | null {
 
 const selectClass =
   "flex h-9 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-50";
-
-function Step({
-  n,
-  title,
-  hint,
-  children,
-}: {
-  n: number;
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="space-y-4 rounded-[var(--radius-md)] bg-[var(--surface)] p-5">
-      <header className="flex items-baseline justify-between gap-3">
-        <h3 className="text-sm font-medium">
-          <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--triaz-soft)] text-[11px] font-semibold text-[var(--triaz-ink)]">
-            {n}
-          </span>
-          {title}
-        </h3>
-      </header>
-      {hint && (
-        <p className="-mt-2 text-xs text-[var(--muted-foreground)]">{hint}</p>
-      )}
-      {children}
-    </section>
-  );
-}
 
 function Field({
   label,

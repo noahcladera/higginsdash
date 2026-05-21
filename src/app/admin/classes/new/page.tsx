@@ -76,7 +76,7 @@ export default async function NewClassPage() {
       <PageHeader
         kicker="Admin · Classes"
         title="New class"
-        description="Walk through the cascade — audience, format, location, schedule. Every weekly session between the start and end dates gets generated automatically."
+        description="One decision per step — audience, format, location, schedule, naming. Every weekly session between the start and end dates gets generated automatically."
       />
       <ClassSeriesForm
         action={createClassSeries}

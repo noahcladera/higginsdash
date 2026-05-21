@@ -918,15 +918,24 @@ export function EventCoachesSectionEditor({
   classSeriesId,
   coaches,
   defaultPersonIds,
+  memberLabel,
+  addAnotherLabel,
 }: {
   classSeriesId: string;
   coaches: CoachOption[];
   defaultPersonIds: string[];
+  memberLabel?: string;
+  addAnotherLabel?: string;
 }) {
   return (
     <>
       <input type="hidden" name="classSeriesId" value={classSeriesId} />
-      <EventStaffField coaches={coaches} defaultPersonIds={defaultPersonIds} />
+      <EventStaffField
+        coaches={coaches}
+        defaultPersonIds={defaultPersonIds}
+        memberLabel={memberLabel}
+        addAnotherLabel={addAnotherLabel}
+      />
     </>
   );
 }

@@ -14,9 +14,14 @@ import type { CoachOption } from "./coach-assignment-field";
 export function EventStaffField({
   coaches,
   defaultPersonIds = [],
+  memberLabel = "Staff member",
+  addAnotherLabel = "Add another staff member",
 }: {
   coaches: CoachOption[];
   defaultPersonIds?: string[];
+  /** Label for the first slot (and numbered slots). Defaults to "Staff member". */
+  memberLabel?: string;
+  addAnotherLabel?: string;
 }) {
   const [staffIds, setStaffIds] = useState<string[]>(() =>
     defaultPersonIds.length > 0 ? defaultPersonIds : [""],
@@ -67,7 +72,7 @@ export function EventStaffField({
         <div key={index} className="flex flex-wrap items-end gap-2">
           <div className="min-w-[200px] flex-1 space-y-1.5">
             <Label>
-              {index === 0 ? "Staff member" : `Staff member ${index + 1}`}
+              {index === 0 ? memberLabel : `${memberLabel} ${index + 1}`}
             </Label>
             <select
               value={personId}
@@ -76,7 +81,9 @@ export function EventStaffField({
               required={index === 0}
             >
               <option value="" disabled={index === 0}>
-                {index === 0 ? "Select staff…" : "Select another…"}
+                {index === 0
+                  ? `Select ${memberLabel.toLowerCase()}…`
+                  : "Select another…"}
               </option>
               {optionsFor(index).map((c) => (
                 <option key={c.personId} value={c.personId}>
@@ -101,7 +108,7 @@ export function EventStaffField({
       {filled.length > 0 && filled.length < 6 && !staffIds.includes("") && (
         <Button type="button" variant="outline" size="sm" onClick={addSlot}>
           <PlusIcon className="mr-1 h-3.5 w-3.5" />
-          Add another staff member
+          {addAnotherLabel}
         </Button>
       )}
     </div>
