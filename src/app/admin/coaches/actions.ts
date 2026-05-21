@@ -74,6 +74,68 @@ export async function createCoachInviteForm(
   });
 }
 
+async function sendCoachInviteEmail(
+  client: SupabaseClient,
+  email: string,
+  redirectTo: string,
+  metadata?: { first_name: string; last_name: string },
+): Promise<CoachInviteActionResult> {
+  const { error } = await client.auth.admin.inviteUserByEmail(email, {
+    redirectTo,
+    ...(metadata ? { data: metadata } : {}),
+  });
+  if (!error) return { ok: true };
+  return {
+    ok: false,
+    error: error.message ?? "Could not send invite email.",
+  };
+}
+
+async function inviteCoachAndRecover(
+  client: SupabaseClient,
+  email: string,
+  redirectTo: string,
+  metadata: { first_name: string; last_name: string },
+): Promise<CoachInviteActionResult> {
+  let result = await sendCoachInviteEmail(client, email, redirectTo, metadata);
+  if (result.ok) {
+    return result;
+  }
+
+  if (!isAlreadyRegisteredInviteError(result.error)) {
+    return result;
+  }
+
+  let authUser: Awaited<ReturnType<typeof findAuthUserByEmail>>;
+  try {
+    authUser = await findAuthUserByEmail(client, email);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Could not look up user.";
+    return { ok: false, error: msg };
+  }
+
+  if (!authUser) {
+    return result;
+  }
+
+  if (authUser.last_sign_in_at) {
+    return {
+      ok: false,
+      error: "They already have an account — ask them to sign in at /login.",
+    };
+  }
+
+  const { error: deleteError } = await client.auth.admin.deleteUser(authUser.id);
+  if (deleteError) {
+    return {
+      ok: false,
+      error: deleteError.message ?? "Could not reset invite user.",
+    };
+  }
+
+  return await sendCoachInviteEmail(client, email, redirectTo, metadata);
+}
+
 export async function createCoachInvite(
   raw: z.infer<typeof CreateCoachInviteSchema>,
 ): Promise<CoachInviteActionResult> {
@@ -114,28 +176,16 @@ export async function createCoachInvite(
   const nextPath = `/coach/accept-invite?token=${encodeURIComponent(token)}`;
   const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
-  const { error } = await svc.client.auth.admin.inviteUserByEmail(
+  const result = await inviteCoachAndRecover(
+    svc.client,
     data.email,
-    {
-      redirectTo,
-      data: {
-        first_name: data.firstName,
-        last_name: data.lastName,
-      },
-    },
+    redirectTo,
+    { first_name: data.firstName, last_name: data.lastName },
   );
 
-  if (error) {
+  if (!result.ok) {
     await prisma.coachInvite.deleteMany({ where: { token } });
-    const msg = error.message ?? "Could not send invite email.";
-    if (/already been registered/i.test(msg)) {
-      return {
-        ok: false,
-        error:
-          "That email already has an account. Ask them to sign in, or remove the auth user in Supabase and try again.",
-      };
-    }
-    return { ok: false, error: msg };
+    return result;
   }
 
   revalidatePath("/admin/coaches");
@@ -176,23 +226,6 @@ export async function revokeCoachInvite(
   return { ok: true };
 }
 
-async function sendCoachInviteEmail(
-  client: SupabaseClient,
-  email: string,
-  redirectTo: string,
-  metadata?: { first_name: string; last_name: string },
-): Promise<CoachInviteActionResult> {
-  const { error } = await client.auth.admin.inviteUserByEmail(email, {
-    redirectTo,
-    ...(metadata ? { data: metadata } : {}),
-  });
-  if (!error) return { ok: true };
-  return {
-    ok: false,
-    error: error.message ?? "Could not send invite email.",
-  };
-}
-
 export async function resendCoachInvite(
   inviteId: string,
 ): Promise<CoachInviteActionResult> {
@@ -219,57 +252,13 @@ export async function resendCoachInvite(
     last_name: invite.lastName ?? "",
   };
 
-  let result = await sendCoachInviteEmail(
+  const result = await inviteCoachAndRecover(
     svc.client,
     invite.email,
     redirectTo,
     metadata,
   );
-  if (result.ok) {
-    revalidatePath("/admin/coaches");
-    return result;
-  }
 
-  if (!isAlreadyRegisteredInviteError(result.error)) {
-    return result;
-  }
-
-  let authUser: Awaited<ReturnType<typeof findAuthUserByEmail>>;
-  try {
-    authUser = await findAuthUserByEmail(svc.client, invite.email);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Could not look up user.";
-    return { ok: false, error: msg };
-  }
-
-  if (!authUser) {
-    return result;
-  }
-
-  if (authUser.last_sign_in_at) {
-    return {
-      ok: false,
-      error:
-        "They already have an account — ask them to sign in at /login.",
-    };
-  }
-
-  const { error: deleteError } = await svc.client.auth.admin.deleteUser(
-    authUser.id,
-  );
-  if (deleteError) {
-    return {
-      ok: false,
-      error: deleteError.message ?? "Could not reset invite user.",
-    };
-  }
-
-  result = await sendCoachInviteEmail(
-    svc.client,
-    invite.email,
-    redirectTo,
-    metadata,
-  );
   if (result.ok) {
     revalidatePath("/admin/coaches");
   }

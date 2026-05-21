@@ -1,9 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { resolveAuthCallbackAfterSession } from "@/app/auth/complete-auth-callback";
+import { resolveAppOrigin } from "@/lib/site-url";
 
-function loginRedirect(request: NextRequest): NextResponse {
-  const u = new URL("/login", request.nextUrl.origin);
+async function loginRedirect(request: NextRequest, origin: string): Promise<NextResponse> {
+  const u = new URL("/login", origin);
   u.searchParams.set("error", "auth_callback_failed");
   return NextResponse.redirect(u, 303);
 }
@@ -11,14 +12,15 @@ function loginRedirect(request: NextRequest): NextResponse {
 /**
  * PKCE / magic-link `?code=` exchange on the **document GET** so verifier
  * cookies from `signInWithOtp` stay on the same request. Hash-only flows
- * rewrite to `/auth/callback/hash` (client page).
+ * redirect to `/auth/callback/hash` (client page).
  */
 export async function GET(request: NextRequest) {
+  const origin = await resolveAppOrigin();
   const url = request.nextUrl;
   const errDesc =
     url.searchParams.get("error_description") ?? url.searchParams.get("error");
   if (errDesc) {
-    return loginRedirect(request);
+    return loginRedirect(request, origin);
   }
 
   const code = url.searchParams.get("code");
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     let redirectResponse = NextResponse.redirect(
-      new URL("/", request.nextUrl.origin),
+      new URL("/", origin),
       303,
     );
 
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
             });
             const loc = redirectResponse.headers.get("Location");
             redirectResponse = NextResponse.redirect(
-              loc ? new URL(loc) : new URL("/", request.nextUrl.origin),
+              loc ? new URL(loc) : new URL("/", origin),
               303,
             );
             cookiesToSet.forEach(({ name, value, options }) => {
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
     const { error: exchangeError } =
       await supabase.auth.exchangeCodeForSession(code);
     if (exchangeError) {
-      return loginRedirect(request);
+      return loginRedirect(request, origin);
     }
 
     const resolved = await resolveAuthCallbackAfterSession(
@@ -66,15 +68,17 @@ export async function GET(request: NextRequest) {
       explicitNext,
     );
     if (!resolved.ok) {
-      return loginRedirect(request);
+      return loginRedirect(request, origin);
     }
 
-    const finalUrl = new URL(resolved.next, request.nextUrl.origin);
+    const finalUrl = new URL(resolved.next, origin);
     redirectResponse.headers.set("Location", finalUrl.toString());
     return redirectResponse;
   }
 
-  const redirectUrl = url.clone();
-  redirectUrl.pathname = "/auth/callback/hash";
+  const redirectUrl = new URL("/auth/callback/hash", origin);
+  url.searchParams.forEach((val, key) => {
+    redirectUrl.searchParams.set(key, val);
+  });
   return NextResponse.redirect(redirectUrl, 303);
 }

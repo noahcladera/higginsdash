@@ -194,12 +194,21 @@ function MagicLinkForm() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
+        shouldCreateUser: false,
         emailRedirectTo: `${siteUrl}/auth/callback`,
       },
     });
 
     if (error) {
-      setStatus({ kind: "error", message: error.message });
+      const isSignupError = /signup.*not.*allowed|user.*not.*found|signup.*disabled/i.test(
+        error.message,
+      );
+      setStatus({
+        kind: "error",
+        message: isSignupError
+          ? "No account found for this email address. Please sign up first."
+          : error.message,
+      });
       return;
     }
 
@@ -232,7 +241,19 @@ function MagicLinkForm() {
       </div>
 
       {status.kind === "error" && (
-        <p className="text-sm text-[var(--destructive)]">{status.message}</p>
+        <div className="text-sm text-[var(--destructive)] space-y-1">
+          <p>{status.message}</p>
+          {status.message.includes("No account found") && (
+            <p className="text-xs">
+              <Link
+                href="/signup"
+                className="font-medium underline hover:text-[var(--foreground)]"
+              >
+                Create an account
+              </Link>
+            </p>
+          )}
+        </div>
       )}
 
       <Button
