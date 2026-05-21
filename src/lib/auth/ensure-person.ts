@@ -57,25 +57,29 @@ export async function ensurePersonForAuthUser(args: {
     }
 
     if (email) {
+      const normalized = email.trim().toLowerCase();
       const existingEmail = await tx.emailAddress.findUnique({
-        where: { address: email },
+        where: { address: normalized },
       });
 
-      if (!existingEmail) {
-        const personEmailCount = await tx.emailAddress.count({
-          where: { personId: authUserId },
-        });
+      // address is globally unique — skip if another person already owns it
+      if (!existingEmail || existingEmail.personId === authUserId) {
+        if (!existingEmail) {
+          const personEmailCount = await tx.emailAddress.count({
+            where: { personId: authUserId },
+          });
 
-        await tx.emailAddress.create({
-          data: {
-            personId: authUserId,
-            address: email,
-            kind: "personal",
-            isPrimary: personEmailCount === 0,
-            isVerified: true,
-            verifiedAt: new Date(),
-          },
-        });
+          await tx.emailAddress.create({
+            data: {
+              personId: authUserId,
+              address: normalized,
+              kind: "personal",
+              isPrimary: personEmailCount === 0,
+              isVerified: true,
+              verifiedAt: new Date(),
+            },
+          });
+        }
       }
     }
   });

@@ -6,6 +6,23 @@ import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { finishAuthCallback } from "@/app/auth/callback/actions";
 
+const EXPIRED_LINK_MESSAGE =
+  "This sign-in link is invalid or has expired. Ask an admin to resend the invite.";
+
+function readAuthErrorFromLocation(
+  searchParams: URLSearchParams,
+): string | null {
+  const fromQuery =
+    searchParams.get("error_description") ?? searchParams.get("error");
+  if (fromQuery) return fromQuery;
+
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash;
+  if (!hash.startsWith("#")) return null;
+  const hp = new URLSearchParams(hash.slice(1));
+  return hp.get("error_description") ?? hp.get("error");
+}
+
 /**
  * Hash / implicit invite flow. PKCE `?code=` is handled in
  * {@link ../route.ts} before this page runs.
@@ -39,24 +56,17 @@ function CallbackHashInner() {
     ranRef.current = true;
 
     const explicitNext = params.get("next");
-    const errorDescription =
-      params.get("error_description") ?? params.get("error");
+    const authError = readAuthErrorFromLocation(params);
 
-    if (errorDescription) {
-      setError(errorDescription);
+    if (authError) {
+      setError(authError);
       return;
     }
 
     async function run() {
       const supabase = createSupabaseBrowserClient();
 
-      // Hash-based flow (Supabase invite default email template).
-      const start = Date.now();
       let session = (await supabase.auth.getSession()).data.session;
-      while (!session && Date.now() - start < 2_500) {
-        await new Promise((r) => setTimeout(r, 100));
-        session = (await supabase.auth.getSession()).data.session;
-      }
 
       if (!session) {
         const hash = typeof window !== "undefined" ? window.location.hash : "";
@@ -73,8 +83,14 @@ function CallbackHashInner() {
               setError(setErr.message);
               return;
             }
+            session = (await supabase.auth.getSession()).data.session;
           }
         }
+      }
+
+      if (!session) {
+        setError(EXPIRED_LINK_MESSAGE);
+        return;
       }
 
       if (typeof window !== "undefined" && window.location.hash) {
@@ -85,9 +101,15 @@ function CallbackHashInner() {
         );
       }
 
+      router.refresh();
+
       const result = await finishAuthCallback(explicitNext);
       if (!result.ok) {
-        setError(result.error);
+        setError(
+          result.error === "no_session"
+            ? EXPIRED_LINK_MESSAGE
+            : result.error,
+        );
         return;
       }
       router.replace(result.next);

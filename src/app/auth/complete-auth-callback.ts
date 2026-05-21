@@ -28,12 +28,18 @@ export async function resolveAuthCallbackAfterSession(
     email: user.email ?? null,
   });
 
-  const userEmail = user.email;
+  if (
+    isSafeInternalPath(explicitNext) &&
+    explicitNext.startsWith("/coach/accept-invite")
+  ) {
+    return { ok: true, next: explicitNext };
+  }
 
+  const userEmail = user.email?.trim();
   if (userEmail) {
     const pendingInvite = await prisma.coachInvite.findFirst({
       where: {
-        email: userEmail.trim().toLowerCase(),
+        email: { equals: userEmail, mode: "insensitive" },
         acceptedAt: null,
         revokedAt: null,
         expiresAt: { gt: new Date() },

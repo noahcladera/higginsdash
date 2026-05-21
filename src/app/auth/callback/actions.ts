@@ -19,6 +19,13 @@ export type { AuthCallbackResult };
 export async function finishAuthCallback(
   explicitNext: string | null,
 ): Promise<AuthCallbackResult> {
-  const supabase = await createSupabaseServerClient();
-  return resolveAuthCallbackAfterSession(supabase, explicitNext);
+  try {
+    const supabase = await createSupabaseServerClient();
+    return await resolveAuthCallbackAfterSession(supabase, explicitNext);
+  } catch (err) {
+    console.error("[finishAuthCallback]", err);
+    const message =
+      err instanceof Error ? err.message : "Could not complete sign in.";
+    return { ok: false, error: message };
+  }
 }

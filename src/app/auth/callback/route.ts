@@ -76,9 +76,12 @@ export async function GET(request: NextRequest) {
     return redirectResponse;
   }
 
-  const redirectUrl = new URL("/auth/callback/hash", origin);
-  url.searchParams.forEach((val, key) => {
-    redirectUrl.searchParams.set(key, val);
+  // Invite links carry tokens in the URL hash (#access_token=…). A 303 redirect
+  // cannot include the fragment, so bootstrap client-side to preserve it.
+  const hashPageBase = `${origin}/auth/callback/hash`;
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Signing in…</title></head><body><script>location.replace(${JSON.stringify(hashPageBase)} + location.search + location.hash)</script></body></html>`;
+  return new NextResponse(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
   });
-  return NextResponse.redirect(redirectUrl, 303);
 }
