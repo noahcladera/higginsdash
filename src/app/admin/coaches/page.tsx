@@ -8,7 +8,8 @@ import { PlusIcon } from "@/components/icons";
 import { getCurrentBrand, getTerms } from "@/lib/tenant";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { StatusSurface } from "@/components/ui/status-surface";
-import { revokeCoachInviteForm, resendCoachInviteForm } from "./actions";
+import { revokeCoachInviteForm } from "./actions";
+import { ResendCoachInviteButton } from "./resend-coach-invite-button";
 import { CoachLists, type CoachRow } from "./coach-lists";
 
 export default async function AdminCoachesPage() {
@@ -95,13 +96,8 @@ export default async function AdminCoachesPage() {
                     expires {inv.expiresAt.toISOString().slice(0, 10)}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <form action={resendCoachInviteForm}>
-                    <input type="hidden" name="inviteId" value={inv.id} />
-                    <Button type="submit" size="sm" variant="outline">
-                      Resend email
-                    </Button>
-                  </form>
+                <div className="flex flex-wrap items-start gap-2">
+                  <ResendCoachInviteButton inviteId={inv.id} />
                   <form action={revokeCoachInviteForm}>
                     <input type="hidden" name="inviteId" value={inv.id} />
                     <Button type="submit" size="sm" variant="outline">

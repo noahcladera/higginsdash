@@ -3,13 +3,17 @@
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { CoachEmploymentType, CoachInviteRole, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { recordAudit } from "@/lib/audit/record";
 import { resolveAppOrigin } from "@/lib/site-url";
+import {
+  findAuthUserByEmail,
+  isAlreadyRegisteredInviteError,
+} from "@/lib/supabase/admin";
 
 const CreateCoachInviteSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -144,10 +148,13 @@ export async function revokeCoachInviteForm(formData: FormData): Promise<void> {
   await revokeCoachInvite(inviteId);
 }
 
-export async function resendCoachInviteForm(formData: FormData): Promise<void> {
+export async function resendCoachInviteForm(
+  _prev: CoachInviteActionResult | undefined,
+  formData: FormData,
+): Promise<CoachInviteActionResult> {
   const idRaw = formData.get("inviteId");
   const inviteId = typeof idRaw === "string" ? idRaw.trim() : "";
-  await resendCoachInvite(inviteId);
+  return resendCoachInvite(inviteId);
 }
 
 export async function revokeCoachInvite(
@@ -167,6 +174,23 @@ export async function revokeCoachInvite(
   });
   revalidatePath("/admin/coaches");
   return { ok: true };
+}
+
+async function sendCoachInviteEmail(
+  client: SupabaseClient,
+  email: string,
+  redirectTo: string,
+  metadata?: { first_name: string; last_name: string },
+): Promise<CoachInviteActionResult> {
+  const { error } = await client.auth.admin.inviteUserByEmail(email, {
+    redirectTo,
+    ...(metadata ? { data: metadata } : {}),
+  });
+  if (!error) return { ok: true };
+  return {
+    ok: false,
+    error: error.message ?? "Could not send invite email.",
+  };
 }
 
 export async function resendCoachInvite(
@@ -190,16 +214,66 @@ export async function resendCoachInvite(
   const origin = await resolveAppOrigin();
   const nextPath = `/coach/accept-invite?token=${encodeURIComponent(invite.token)}`;
   const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+  const metadata = {
+    first_name: invite.firstName ?? "",
+    last_name: invite.lastName ?? "",
+  };
 
-  const { error } = await svc.client.auth.admin.inviteUserByEmail(
+  let result = await sendCoachInviteEmail(
+    svc.client,
     invite.email,
-    { redirectTo },
+    redirectTo,
+    metadata,
   );
-
-  if (error) {
-    return { ok: false, error: error.message ?? "Could not resend invite." };
+  if (result.ok) {
+    revalidatePath("/admin/coaches");
+    return result;
   }
-  return { ok: true };
+
+  if (!isAlreadyRegisteredInviteError(result.error)) {
+    return result;
+  }
+
+  let authUser: Awaited<ReturnType<typeof findAuthUserByEmail>>;
+  try {
+    authUser = await findAuthUserByEmail(svc.client, invite.email);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Could not look up user.";
+    return { ok: false, error: msg };
+  }
+
+  if (!authUser) {
+    return result;
+  }
+
+  if (authUser.last_sign_in_at) {
+    return {
+      ok: false,
+      error:
+        "They already have an account — ask them to sign in at /login.",
+    };
+  }
+
+  const { error: deleteError } = await svc.client.auth.admin.deleteUser(
+    authUser.id,
+  );
+  if (deleteError) {
+    return {
+      ok: false,
+      error: deleteError.message ?? "Could not reset invite user.",
+    };
+  }
+
+  result = await sendCoachInviteEmail(
+    svc.client,
+    invite.email,
+    redirectTo,
+    metadata,
+  );
+  if (result.ok) {
+    revalidatePath("/admin/coaches");
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------

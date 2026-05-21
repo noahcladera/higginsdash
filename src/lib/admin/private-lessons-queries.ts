@@ -144,14 +144,53 @@ export async function getCoachesWithUnbilledCourtTime(
   periodStart: Date,
   periodEnd: Date,
 ): Promise<CoachWithUnbilled[]> {
-  // Anyone with an active staff coach OR active ZZP coach record is a
-  // potential biller — both flows produce `purpose=coaching` court bookings.
-  const people = await prisma.person.findMany({
+  // Active coaches plus anyone with unbilled court time in the period (so
+  // coaches deactivated after the month still surface for final invoicing).
+  const [unbilledOneOffRows, recurringBlockRows] = await Promise.all([
+    prisma.courtBooking.findMany({
+      where: {
+        purpose: "coaching",
+        status: { in: ["confirmed", "completed"] },
+        startsAt: { gte: periodStart, lt: periodEnd },
+        paymentLines: { none: {} },
+      },
+      select: { bookedByPersonId: true },
+      distinct: ["bookedByPersonId"],
+    }),
+    prisma.recurringBlock.findMany({
+      where: {
+        purposeType: "coach_private_lesson",
+        status: "active",
+        startsOn: { lt: periodEnd },
+        endsOn: { gte: periodStart },
+      },
+      select: { requesterPersonId: true },
+      distinct: ["requesterPersonId"],
+    }),
+  ]);
+
+  const personIds = new Set<string>([
+    ...unbilledOneOffRows.map((r) => r.bookedByPersonId),
+    ...recurringBlockRows.map((r) => r.requesterPersonId),
+  ]);
+
+  const activeCoaches = await prisma.person.findMany({
     where: {
       OR: [
         { coach: { isActive: true } },
         { zzpCoach: { isActive: true } },
       ],
+    },
+    select: { id: true },
+  });
+  for (const p of activeCoaches) personIds.add(p.id);
+
+  if (personIds.size === 0) return [];
+
+  const people = await prisma.person.findMany({
+    where: {
+      id: { in: [...personIds] },
+      OR: [{ coach: { isNot: null } }, { zzpCoach: { isNot: null } }],
     },
     select: {
       id: true,
@@ -181,10 +220,10 @@ export async function getCoachesWithUnbilledCourtTime(
       ).length;
       const totalMinutes = items.reduce((s, i) => s + i.minutes, 0);
       const totalEur = items.reduce((s, i) => s + i.amount, 0);
-      const isStaff = p.coach?.isActive === true;
-      const isZzp = p.zzpCoach?.isActive === true;
+      const hasStaff = p.coach != null;
+      const hasZzp = p.zzpCoach != null;
       const roleKind: CoachRoleKind =
-        isStaff && isZzp ? "both" : isZzp ? "zzp" : "staff";
+        hasStaff && hasZzp ? "both" : hasZzp ? "zzp" : "staff";
       return {
         coachPersonId: p.id,
         firstName: p.firstName,

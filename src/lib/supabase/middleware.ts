@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { redirectPkceCodeToAuthCallback } from "@/lib/auth/redirect-pkce-code";
 import { getJwtIdentity } from "@/lib/auth/identity";
 import { isSafeInternalPath } from "@/lib/safe-redirect";
 import { isDemoCheckoutAllowed } from "@/lib/payments/config";
@@ -20,6 +21,11 @@ import { isDemoCheckoutAllowed } from "@/lib/payments/config";
  * Returns the (possibly mutated) NextResponse the middleware should send back.
  */
 export async function updateSession(request: NextRequest) {
+  const pkceRedirect = redirectPkceCodeToAuthCallback(request);
+  if (pkceRedirect) {
+    return pkceRedirect;
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   // Fast path: if the request carries no Supabase auth cookie at all,

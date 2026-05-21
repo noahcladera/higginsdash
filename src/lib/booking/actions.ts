@@ -1440,6 +1440,13 @@ export async function decideBookingCancellation(
     };
   }
 
+  if (decision === "approve" && booking.startsAt.getTime() <= Date.now()) {
+    return {
+      ok: false,
+      error: `This ${terms.privateLesson.singular.toLowerCase()} already took place — it cannot be removed from the billing calendar. Deny the request or adjust billing manually.`,
+    };
+  }
+
   const now = new Date();
   const beforeSnapshot = booking;
   const newAfter =

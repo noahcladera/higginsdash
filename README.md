@@ -186,9 +186,13 @@ Git remote: `https://github.com/noahcladera/higginsdash.git`
 4. Set `NEXT_PUBLIC_SITE_URL` to your public URL (e.g. `https://higginsdash.onrender.com`) — **no trailing slash**, not `http://localhost:3000`.
 5. **Redeploy after changing any `NEXT_PUBLIC_*` variable** — Next inlines them at build time; updating env alone is not enough for magic links.
 6. In **Supabase → Authentication → URL configuration**:
-   - **Site URL:** `https://<your-host>` (same as step 4)
-   - **Redirect URLs:** `https://<your-host>/**` and `https://<your-host>/auth/callback`
-   - Keep `http://localhost:3000/**` in the list if you still develop locally.
+   - **Site URL:** `https://<your-host>` (same as step 4; no trailing slash)
+   - **Redirect URLs** (add each explicitly — wildcards alone may not allow `/auth/callback`):
+     - `https://higginsdash.onrender.com/auth/callback` (production)
+     - `http://localhost:3000/auth/callback`
+     - `http://127.0.0.1:3000/auth/callback` (local dev)
+   - Optional: `https://<your-host>/**` for other same-origin paths.
+   - If `/auth/callback` is missing, magic links fall back to Site URL (`/`) and login loops until you redeploy with the PKCE redirect fix in middleware.
 7. After first deploy, run migrations against the same database:
    `npx prisma migrate deploy` (locally with production `DATABASE_URL`, or Render shell).
 8. Optional: `npm run db:seed` on an empty database for catalog data.

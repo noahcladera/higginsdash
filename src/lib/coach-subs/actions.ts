@@ -23,9 +23,11 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { ClassCoachRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireCoach } from "@/lib/auth/require-coach";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { getTerms } from "@/lib/tenant";
 import {
   notify,
   getAdminRecipients,
@@ -221,9 +223,11 @@ export async function assignCoachSub(
               id: true,
               name: true,
               coaches: {
-                where: { coachPersonId: substituteCoachPersonId },
-                select: { role: true, payRateOverride: true },
-                take: 1,
+                select: {
+                  coachPersonId: true,
+                  role: true,
+                  payRateOverride: true,
+                },
               },
             },
           },
@@ -270,10 +274,64 @@ export async function assignCoachSub(
   });
   if (!sub) return { ok: false, error: "Substitute coach not found." };
 
-  // Default sub to the same role the requester held on the series, falling
-  // back to "lead" if the sub is brand new to this series.
-  const subSeriesRow = request.classSession.classSeries.coaches[0];
-  const role = subSeriesRow?.role ?? "assistant";
+  const session = request.classSession;
+  const seriesCoaches = session.classSeries.coaches;
+  const requesterSeriesRow = seriesCoaches.find(
+    (c) => c.coachPersonId === request.requesterCoachPersonId,
+  );
+  const subSeriesRow = seriesCoaches.find(
+    (c) => c.coachPersonId === substituteCoachPersonId,
+  );
+  // Mirror the requester's series role; brand-new subs default to lead.
+  const role: ClassCoachRole = requesterSeriesRow?.role ?? ClassCoachRole.lead;
+
+  const terms = await getTerms();
+  const [overlappingSessions, overlappingBookings] = await Promise.all([
+    prisma.classSession.findMany({
+      where: {
+        id: { not: session.id },
+        status: { not: "cancelled" },
+        startsAt: { lt: session.endsAt },
+        endsAt: { gt: session.startsAt },
+        coaches: { some: { coachPersonId: substituteCoachPersonId } },
+      },
+      select: {
+        startsAt: true,
+        classSeries: { select: { name: true } },
+      },
+      take: 3,
+    }),
+    prisma.courtBooking.findMany({
+      where: {
+        bookedByPersonId: substituteCoachPersonId,
+        purpose: "coaching",
+        status: { in: ["confirmed", "cancellation_requested"] },
+        startsAt: { lt: session.endsAt },
+        endsAt: { gt: session.startsAt },
+      },
+      select: { startsAt: true, court: { select: { name: true } } },
+      take: 3,
+    }),
+  ]);
+
+  if (overlappingSessions.length > 0 || overlappingBookings.length > 0) {
+    const parts: string[] = [];
+    for (const s of overlappingSessions) {
+      const label = s.classSeries.name
+        ? `${terms.class.singular}: ${s.classSeries.name}`
+        : terms.class.singular;
+      parts.push(`${label} (${fmtDate(s.startsAt)})`);
+    }
+    for (const b of overlappingBookings) {
+      parts.push(
+        `${terms.privateLesson.singular} on ${b.court.name} (${fmtDate(b.startsAt)})`,
+      );
+    }
+    return {
+      ok: false,
+      error: `This ${terms.coach.singular.toLowerCase()} is already booked at that time: ${parts.join("; ")}.`,
+    };
+  }
 
   const beforeSnapshot = request;
 

@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     return redirectResponse;
   }
 
-  const rewriteUrl = url.clone();
-  rewriteUrl.pathname = "/auth/callback/hash";
-  return NextResponse.rewrite(rewriteUrl);
+  const redirectUrl = url.clone();
+  redirectUrl.pathname = "/auth/callback/hash";
+  return NextResponse.redirect(redirectUrl, 303);
 }
