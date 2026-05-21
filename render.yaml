@@ -1,5 +1,7 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 # After connect: set env vars from .env.example (Supabase + NEXT_PUBLIC_SITE_URL).
+# NEXT_PUBLIC_SITE_URL must be https://<your-service>.onrender.com (not localhost).
+# Redeploy after changing any NEXT_PUBLIC_* variable.
 services:
   - type: web
     name: higgins-portal

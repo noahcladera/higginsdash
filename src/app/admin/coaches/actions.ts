@@ -9,7 +9,7 @@ import { CoachEmploymentType, CoachInviteRole, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { recordAudit } from "@/lib/audit/record";
-import { getAppOrigin } from "@/lib/site-url";
+import { resolveAppOrigin } from "@/lib/site-url";
 
 const CreateCoachInviteSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -106,7 +106,7 @@ export async function createCoachInvite(
     },
   });
 
-  const origin = getAppOrigin();
+  const origin = await resolveAppOrigin();
   const nextPath = `/coach/accept-invite?token=${encodeURIComponent(token)}`;
   const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
@@ -187,7 +187,7 @@ export async function resendCoachInvite(
     return { ok: false, error: "Invite expired. Create a new one." };
   }
 
-  const origin = getAppOrigin();
+  const origin = await resolveAppOrigin();
   const nextPath = `/coach/accept-invite?token=${encodeURIComponent(invite.token)}`;
   const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 

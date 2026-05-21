@@ -183,10 +183,14 @@ Git remote: `https://github.com/noahcladera/higginsdash.git`
 1. Push this repo to GitHub.
 2. Create a **Web Service** on [Render](https://render.com) (or import on Vercel) from that repo.
 3. Copy every variable from [`.env.example`](.env.example) into the host's environment settings.
-4. Set `NEXT_PUBLIC_SITE_URL` to your public URL (e.g. `https://higgins-portal.onrender.com`).
-5. In **Supabase → Auth → URL configuration**, add that URL and `https://<host>/auth/callback`.
-6. After first deploy, run migrations against the same database:
+4. Set `NEXT_PUBLIC_SITE_URL` to your public URL (e.g. `https://higginsdash.onrender.com`) — **no trailing slash**, not `http://localhost:3000`.
+5. **Redeploy after changing any `NEXT_PUBLIC_*` variable** — Next inlines them at build time; updating env alone is not enough for magic links.
+6. In **Supabase → Authentication → URL configuration**:
+   - **Site URL:** `https://<your-host>` (same as step 4)
+   - **Redirect URLs:** `https://<your-host>/**` and `https://<your-host>/auth/callback`
+   - Keep `http://localhost:3000/**` in the list if you still develop locally.
+7. After first deploy, run migrations against the same database:
    `npx prisma migrate deploy` (locally with production `DATABASE_URL`, or Render shell).
-7. Optional: `npm run db:seed` on an empty database for catalog data.
+8. Optional: `npm run db:seed` on an empty database for catalog data.
 
 Render: this repo includes [`render.yaml`](render.yaml) (build: `npm ci && npx prisma generate && npm run build`, start: `npm run start`).

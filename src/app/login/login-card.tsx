@@ -183,8 +183,13 @@ function MagicLinkForm() {
     setStatus({ kind: "sending" });
 
     const supabase = createSupabaseBrowserClient();
+    // Prefer the live browser origin so production login works even when
+    // NEXT_PUBLIC_SITE_URL was baked as localhost at build time.
     const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+      typeof window !== "undefined"
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
+          "http://localhost:3000");
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
