@@ -621,7 +621,7 @@ export function EnrollPanel({
               </option>
               {(campOptions?.dropInDates ?? []).map((iso) => (
                 <option key={iso} value={iso}>
-                  {iso}
+                  {formatCampDropInDate(iso)}
                 </option>
               ))}
             </select>
@@ -1316,4 +1316,10 @@ function formatDate(d: Date): string {
     month: "short",
     day: "numeric",
   }).format(d);
+}
+
+function formatCampDropInDate(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const [y, m, d] = iso.split("-").map(Number);
+  return formatDate(new Date(Date.UTC(y, m - 1, d)));
 }

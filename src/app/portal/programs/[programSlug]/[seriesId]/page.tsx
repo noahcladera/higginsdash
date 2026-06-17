@@ -54,16 +54,21 @@ export default async function SeriesDetailPage({
   const series = await getVisibleSeriesById(seriesId);
   if (!series || series.programSlug !== programSlug) notFound();
 
+  const isCamp = series.classType === "camp";
+
   // Build the candidate list: the viewer themselves (if they're old
   // enough to be a Student-track user) plus every child in the household.
   const candidates = await getEnrollCandidates(person.id, householdId);
+  const enrollCandidates = isCamp
+    ? candidates.filter((c) => c.relation === "child")
+    : candidates;
 
   // Map of "this candidate is already enrolled here" so the panel can
   // disable the picker entry / show the existing status.
   const existingEnrollments = await prisma.enrollment.findMany({
     where: {
       classSeriesId: seriesId,
-      studentPersonId: { in: candidates.map((c) => c.personId) },
+      studentPersonId: { in: enrollCandidates.map((c) => c.personId) },
     },
     select: { studentPersonId: true, status: true, id: true },
   });
@@ -87,7 +92,7 @@ export default async function SeriesDetailPage({
   // chosen student.
   const coverage = await getActiveMembershipCoverage({
     householdId,
-    candidatePersonIds: candidates.map((c) => c.personId),
+    candidatePersonIds: enrollCandidates.map((c) => c.personId),
   });
 
   const isReturning = await isReturningHousehold(householdId);
@@ -107,7 +112,9 @@ export default async function SeriesDetailPage({
 
   const now = new Date();
   const pricePerSession =
-    series.pricePerSeries != null && series.sessions.length > 0
+    !isCamp &&
+    series.pricePerSeries != null &&
+    series.sessions.length > 0
       ? series.pricePerSeries / series.sessions.length
       : null;
 
@@ -137,23 +144,41 @@ export default async function SeriesDetailPage({
         <div className="space-y-6">
           <Section title="When & where">
             <dl className="grid gap-y-3 text-sm sm:grid-cols-[160px_1fr]">
-              <Term>Day & time</Term>
-              <Detail>
-                {formatDow(series.dayOfWeek)} · {series.startTimeHHMM}–
-                {series.endTimeHHMM}
-                {series.pickupAtHHMM && (
-                  <span className="block text-xs text-[var(--muted-foreground)]">
-                    Pickup at {series.pickupAtHHMM} from {series.schoolName}
-                  </span>
-                )}
-              </Detail>
+              {isCamp ? (
+                <>
+                  <Term>Camp week</Term>
+                  <Detail>
+                    {formatDateRange(series.startsOn, series.endsOn)}
+                    <span className="block text-xs text-[var(--muted-foreground)]">
+                      {series.startTimeHHMM}–{series.endTimeHHMM} each camp day
+                      · {series.sessions.length} camp day
+                      {series.sessions.length === 1 ? "" : "s"}
+                    </span>
+                  </Detail>
+                </>
+              ) : (
+                <>
+                  <Term>Day & time</Term>
+                  <Detail>
+                    {formatDow(series.dayOfWeek)} · {series.startTimeHHMM}–
+                    {series.endTimeHHMM}
+                    {series.pickupAtHHMM && (
+                      <span className="block text-xs text-[var(--muted-foreground)]">
+                        Pickup at {series.pickupAtHHMM} from {series.schoolName}
+                      </span>
+                    )}
+                  </Detail>
+                </>
+              )}
 
-              <Term>Season</Term>
+              <Term>{isCamp ? "Dates" : "Season"}</Term>
               <Detail>
                 {series.seasonName ?? "—"}
                 <span className="block text-xs text-[var(--muted-foreground)]">
                   {formatDateRange(series.startsOn, series.endsOn)} ·{" "}
-                  {series.sessions.length} sessions
+                  {series.sessions.length}{" "}
+                  {isCamp ? "camp day" : "session"}
+                  {series.sessions.length === 1 ? "" : "s"}
                 </span>
               </Detail>
 
@@ -301,7 +326,9 @@ export default async function SeriesDetailPage({
                       when you have membership)
                     </p>
                   ))}
-                {series.classType !== "event" && pricePerSession != null && (
+                {!isCamp &&
+                  series.classType !== "event" &&
+                  pricePerSession != null && (
                   <p className="mt-2 text-sm text-[var(--muted-foreground)]">
                     Equivalent to{" "}
                     <span className="text-[var(--foreground)] tabular">
@@ -401,7 +428,7 @@ export default async function SeriesDetailPage({
               slotsLeft: Math.max(g.maxStudents - g.enrolledCount, 0),
               isFull: g.enrolledCount >= g.maxStudents,
             }))}
-            candidates={candidates.map<EnrollCandidate>((c) => {
+            candidates={enrollCandidates.map<EnrollCandidate>((c) => {
               const ageBracket = ageBracketFromAge(c.age);
               const hasActiveMembership =
                 series.venueClubSlug != null &&

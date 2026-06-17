@@ -76,6 +76,89 @@ export function generateSessionDates(
   return out;
 }
 
+/** Mon–Fri (UTC weekday 1–5) between startsOn and endsOn, minus exclusions. */
+export function generateCampSessionDates(
+  args: Omit<GenerateSessionDatesArgs, "dayOfWeek">,
+): { startsAt: Date; endsAt: Date }[] {
+  const out: { startsAt: Date; endsAt: Date }[] = [];
+  const cursor = new Date(args.startsOn);
+  const end = new Date(args.endsOn);
+  while (cursor <= end) {
+    const dow = cursor.getUTCDay();
+    if (dow >= 1 && dow <= 5) {
+      const key = toDateKey(cursor);
+      if (!args.excluded.has(key)) {
+        out.push({
+          startsAt: combineDateAndTime(cursor, args.startTime),
+          endsAt: combineDateAndTime(cursor, args.endTime),
+        });
+      }
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return out;
+}
+
+/** Pick the session generator from series type. */
+export function generateSessionsForSeries(
+  classType: string,
+  args: GenerateSessionDatesArgs,
+): { startsAt: Date; endsAt: Date }[] {
+  if (classType === "camp") {
+    const { startsOn, endsOn, startTime, endTime, excluded } = args;
+    return generateCampSessionDates({
+      startsOn,
+      endsOn,
+      startTime,
+      endTime,
+      excluded,
+    });
+  }
+  return generateSessionDates(args);
+}
+
+/** Default Mon–Fri window for a new camp (this week's Monday, or next Monday). */
+export function defaultCampWeekIso(from = new Date()): {
+  startsOn: string;
+  endsOn: string;
+} {
+  const d = new Date(
+    Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()),
+  );
+  const day = d.getUTCDay();
+  const daysUntilMonday = day === 0 ? 1 : day === 1 ? 0 : 8 - day;
+  d.setUTCDate(d.getUTCDate() + daysUntilMonday);
+  const monday = d;
+  const friday = new Date(monday);
+  friday.setUTCDate(friday.getUTCDate() + 4);
+  return { startsOn: toDateKey(monday), endsOn: toDateKey(friday) };
+}
+
+/** ISO keys for each Mon–Fri day in range (before exclusions). */
+export function campWeekdayDateKeys(
+  startsOn: string,
+  endsOn: string,
+): string[] {
+  if (!startsOn || !endsOn) return [];
+  const start = parseIsoDate(startsOn);
+  const end = parseIsoDate(endsOn);
+  if (!start || !end || end < start) return [];
+  const keys: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const dow = cursor.getUTCDay();
+    if (dow >= 1 && dow <= 5) keys.push(toDateKey(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return keys;
+}
+
+function parseIsoDate(iso: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
 /**
  * `YYYY-MM-DD` from a UTC-anchored Date. Stable sort key + safe map
  * key for date comparisons.

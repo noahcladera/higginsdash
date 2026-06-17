@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { DateField } from "@/components/ui/date-field";
 import {
   CampOptionsConfigSchema,
   type CampOption,
@@ -28,8 +27,11 @@ function newId() {
 
 export function CampOptionsField({
   defaultOptions = null,
+  /** Active camp days from the schedule (Mon–Fri minus exclusions). */
+  scheduleDropInDates = [],
 }: {
   defaultOptions?: { options: CampOption[]; dropInEnabled: boolean; dropInDates: string[] } | null;
+  scheduleDropInDates?: string[];
 }) {
   const base = defaultOptions ?? {
     options: [
@@ -60,7 +62,11 @@ export function CampOptionsField({
     })),
   );
   const [dropInEnabled, setDropInEnabled] = useState(base.dropInEnabled);
-  const [dropInDates, setDropInDates] = useState<string[]>(base.dropInDates);
+
+  const effectiveDropInDates = useMemo(() => {
+    if (scheduleDropInDates.length > 0) return [...scheduleDropInDates].sort();
+    return base.dropInDates;
+  }, [scheduleDropInDates, base.dropInDates]);
 
   const jsonValue = useMemo(() => {
     const options = rows
@@ -76,11 +82,11 @@ export function CampOptionsField({
     const candidate = {
       options,
       dropInEnabled,
-      dropInDates: dropInEnabled ? dropInDates.filter(Boolean).sort() : [],
+      dropInDates: dropInEnabled ? effectiveDropInDates.filter(Boolean).sort() : [],
     };
     const parsed = CampOptionsConfigSchema.safeParse(candidate);
     return parsed.success ? JSON.stringify(parsed.data) : JSON.stringify(candidate);
-  }, [rows, dropInEnabled, dropInDates]);
+  }, [rows, dropInEnabled, effectiveDropInDates]);
 
   function addDropInPrice(kind: "daily_drop_in_half_day" | "daily_drop_in_full_day") {
     setRows((prev) => [
@@ -185,29 +191,26 @@ export function CampOptionsField({
         {dropInEnabled && (
           <div className="space-y-2">
             <p className="text-xs text-[var(--muted-foreground)]">
-              Select the dates parents can book for daily drop-ins.
+              {scheduleDropInDates.length > 0
+                ? "Drop-in dates match the camp week calendar — mark days off on the schedule step to remove them."
+                : "Drop-in dates sync from the camp week when you save. On edit, they follow the saved schedule."}
             </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {dropInDates.map((iso, idx) => (
-                <DateField
-                  key={`${iso}-${idx}`}
-                  value={iso}
-                  onChange={(next) =>
-                    setDropInDates((prev) => prev.map((d, i) => (i === idx ? next : d)))
-                  }
-                  mode="any"
-                  locale="en-NL"
-                />
-              ))}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setDropInDates((prev) => [...prev, ""])}
-            >
-              Add drop-in date
-            </Button>
+            {effectiveDropInDates.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {effectiveDropInDates.map((iso) => (
+                  <span
+                    key={iso}
+                    className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs tabular-nums"
+                  >
+                    {iso}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--muted-foreground)]">
+                No camp days in range yet — set the week on the schedule step first.
+              </p>
+            )}
           </div>
         )}
       </div>

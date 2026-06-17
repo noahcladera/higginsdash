@@ -84,12 +84,8 @@ export const CampOptionsConfigSchema = z
         message: "Drop-in options require drop-in mode to be enabled",
       });
     }
-    if (cfg.dropInEnabled && cfg.dropInDates.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Select at least one drop-in date when enabled",
-      });
-    }
+    // dropInDates may be empty at parse time — create/update syncs them
+    // from the camp week schedule (Mon–Fri minus exclusions).
     if (cfg.options.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -142,6 +138,18 @@ export function parseCampSelection(raw: unknown): CampSelection | null {
   });
   const parsed = schema.safeParse(raw);
   return parsed.success ? parsed.data : null;
+}
+
+/** Align drop-in bookable dates with generated camp session days. */
+export function syncCampDropInDates(
+  campOptions: CampOptionsConfig,
+  sessionDateKeys: string[],
+): CampOptionsConfig {
+  if (!campOptions.dropInEnabled) return campOptions;
+  return {
+    ...campOptions,
+    dropInDates: [...sessionDateKeys].sort(),
+  };
 }
 
 export function resolveCampCheckoutPrice(args: {

@@ -70,6 +70,7 @@ import {
 import type { GroupRow } from "../_components/groups-field";
 import { parsePricingTiers } from "@/lib/classes/pricing-tiers";
 import { parseCampOptions } from "@/lib/classes/camp-options";
+import { campWeekdayDateKeys } from "@/lib/classes/session-dates";
 
 const DAY_LONG: Record<
   "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun",
@@ -327,6 +328,11 @@ export default async function EditClassPage({
   const endTimeHHMM = timeToHHMM(series.endTime);
   const pickupAtHHMM = series.pickupAt ? timeToHHMM(series.pickupAt) : null;
   const excludedDatesISO = series.excludedDates.map(dateToISO);
+  const campScheduleDropInDates = isCamp
+    ? campWeekdayDateKeys(startsOnISO, endsOnISO).filter(
+        (iso) => !excludedDatesISO.includes(iso),
+      )
+    : [];
   // `dayOfWeek` is nullable in the schema (theoretical one-off classes)
   // but every class series created through this UI has one. Default to
   // Monday defensively so the summary + calendar never render empty.
@@ -582,6 +588,7 @@ export default async function EditClassPage({
             audience={audienceForUI}
             seasons={seasonOptions}
             showSeason={series.classType !== "event"}
+            isCamp={isCamp}
           />
         }
       />
@@ -803,6 +810,7 @@ export default async function EditClassPage({
             <CampPricingSectionEditor
               classSeriesId={series.id}
               defaultOptions={campOptions}
+              scheduleDropInDates={campScheduleDropInDates}
             />
           ) : (
             <PricingSectionEditor

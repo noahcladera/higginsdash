@@ -19,16 +19,27 @@ type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 type Props = {
   startsOn: string;
   endsOn: string;
-  dayOfWeek: DayKey;
+  /** Ignored when `variant="camp"` (Mon–Fri in range). */
+  dayOfWeek?: DayKey;
   excluded: Set<string>;
+  /** `camp` = every weekday in the date range; default = single recurring weekday. */
+  variant?: "weekly" | "camp";
 } & (
   | { mode: "edit"; onToggle: (iso: string) => void }
   | { mode: "read"; onToggle?: undefined }
 );
 
 export function ScheduleCalendar(props: Props) {
-  const { startsOn, endsOn, dayOfWeek, excluded, mode } = props;
+  const {
+    startsOn,
+    endsOn,
+    dayOfWeek = "mon",
+    excluded,
+    mode,
+    variant = "weekly",
+  } = props;
   const onToggle = mode === "edit" ? props.onToggle : undefined;
+  const isCamp = variant === "camp";
 
   const start = parseIso(startsOn);
   const end = parseIso(endsOn);
@@ -63,9 +74,13 @@ export function ScheduleCalendar(props: Props) {
         const d = new Date(Date.UTC(y, m, day));
         const iso = isoOf(d);
         const inRange = d >= start && d <= end;
-        const isScheduledWeekday = d.getUTCDay() === target;
+        const dow = d.getUTCDay();
+        const isCampWeekday = dow >= 1 && dow <= 5;
+        const isScheduledWeekday = isCamp
+          ? inRange && isCampWeekday
+          : inRange && dow === target;
         let cell: Cell;
-        if (!inRange || !isScheduledWeekday) {
+        if (!inRange || (isCamp ? !isCampWeekday : dow !== target)) {
           cell = { kind: "plain", day, iso };
         } else if (excluded.has(iso)) {
           cell = { kind: "excluded", day, iso };
@@ -88,12 +103,14 @@ export function ScheduleCalendar(props: Props) {
     }
 
     return { months, scheduledCount };
-  }, [start?.getTime(), end?.getTime(), dayOfWeek, excluded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [start?.getTime(), end?.getTime(), dayOfWeek, excluded, isCamp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!startsOn || !endsOn) {
     return (
       <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-[var(--surface-strong)] p-4 text-xs text-[var(--muted-foreground)]">
-        Pick a start and end date to preview the session calendar.
+        {isCamp
+          ? "Pick the camp week start and end to preview camp days."
+          : "Pick a start and end date to preview the session calendar."}
       </div>
     );
   }
@@ -109,12 +126,17 @@ export function ScheduleCalendar(props: Props) {
     <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-strong)] p-4">
       <div className="flex items-center justify-between gap-4 text-xs">
         <div className="flex items-center gap-3 text-[var(--muted-foreground)]">
-          <LegendDot className="bg-emerald-500/80" /> Lesson
-          <LegendDot className="bg-rose-500/80" /> No lesson
-          <LegendDot className="bg-[var(--surface)] ring-1 ring-[var(--border)]" /> Not scheduled
+          <LegendDot className="bg-emerald-500/80" />{" "}
+          {isCamp ? "Camp day" : "Lesson"}
+          <LegendDot className="bg-rose-500/80" />{" "}
+          {isCamp ? "Day off" : "No lesson"}
+          <LegendDot className="bg-[var(--surface)] ring-1 ring-[var(--border)]" />{" "}
+          {isCamp ? "Not a camp day" : "Not scheduled"}
         </div>
         <div className="font-medium text-[var(--foreground)]">
-          {preview.scheduledCount} session{preview.scheduledCount === 1 ? "" : "s"}
+          {preview.scheduledCount}{" "}
+          {isCamp ? "camp day" : "session"}
+          {preview.scheduledCount === 1 ? "" : "s"}
           {excluded.size > 0 && (
             <span className="ml-1 text-[var(--muted-foreground)]">
               ({excluded.size} excluded)

@@ -22,6 +22,11 @@ import {
   useSplitGroupsLesson,
 } from "@/lib/classes/class-form-mode";
 import { deriveSeriesName as buildAutoName } from "@/lib/classes/series-name";
+import {
+  campWeekdayDateKeys,
+  defaultCampWeekIso,
+  toDateKey,
+} from "@/lib/classes/session-dates";
 import type { SkillLevelValue } from "@/lib/skill-levels";
 import { useTerms } from "@/components/tenant/terms-provider";
 
@@ -127,6 +132,8 @@ export function ClassSeriesForm({
   kind?: "class" | "event" | "camp";
 }) {
   const t = useTerms();
+  const campWeekDefault =
+    kind === "camp" ? defaultCampWeekIso() : null;
   const [audience, setAudience] = useState<Audience>(
     kind === "event" ? "adult" : "youth",
   );
@@ -138,16 +145,22 @@ export function ClassSeriesForm({
   const [schoolId, setSchoolId] = useState<string>("");
   const [pickupAt, setPickupAt] = useState<string>("");
   const [dayOfWeek, setDayOfWeek] = useState<DayKey>("mon");
-  const [startTime, setStartTime] = useState<string>("16:00");
-  const [endTime, setEndTime] = useState<string>("17:00");
+  const [startTime, setStartTime] = useState<string>(
+    kind === "camp" ? "09:00" : "16:00",
+  );
+  const [endTime, setEndTime] = useState<string>(
+    kind === "camp" ? "15:00" : "17:00",
+  );
   const [defaultCourtId, setDefaultCourtId] = useState<string>("");
   const [courtBlockStartTime, setCourtBlockStartTime] =
     useState<string>("16:00");
   const [courtBlockEndTime, setCourtBlockEndTime] = useState<string>("17:00");
   const [acknowledgeCourtConflicts, setAcknowledgeCourtConflicts] =
     useState(false);
-  const [startsOn, setStartsOn] = useState<string>("");
-  const [endsOn, setEndsOn] = useState<string>("");
+  const [startsOn, setStartsOn] = useState<string>(
+    campWeekDefault?.startsOn ?? "",
+  );
+  const [endsOn, setEndsOn] = useState<string>(campWeekDefault?.endsOn ?? "");
   const [excludedDates, setExcludedDates] = useState<Set<string>>(
     () => new Set<string>(),
   );
@@ -315,8 +328,18 @@ export function ClassSeriesForm({
   }, [programs, audience]);
 
   const seasonOptions = useMemo(() => {
+    if (kind === "camp") {
+      return seasons.filter((s) => s.audience === "youth");
+    }
     return seasons.filter((s) => s.audience === audience);
-  }, [seasons, audience]);
+  }, [seasons, audience, kind]);
+
+  const campActiveDropInDates = useMemo(() => {
+    if (kind !== "camp" || !startsOn || !endsOn) return [];
+    return campWeekdayDateKeys(startsOn, endsOn).filter(
+      (iso) => !excludedDates.has(iso),
+    );
+  }, [kind, startsOn, endsOn, excludedDates]);
   const selectedVenue = useMemo(
     () => venues.find((v) => v.id === venueId) ?? null,
     [venues, venueId],
@@ -491,7 +514,58 @@ export function ClassSeriesForm({
   // selections change (e.g. youth → format step, pickup → splitGroups
   // step, split → groups step). currentStepIndex is clamped below
   // whenever the list shrinks.
+  function applyCampWeekStart(iso: string) {
+    setStartsOn(iso);
+    if (!iso) return;
+    const [y, m, d] = iso.split("-").map(Number);
+    const monday = new Date(Date.UTC(y, m - 1, d));
+    const friday = new Date(monday);
+    friday.setUTCDate(friday.getUTCDate() + 4);
+    const fridayIso = toDateKey(friday);
+    if (!endsOn || endsOn < iso) setEndsOn(fridayIso);
+  }
+
   const steps = useMemo<WizardStep[]>(() => {
+    if (kind === "camp") {
+      return [
+        {
+          id: "location",
+          title: "Which club?",
+          hint: `${t.student.plural} come to this ${t.club.singular.toLowerCase()} each day of the camp week.`,
+        },
+        {
+          id: "schedule",
+          title: "Camp week",
+          hint: "One Mon–Fri week by default. Extend the end date for a longer camp, or click a green day to mark it off.",
+        },
+        {
+          id: "age",
+          title: "Who can sign up?",
+          hint: "Kids only — sets the age band parents see on the portal.",
+        },
+        {
+          id: "naming",
+          title: "Naming",
+          hint: `How this camp appears to ${t.parent.plural.toLowerCase()}. Auto-derived from venue and dates — tick 'Use custom name' to override.`,
+        },
+        {
+          id: "coaches",
+          title: t.coach.plural,
+          hint: `Who is running the camp. Add more ${t.coach.plural.toLowerCase()} once the first is chosen.`,
+        },
+        {
+          id: "roster",
+          title: "Roster limits",
+          hint: "How many kids can enroll in this camp.",
+        },
+        {
+          id: "pricing",
+          title: "Pricing",
+          hint: "Week and optional daily drop-in prices. Drop-in dates follow the camp week calendar above.",
+        },
+      ];
+    }
+
     const isClass = kind === "class";
     const list: WizardStep[] = [];
     list.push({
@@ -582,9 +656,7 @@ export function ClassSeriesForm({
       hint:
         kind === "event"
           ? "Set the event price. Add a member price if members pay less — it is applied automatically at checkout."
-          : kind === "camp"
-            ? "Set week and optional drop-in prices. Member prices are applied automatically when a student already has active membership."
-            : "Defaults to EUR 35 per session — the catalog total members see is this number times the live session count. Leave blank to bill manually.",
+          : "Defaults to EUR 35 per session — the catalog total members see is this number times the live session count. Leave blank to bill manually.",
     });
     return list;
   }, [
@@ -774,7 +846,7 @@ export function ClassSeriesForm({
         return renderLocationBody();
 
       case "schedule":
-        return renderScheduleBody();
+        return kind === "camp" ? renderCampScheduleBody() : renderScheduleBody();
 
       case "age":
         return (
@@ -899,6 +971,156 @@ export function ClassSeriesForm({
             </select>
           </Field>
         );
+  }
+
+  function renderCampScheduleBody() {
+    return (
+      <>
+        <input type="hidden" name="dayOfWeek" value="mon" />
+        <input type="hidden" name="seasonId" value={seasonId} />
+        <Field
+          label="Season"
+          optional
+          hint="Optional label for grouping and naming. If the season has dates, picking it fills the week below."
+        >
+          <select
+            value={seasonId}
+            onChange={(e) => applySeason(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">No season</option>
+            {seasonOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Week starts"
+            hint="Usually the Monday the camp begins."
+          >
+            <DateField
+              name="startsOn"
+              value={startsOn}
+              onChange={applyCampWeekStart}
+              mode="any"
+              locale="en-NL"
+              required
+            />
+          </Field>
+          <Field
+            label="Week ends"
+            hint="Usually that Friday. Extend for a second week if needed."
+          >
+            <DateField
+              name="endsOn"
+              value={endsOn}
+              onChange={setEndsOn}
+              mode="any"
+              locale="en-NL"
+              min={startsOn}
+              required
+            />
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Daily start time">
+            <Input
+              name="startTime"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              required
+            />
+          </Field>
+          <Field label="Daily end time">
+            <Input
+              name="endTime"
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              required
+            />
+          </Field>
+        </div>
+        <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3">
+          <Field
+            label={`${t.court.singular} (optional)`}
+            hint={
+              venueClubId
+                ? `Block a ${t.court.singular.toLowerCase()} for each camp day.`
+                : `Pick a ${t.club.singular.toLowerCase()} first.`
+            }
+            optional
+          >
+            <select
+              value={defaultCourtId}
+              onChange={(e) => {
+                const next = e.target.value;
+                setDefaultCourtId(next);
+                if (next) {
+                  setCourtBlockStartTime(startTime);
+                  setCourtBlockEndTime(endTime);
+                }
+              }}
+              className={selectClass}
+              disabled={!venueClubId}
+            >
+              <option value="">No {t.court.singular.toLowerCase()} selected</option>
+              {courtOptions.map((court) => (
+                <option key={court.id} value={court.id}>
+                  {court.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {defaultCourtId && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={`${t.court.singular} block start`}>
+                  <Input
+                    type="time"
+                    value={courtBlockStartTime}
+                    onChange={(e) => setCourtBlockStartTime(e.target.value)}
+                    required
+                  />
+                </Field>
+                <Field label={`${t.court.singular} block end`}>
+                  <Input
+                    type="time"
+                    value={courtBlockEndTime}
+                    onChange={(e) => setCourtBlockEndTime(e.target.value)}
+                    required
+                  />
+                </Field>
+              </div>
+              <label className="inline-flex items-start gap-2 text-xs text-[var(--muted-foreground)]">
+                <input
+                  type="checkbox"
+                  checked={acknowledgeCourtConflicts}
+                  onChange={(e) =>
+                    setAcknowledgeCourtConflicts(e.currentTarget.checked)
+                  }
+                  className="mt-0.5 h-3.5 w-3.5"
+                />
+                If this overlaps existing bookings/classes, allow save and skip
+                only conflicting dates.
+              </label>
+            </>
+          )}
+        </div>
+        <ScheduleCalendar
+          mode="edit"
+          variant="camp"
+          startsOn={startsOn}
+          endsOn={endsOn}
+          excluded={excludedDates}
+          onToggle={toggleExcluded}
+        />
+      </>
+    );
   }
 
   function renderScheduleBody() {
@@ -1076,6 +1298,52 @@ export function ClassSeriesForm({
   }
 
   function renderNamingBody() {
+    if (kind === "camp") {
+      return (
+        <>
+          <input
+            type="hidden"
+            name="useOverride"
+            value={useOverride ? "true" : "false"}
+          />
+          <Field
+            label="Camp name"
+            hint="Auto-derived from venue and dates. Tick 'Use custom name' to override."
+          >
+            {useOverride ? (
+              <div className="space-y-1">
+                <Input
+                  name="nameOverride"
+                  value={nameOverride}
+                  onChange={(e) => setNameOverride(e.target.value)}
+                  placeholder={derivedName || "Custom camp name"}
+                  maxLength={160}
+                  required
+                />
+              </div>
+            ) : (
+              <DerivedNameTile name={derivedName} />
+            )}
+            <label className="mt-2 inline-flex items-center gap-2 text-xs text-[var(--foreground)]">
+              <input
+                type="checkbox"
+                checked={useOverride}
+                onChange={(e) => {
+                  const next = e.currentTarget.checked;
+                  setUseOverride(next);
+                  if (next && nameOverride === "") setNameOverride(derivedName);
+                }}
+                className="h-3.5 w-3.5"
+              />
+              Use custom name
+            </label>
+          </Field>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            Camps use the Kids program — no need to pick one.
+          </p>
+        </>
+      );
+    }
     if (kind === "event") {
       return (
         <>
@@ -1178,8 +1446,18 @@ export function ClassSeriesForm({
   }
 
   function renderCoachesBody() {
-    if (kind === "event") {
-      return <EventStaffField coaches={coaches} />;
+    if (kind === "event" || kind === "camp") {
+      return (
+        <EventStaffField
+          coaches={coaches}
+          memberLabel={kind === "camp" ? t.coach.singular : undefined}
+          addAnotherLabel={
+            kind === "camp"
+              ? `Add another ${t.coach.singular.toLowerCase()}`
+              : undefined
+          }
+        />
+      );
     }
     if (useSplitGroupsUI) {
       return (
@@ -1304,7 +1582,11 @@ export function ClassSeriesForm({
 
   function renderPricingBody() {
     if (kind === "event") return <EventPricingField />;
-    if (kind === "camp") return <CampOptionsField />;
+    if (kind === "camp") {
+      return (
+        <CampOptionsField scheduleDropInDates={campActiveDropInDates} />
+      );
+    }
     return (
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Per-session price (EUR)" optional>

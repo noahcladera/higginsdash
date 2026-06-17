@@ -61,7 +61,9 @@ export default async function NewCampPage() {
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const seasonOptions = seasons.map((s) => ({
+  const seasonOptions = seasons
+    .filter((s) => s.audience === "youth")
+    .map((s) => ({
     id: s.id,
     name: s.name,
     audience: s.audience,
@@ -78,7 +80,7 @@ export default async function NewCampPage() {
       <PageHeader
         kicker="Admin · Camps"
         title="New camp"
-        description="Create a camp with half/full-week options and optional daily drop-ins. Pricing rules run through the same enrollment pipeline as classes."
+        description="One kids camp week at a time — Mon–Fri by default, daily times, optional days off. Parents book the full week or single drop-in days."
       />
       <ClassSeriesForm
         action={createClassSeries}

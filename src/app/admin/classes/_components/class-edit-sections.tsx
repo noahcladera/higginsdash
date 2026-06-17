@@ -18,6 +18,10 @@ import { EventPricingField } from "./event-pricing-field";
 import { CampOptionsField } from "./camp-options-field";
 import type { PricingTier } from "@/lib/classes/pricing-tiers";
 import type { CampOptionsConfig } from "@/lib/classes/camp-options";
+import {
+  campWeekdayDateKeys,
+  toDateKey,
+} from "@/lib/classes/session-dates";
 import type { SkillLevelValue } from "@/lib/skill-levels";
 
 /**
@@ -250,6 +254,7 @@ export function ScheduleSectionEditor({
   audience,
   seasons,
   showSeason = true,
+  isCamp = false,
 }: {
   classSeriesId: string;
   defaultDayOfWeek: DayKey;
@@ -269,6 +274,7 @@ export function ScheduleSectionEditor({
   seasons: SeasonOption[];
   /** False for events — seasons are for regular classes only. */
   showSeason?: boolean;
+  isCamp?: boolean;
 }) {
   const [dayOfWeek, setDayOfWeek] = useState<DayKey>(defaultDayOfWeek);
   const [startTime, setStartTime] = useState<string>(defaultStartTime);
@@ -326,13 +332,24 @@ export function ScheduleSectionEditor({
     });
   }
 
+  function applyCampWeekStart(iso: string) {
+    setStartsOn(iso);
+    if (!iso) return;
+    const [y, m, d] = iso.split("-").map(Number);
+    const monday = new Date(Date.UTC(y, m - 1, d));
+    const friday = new Date(monday);
+    friday.setUTCDate(friday.getUTCDate() + 4);
+    const fridayIso = toDateKey(friday);
+    if (!endsOn || endsOn < iso) setEndsOn(fridayIso);
+  }
+
   // Prune stale excluded dates whenever the window / weekday changes.
   useEffect(() => {
     if (!startsOn || !endsOn) return;
-    const target = DAY_INDEX[dayOfWeek];
     const start = parseIso(startsOn);
     const end = parseIso(endsOn);
     if (!start || !end) return;
+    const target = isCamp ? null : DAY_INDEX[dayOfWeek];
     setExcluded((prev) => {
       let changed = false;
       const next = new Set<string>();
@@ -342,7 +359,12 @@ export function ScheduleSectionEditor({
           changed = true;
           continue;
         }
-        if (d < start || d > end || d.getUTCDay() !== target) {
+        const dow = d.getUTCDay();
+        const outOfRange = d < start || d > end;
+        const wrongDay = isCamp
+          ? dow < 1 || dow > 5
+          : dow !== target;
+        if (outOfRange || wrongDay) {
           changed = true;
           continue;
         }
@@ -350,7 +372,7 @@ export function ScheduleSectionEditor({
       }
       return changed ? next : prev;
     });
-  }, [startsOn, endsOn, dayOfWeek]);
+  }, [startsOn, endsOn, dayOfWeek, isCamp]);
 
   useEffect(() => {
     if (!courtId) return;
@@ -438,43 +460,92 @@ export function ScheduleSectionEditor({
         </FieldBlock>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <FieldBlock label="Day">
-          <select
-            name="dayOfWeek"
-            value={dayOfWeek}
-            onChange={(e) => setDayOfWeek(e.target.value as DayKey)}
-            className={selectClass}
-            required
-          >
-            <option value="mon">Monday</option>
-            <option value="tue">Tuesday</option>
-            <option value="wed">Wednesday</option>
-            <option value="thu">Thursday</option>
-            <option value="fri">Friday</option>
-            <option value="sat">Saturday</option>
-            <option value="sun">Sunday</option>
-          </select>
-        </FieldBlock>
-        <FieldBlock label="Start time">
-          <Input
-            name="startTime"
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            required
-          />
-        </FieldBlock>
-        <FieldBlock label="End time">
-          <Input
-            name="endTime"
-            type="time"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            required
-          />
-        </FieldBlock>
-      </div>
+      {isCamp && <input type="hidden" name="dayOfWeek" value="mon" />}
+      {isCamp ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldBlock label="Week starts" hint="Usually the Monday the camp begins.">
+              <DateField
+                name="startsOn"
+                value={startsOn}
+                onChange={applyCampWeekStart}
+                mode="any"
+                locale="en-NL"
+                required
+              />
+            </FieldBlock>
+            <FieldBlock label="Week ends" hint="Usually that Friday — extend for longer camps.">
+              <DateField
+                name="endsOn"
+                value={endsOn}
+                onChange={setEndsOn}
+                mode="any"
+                locale="en-NL"
+                min={startsOn}
+                required
+              />
+            </FieldBlock>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldBlock label="Daily start time">
+              <Input
+                name="startTime"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                required
+              />
+            </FieldBlock>
+            <FieldBlock label="Daily end time">
+              <Input
+                name="endTime"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                required
+              />
+            </FieldBlock>
+          </div>
+        </>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <FieldBlock label="Day">
+            <select
+              name="dayOfWeek"
+              value={dayOfWeek}
+              onChange={(e) => setDayOfWeek(e.target.value as DayKey)}
+              className={selectClass}
+              required
+            >
+              <option value="mon">Monday</option>
+              <option value="tue">Tuesday</option>
+              <option value="wed">Wednesday</option>
+              <option value="thu">Thursday</option>
+              <option value="fri">Friday</option>
+              <option value="sat">Saturday</option>
+              <option value="sun">Sunday</option>
+            </select>
+          </FieldBlock>
+          <FieldBlock label="Start time">
+            <Input
+              name="startTime"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              required
+            />
+          </FieldBlock>
+          <FieldBlock label="End time">
+            <Input
+              name="endTime"
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              required
+            />
+          </FieldBlock>
+        </div>
+      )}
       <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3">
         <FieldBlock
           label="Court (optional)"
@@ -547,32 +618,35 @@ export function ScheduleSectionEditor({
           </>
         )}
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FieldBlock label="Starts on">
-          <DateField
-            name="startsOn"
-            value={startsOn}
-            onChange={setStartsOn}
-            mode="any"
-            locale="en-NL"
-            required
-          />
-        </FieldBlock>
-        <FieldBlock label="Ends on">
-          <DateField
-            name="endsOn"
-            value={endsOn}
-            onChange={setEndsOn}
-            mode="any"
-            locale="en-NL"
-            min={startsOn}
-            required
-          />
-        </FieldBlock>
-      </div>
+      {!isCamp && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FieldBlock label="Starts on">
+            <DateField
+              name="startsOn"
+              value={startsOn}
+              onChange={setStartsOn}
+              mode="any"
+              locale="en-NL"
+              required
+            />
+          </FieldBlock>
+          <FieldBlock label="Ends on">
+            <DateField
+              name="endsOn"
+              value={endsOn}
+              onChange={setEndsOn}
+              mode="any"
+              locale="en-NL"
+              min={startsOn}
+              required
+            />
+          </FieldBlock>
+        </div>
+      )}
 
       <ScheduleCalendar
         mode="edit"
+        variant={isCamp ? "camp" : "weekly"}
         startsOn={startsOn}
         endsOn={endsOn}
         dayOfWeek={dayOfWeek}
@@ -958,14 +1032,19 @@ export function EventPricingSectionEditor({
 export function CampPricingSectionEditor({
   classSeriesId,
   defaultOptions,
+  scheduleDropInDates = [],
 }: {
   classSeriesId: string;
   defaultOptions: CampOptionsConfig | null;
+  scheduleDropInDates?: string[];
 }) {
   return (
     <>
       <input type="hidden" name="classSeriesId" value={classSeriesId} />
-      <CampOptionsField defaultOptions={defaultOptions} />
+      <CampOptionsField
+        defaultOptions={defaultOptions}
+        scheduleDropInDates={scheduleDropInDates}
+      />
     </>
   );
 }

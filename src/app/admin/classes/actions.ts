@@ -10,7 +10,7 @@ import { SYSTEM_NO_COACH_PERSON_ID } from "@/lib/system-ids";
 import { notify } from "@/lib/notifications";
 import { recordAudit } from "@/lib/audit";
 import {
-  generateSessionDates,
+  generateSessionsForSeries,
   toDateKey,
 } from "@/lib/classes/session-dates";
 import {
@@ -31,6 +31,8 @@ import {
 import {
   CampOptionsJsonSchema,
   resolveCampCheckoutPrice,
+  parseCampOptions,
+  syncCampDropInDates,
   type CampOptionsConfig,
 } from "@/lib/classes/camp-options";
 import type { SkillLevelValue } from "@/lib/skill-levels";
@@ -1127,7 +1129,7 @@ export async function createClassSeries(formData: FormData) {
   const sessionEndTime = defaultCourtId
     ? (courtBlockEndTime ?? seriesEndTime)
     : seriesEndTime;
-  const sessions = generateSessionDates({
+  const sessions = generateSessionsForSeries(data.classType, {
     startsOn: data.startsOn,
     endsOn: data.endsOn,
     dayOfWeek: data.dayOfWeek,
@@ -1161,6 +1163,12 @@ export async function createClassSeries(formData: FormData) {
         : pricePerSeries;
   } else if (isCamp) {
     campOptions = data.campOptionsJson;
+    if (campOptions) {
+      campOptions = syncCampDropInDates(
+        campOptions,
+        sessions.map((s) => toDateKey(s.startsAt)),
+      );
+    }
     pricePerSeries = resolveCampCheckoutPrice({
       campOptions,
       selection: campOptions?.options[0]
@@ -1681,14 +1689,21 @@ export async function updateLocation(formData: FormData) {
   });
 
   if (existing.defaultCourtId && !nextDefaultCourtId) {
-    if (!existing.dayOfWeek) {
+    if (!existing.dayOfWeek && existing.classType !== "camp") {
       throw new Error("Class schedule is incomplete: missing weekday");
     }
     const excluded = new Set(existing.excludedDates.map((d) => toDateKey(d)));
-    const dates = generateSessionDates({
+    const dates = generateSessionsForSeries(existing.classType, {
       startsOn: existing.startsOn,
       endsOn: existing.endsOn,
-      dayOfWeek: existing.dayOfWeek,
+      dayOfWeek: (existing.dayOfWeek ?? "mon") as
+        | "mon"
+        | "tue"
+        | "wed"
+        | "thu"
+        | "fri"
+        | "sat"
+        | "sun",
       startTime: existing.startTime,
       endTime: existing.endTime,
       excluded,
@@ -1787,6 +1802,8 @@ export async function updateSchedule(formData: FormData) {
   const existing = await prisma.classSeries.findUniqueOrThrow({
     where: { id: data.classSeriesId },
     select: {
+      classType: true,
+      campOptions: true,
       startsOn: true,
       endsOn: true,
       dayOfWeek: true,
@@ -1940,7 +1957,7 @@ export async function updateSchedule(formData: FormData) {
         },
       });
 
-      const dates = generateSessionDates({
+      const dates = generateSessionsForSeries(existing.classType, {
         startsOn: data.startsOn,
         endsOn: data.endsOn,
         dayOfWeek: data.dayOfWeek,
@@ -1961,13 +1978,12 @@ export async function updateSchedule(formData: FormData) {
         });
       }
 
-      // Schedule changes shift the live session count, which means
-      // pricePerSeries (= pricePerSession * sessionCount) needs to
-      // be recomputed or the portal will quote a stale total. We
-      // only touch the row when pricePerSession is set; otherwise
-      // pricePerSeries stays null and the "Contact the office"
-      // copy continues to show.
-      if (existing.pricePerSession != null) {
+      // Camps use flat week/drop-in prices — do not rescale catalog
+      // pricePerSeries when the session count changes.
+      if (
+        existing.classType !== "camp" &&
+        existing.pricePerSession != null
+      ) {
         const liveCount = await tx.classSession.count({
           where: {
             classSeriesId: data.classSeriesId,
@@ -1981,6 +1997,30 @@ export async function updateSchedule(formData: FormData) {
             pricePerSeries: liveCount > 0 ? perSession * liveCount : null,
           },
         });
+      }
+
+      if (existing.classType === "camp" && scheduleChanged) {
+        const parsed = parseCampOptions(existing.campOptions);
+        if (parsed?.dropInEnabled) {
+          const allSessions = await tx.classSession.findMany({
+            where: {
+              classSeriesId: data.classSeriesId,
+              status: { not: "cancelled" },
+            },
+            select: { startsAt: true },
+            orderBy: { startsAt: "asc" },
+          });
+          const synced = syncCampDropInDates(
+            parsed,
+            allSessions.map((s) => toDateKey(s.startsAt)),
+          );
+          await tx.classSeries.update({
+            where: { id: data.classSeriesId },
+            data: {
+              campOptions: synced as unknown as Prisma.InputJsonValue,
+            },
+          });
+        }
       }
     }
   });
@@ -2727,9 +2767,23 @@ export async function updatePricing(formData: FormData) {
       throw new Error("Camp options are required");
     }
     campOptions = data.campOptionsJson;
+    if (campOptions) {
+      const sessionRows = await prisma.classSession.findMany({
+        where: {
+          classSeriesId: data.classSeriesId,
+          status: { not: "cancelled" },
+        },
+        select: { startsAt: true },
+        orderBy: { startsAt: "asc" },
+      });
+      campOptions = syncCampDropInDates(
+        campOptions,
+        sessionRows.map((s) => toDateKey(s.startsAt)),
+      );
+    }
     pricePerSeries = resolveCampCheckoutPrice({
       campOptions,
-      selection: campOptions.options[0]
+      selection: campOptions?.options[0]
         ? { optionId: campOptions.options[0].id }
         : null,
       hasActiveMembership: false,
@@ -3420,7 +3474,7 @@ export async function duplicateClassSeries(formData: FormData) {
   const excluded = new Set(
     source.excludedDates.map((d) => toDateKey(new Date(d))),
   );
-  const sessions = generateSessionDates({
+  const sessions = generateSessionsForSeries(source.classType, {
     startsOn: source.startsOn,
     endsOn: source.endsOn,
     dayOfWeek: source.dayOfWeek as
