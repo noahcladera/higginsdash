@@ -23,9 +23,8 @@ function firstString(v: string | string[] | undefined): string | null {
 /**
  * Read-only payments overview for the household.
  *
- * V1 just lists raw `Payment` rows we have on file plus any membership
- * with an invoice number. Mollie isn't wired up yet, so for most seed
- * users this will render as the friendly empty state.
+ * Lists Payment rows and invoiced memberships for the signed-in household.
+ * New checkouts via Mollie appear here after fulfillment.
  */
 export default async function PortalPaymentsPage({
   searchParams,
@@ -107,7 +106,7 @@ export default async function PortalPaymentsPage({
         <EmptyState
           icon={<CardIcon size={20} />}
           title="Nothing here yet"
-          description="Invoices and receipts will appear here once your first one is issued. Self-checkout via Mollie is on its way."
+          description="Receipts from portal checkouts and office-issued invoices appear here after your first payment."
         />
       ) : (
         <>

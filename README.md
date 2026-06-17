@@ -18,10 +18,10 @@ maintain a separate "Higgins USA" branch. Every instance of the product is an
 
 | `productMode` | Who it's for                                        | What's enabled                                                                                    |
 | ------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `club`        | Higgins Tennis NL (and future racket-sport clubs)   | Full surface: memberships, court bookings, recurring blocks, ladder, KNLTB-grade scheduling, etc. |
+| `club`        | Higgins Tennis NL (and future racket-sport clubs)   | Full surface: memberships, court bookings, recurring blocks, school pickup, etc. |
 | `programs`    | Youth programs, afterschool, schools, music schools | Lean surface: CRM, class/program/camp enrollment, parent billing, coach scheduling, attendance.   |
 
-Club-only models (`Membership`, `CourtBooking`, `RecurringBlock`, `Ladder*`,
+Club-only models (`Membership`, `CourtBooking`, `RecurringBlock`,
 `Court`, `Venue`, `BookingSettings`) stay in the schema. Programs-mode orgs
 simply never write rows there and the routes / nav are hidden.
 
@@ -40,7 +40,7 @@ for the full strategy study behind this decision.
 Full Higgins portal (Next.js App Router):
 
 - Admin, coach, and member portals
-- Memberships, classes, court booking, ladder, payments (Mollie + demo fallback)
+- Memberships, classes, court booking, payments (Mollie + demo fallback)
 - Postgres on Supabase + Prisma migrations
 - Supabase Auth (magic links + signup)
 
@@ -168,16 +168,17 @@ file.
 > The original "foundation slice" list below is **historical**. Most of it is
 > now built. As of the Phase-1 revamp the portal has: member self-signup,
 > membership purchase + renewal, class/camp/event enrollment (GoTimmy-style),
-> court booking + conflict detection, recurring blocks, ladder, in-app
+> court booking + conflict detection, recurring blocks, in-app
 > notifications + transactional email, audit logging, and **real Mollie
-> checkout** (enrollment, membership, ladder, court booking) with demo fallback.
+> checkout** (enrollment, membership, court booking) with demo fallback.
 > See [`handoff/summer-launch-runbook.md`](handoff/summer-launch-runbook.md)
 > for what's still config/manual at launch.
 
 Still open / manual at launch:
 
 1. Full historical data migration from GoTimmy (parallel mode imports active
-   members/households only for the summer).
+   members/households/students with skill level + school — see
+   `handoff/parallel-membership-sop.md` for membership bridging).
 2. Coach ZZP invoice checkout (collected manually).
 3. Cash refunds via the Mollie API (refunds are admin-entered; before-start
    withdrawals auto-issue household credit).

@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Manual refund recording (issue #2 family — phase 7).
+ * Manual refund recording for the office.
  *
- * The Mollie integration isn't live yet, so refunds are entered by hand
- * by the office:
+ * Refunds are entered by hand in admin (Mollie API refund automation is not
+ * wired yet). Before-start withdrawals auto-issue household credit instead.
  *
  *   - `recordRefund` inserts a `Refund` row against an existing Payment.
  *     If the cumulative refunded amount equals or exceeds the payment
