@@ -19,7 +19,7 @@ export default async function NewCoachInvitePage() {
       <PageHeader
         kicker="Coaches"
         title="Invite a coach"
-        description="Supabase sends the email. They’ll finish setup on a secure link. Staff: leave all clubs unchecked to allow every club; or pick specific sites. ZZP: pick at least one club."
+        description="Creates the coach account immediately and gives you a copyable sign-in link (or temporary password). Staff: leave all clubs unchecked to allow every club; ZZP: pick at least one club."
         actions={
           <Button asChild variant="outline" size="sm">
             <Link href="/admin/coaches">Back</Link>

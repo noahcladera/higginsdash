@@ -1,6 +1,22 @@
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_PERSON_IDS } from "@/lib/system-ids";
 
+function parsePlatformAdminEmails(): Set<string> {
+  const raw = process.env.PLATFORM_ADMIN_EMAILS?.trim();
+  if (!raw) return new Set();
+  return new Set(
+    raw
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+function isPlatformAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return parsePlatformAdminEmails().has(email.trim().toLowerCase());
+}
+
 /**
  * Idempotent. Called from the auth callback / accept-invite landing pages
  * after every magic-link or invite sign-in.
@@ -34,6 +50,10 @@ export async function ensurePersonForAuthUser(args: {
           where: { id: { notIn: [...SYSTEM_PERSON_IDS] } },
         });
         const isFirstUser = realPeopleCount === 0;
+        const allowlist = parsePlatformAdminEmails();
+        const grantAdmin =
+          isFirstUser &&
+          (allowlist.size === 0 || isPlatformAdminEmail(normalizedEmail));
 
         await tx.person.upsert({
           where: { id: authUserId },
@@ -41,7 +61,7 @@ export async function ensurePersonForAuthUser(args: {
             id: authUserId,
             firstName: "",
             lastName: "",
-            isAdmin: isFirstUser,
+            isAdmin: grantAdmin,
             lastLoginAt: new Date(),
           },
           update: { lastLoginAt: new Date() },

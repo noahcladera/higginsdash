@@ -10,20 +10,76 @@ import {
   createCoachInviteForm,
   type CoachInviteActionResult,
 } from "../../actions";
-
-const initialState: CoachInviteActionResult = { ok: true };
+import { CopyableText } from "../../_copyable-text";
 
 type Club = { id: string; name: string; slug: string };
 
 export function InviteCoachForm({ clubs }: { clubs: Club[] }) {
-  const [state, formAction] = useActionState(
-    createCoachInviteForm,
-    initialState,
-  );
+  const [state, formAction] = useActionState<
+    CoachInviteActionResult | undefined,
+    FormData
+  >(createCoachInviteForm, undefined);
+
+  if (state?.ok === true) {
+    return (
+      <div className="space-y-6 rounded-lg border border-[var(--border)] bg-[var(--card)] p-6">
+        <div>
+          <h2 className="text-lg font-semibold">Coach ready to sign in</h2>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            The coach role is already assigned for {state.email}. Share the
+            credentials below — they will land in the coach portal after sign-in.
+            {state.emailed
+              ? " A copy was also emailed via Resend."
+              : " Email delivery failed or is not configured; copy the details manually."}
+          </p>
+        </div>
+
+        {state.loginMethod === "magiclink" ? (
+          <div className="space-y-2">
+            <Label>Magic sign-in link</Label>
+            <CopyableText value={state.actionLink} label="Copy link" />
+          </div>
+        ) : (
+          <div className="space-y-4 text-sm">
+            <div>
+              <span className="text-[var(--muted-foreground)]">Login page</span>
+              <div className="mt-1">
+                <CopyableText value={state.loginUrl} label="Copy URL" />
+              </div>
+            </div>
+            <div>
+              <span className="text-[var(--muted-foreground)]">Email</span>
+              <div className="mt-1 font-medium">{state.email}</div>
+            </div>
+            <div>
+              <span className="text-[var(--muted-foreground)]">
+                Temporary password
+              </span>
+              <div className="mt-1">
+                <CopyableText
+                  value={state.temporaryPassword}
+                  label="Copy password"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button asChild tone="joint" className="flex-1">
+            <Link href="/admin/coaches">Back to coaches</Link>
+          </Button>
+          <Button asChild variant="outline" className="flex-1">
+            <Link href="/admin/coaches/invites/new">Invite another</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form action={formAction} className="space-y-6">
-      {state.ok === false && (
+      {state?.ok === false && (
         <div className="rounded-md border border-[var(--destructive)] bg-[var(--card)] p-3 text-sm text-[var(--destructive)]">
           {state.error}
         </div>
@@ -67,6 +123,29 @@ export function InviteCoachForm({ clubs }: { clubs: Club[] }) {
         </label>
       </fieldset>
 
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Sign-in method</legend>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="radio"
+            name="loginMethod"
+            value="magiclink"
+            defaultChecked
+            className="rounded border-[var(--border)]"
+          />
+          Magic link (recommended — copyable in admin, no Supabase email quota)
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="radio"
+            name="loginMethod"
+            value="password"
+            className="rounded border-[var(--border)]"
+          />
+          Temporary password (sign in at /login)
+        </label>
+      </fieldset>
+
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium">Clubs (optional — staff)</legend>
         <p className="text-xs text-[var(--muted-foreground)]">
@@ -98,7 +177,7 @@ export function InviteCoachForm({ clubs }: { clubs: Club[] }) {
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button type="submit" tone="joint" className="flex-1">
-          Send invite email
+          Create coach & get login
         </Button>
         <Button asChild type="button" variant="outline" className="flex-1">
           <Link href="/admin/coaches">Cancel</Link>

@@ -73,7 +73,7 @@ export default async function AdminCoachesPage() {
 
       <Section
         title="Pending invites"
-        description="Links expire after 14 days. Resend if the email was lost."
+        description="Links expire after 14 days. Use “Copy login link” if the coach needs a fresh sign-in URL."
       >
         {pendingInvites.length === 0 ? (
           <p className="text-sm text-[var(--muted-foreground)]">No pending invites.</p>

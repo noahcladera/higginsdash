@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
-import { DAY_OF_WEEK_LABEL, formatMinuteOfDay } from "@/lib/ladder/rules";
+import { DAY_OF_WEEK_LABEL, formatMinuteOfDay } from "@/lib/scheduling/time-labels";
 import {
   StaffCommercialsEditor,
   ZzpCommercialsEditor,

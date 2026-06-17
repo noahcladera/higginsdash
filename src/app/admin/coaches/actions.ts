@@ -2,7 +2,6 @@
 
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { CoachEmploymentType, CoachInviteRole, Prisma } from "@prisma/client";
@@ -10,9 +9,11 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { recordAudit } from "@/lib/audit/record";
 import { resolveAppOrigin } from "@/lib/site-url";
+import { provisionCoachFromInvite } from "@/lib/auth/provision-coach";
+import { sendEmail } from "@/lib/email";
+import { getCurrentBrand } from "@/lib/tenant";
 import {
   findAuthUserByEmail,
-  isAlreadyRegisteredInviteError,
 } from "@/lib/supabase/admin";
 
 const CreateCoachInviteSchema = z.object({
@@ -21,10 +22,25 @@ const CreateCoachInviteSchema = z.object({
   lastName: z.string().trim().min(1).max(100),
   role: z.nativeEnum(CoachInviteRole),
   clubIds: z.array(z.string().uuid()),
+  loginMethod: z.enum(["magiclink", "password"]).default("magiclink"),
 });
 
 export type CoachInviteActionResult =
-  | { ok: true }
+  | {
+      ok: true;
+      loginMethod: "magiclink";
+      email: string;
+      actionLink: string;
+      emailed: boolean;
+    }
+  | {
+      ok: true;
+      loginMethod: "password";
+      email: string;
+      temporaryPassword: string;
+      loginUrl: string;
+      emailed: boolean;
+    }
   | { ok: false; error: string };
 
 function getSupabaseAdmin() {
@@ -45,6 +61,139 @@ function generateToken(): string {
   return randomBytes(24).toString("base64url");
 }
 
+function generateTemporaryPassword(): string {
+  return randomBytes(9).toString("base64url");
+}
+
+function mapProvisionError(code: string): string {
+  switch (code) {
+    case "HAS_ZZP":
+      return "This email already has an independent coach profile. Contact the office.";
+    case "HAS_STAFF_COACH":
+      return "This email already has a staff coach profile. Contact the office.";
+    case "EMAIL_OWNED_BY_OTHER":
+      return "That email is linked to another person in the system.";
+    default:
+      return "Could not provision coach account.";
+  }
+}
+
+async function ensureAuthUser(
+  client: SupabaseClient,
+  email: string,
+  loginMethod: "magiclink" | "password",
+  temporaryPassword?: string,
+): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
+  let authUser = await findAuthUserByEmail(client, email);
+
+  if (!authUser) {
+    const { data, error } = await client.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      ...(loginMethod === "password" && temporaryPassword
+        ? { password: temporaryPassword }
+        : {}),
+    });
+    if (error || !data.user) {
+      return {
+        ok: false,
+        error: error?.message ?? "Could not create auth user.",
+      };
+    }
+    return { ok: true, userId: data.user.id };
+  }
+
+  if (loginMethod === "password" && temporaryPassword) {
+    const { error } = await client.auth.admin.updateUserById(authUser.id, {
+      password: temporaryPassword,
+    });
+    if (error) {
+      return { ok: false, error: error.message ?? "Could not set password." };
+    }
+  }
+
+  return { ok: true, userId: authUser.id };
+}
+
+async function generateMagicLink(
+  client: SupabaseClient,
+  email: string,
+  redirectTo: string,
+): Promise<{ ok: true; actionLink: string } | { ok: false; error: string }> {
+  const { data, error } = await client.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+    options: { redirectTo },
+  });
+  const actionLink = data?.properties?.action_link;
+  if (error || !actionLink) {
+    return {
+      ok: false,
+      error: error?.message ?? "Could not generate login link.",
+    };
+  }
+  return { ok: true, actionLink };
+}
+
+async function sendCoachLoginEmail(args: {
+  email: string;
+  firstName: string;
+  loginMethod: "magiclink" | "password";
+  actionLink?: string;
+  loginUrl?: string;
+  temporaryPassword?: string;
+}): Promise<boolean> {
+  const brand = await getCurrentBrand();
+  const greeting = args.firstName.trim() || "Coach";
+
+  try {
+    if (args.loginMethod === "magiclink" && args.actionLink) {
+      await sendEmail({
+        to: args.email,
+        subject: `${brand.shortName} coach portal — sign in`,
+        body: [
+          `Hi ${greeting},`,
+          "",
+          `You've been invited to the ${brand.shortName} coach portal.`,
+          "",
+          "Sign in with this one-time link:",
+          args.actionLink,
+          "",
+          "If the link expires, ask an admin to generate a new one from Coaches → Pending invites.",
+          "",
+          `— ${brand.shortName}`,
+        ].join("\n"),
+      });
+    } else if (
+      args.loginMethod === "password" &&
+      args.loginUrl &&
+      args.temporaryPassword
+    ) {
+      await sendEmail({
+        to: args.email,
+        subject: `${brand.shortName} coach portal — your login`,
+        body: [
+          `Hi ${greeting},`,
+          "",
+          `You've been invited to the ${brand.shortName} coach portal.`,
+          "",
+          `Sign in at: ${args.loginUrl}`,
+          `Email: ${args.email}`,
+          `Temporary password: ${args.temporaryPassword}`,
+          "",
+          "Change your password after the first sign-in if you can.",
+          "",
+          `— ${brand.shortName}`,
+        ].join("\n"),
+      });
+    }
+    return true;
+  } catch (err) {
+    console.error("[coach-invite] email delivery failed", err);
+    return false;
+  }
+}
+
 export async function createCoachInviteForm(
   _prev: CoachInviteActionResult | undefined,
   formData: FormData,
@@ -53,6 +202,7 @@ export async function createCoachInviteForm(
   const firstName = formData.get("firstName");
   const lastName = formData.get("lastName");
   const roleRaw = formData.get("role");
+  const loginMethodRaw = formData.get("loginMethod");
   const clubIds = formData
     .getAll("clubIds")
     .filter((v): v is string => typeof v === "string");
@@ -60,6 +210,8 @@ export async function createCoachInviteForm(
     roleRaw === CoachInviteRole.staff_coach || roleRaw === CoachInviteRole.zzp_coach
       ? roleRaw
       : null;
+  const loginMethod =
+    loginMethodRaw === "password" ? "password" : "magiclink";
 
   if (!role) {
     return { ok: false, error: "Choose staff or ZZP coach." };
@@ -71,69 +223,8 @@ export async function createCoachInviteForm(
     lastName: String(lastName ?? ""),
     role,
     clubIds,
+    loginMethod,
   });
-}
-
-async function sendCoachInviteEmail(
-  client: SupabaseClient,
-  email: string,
-  redirectTo: string,
-  metadata?: { first_name: string; last_name: string },
-): Promise<CoachInviteActionResult> {
-  const { error } = await client.auth.admin.inviteUserByEmail(email, {
-    redirectTo,
-    ...(metadata ? { data: metadata } : {}),
-  });
-  if (!error) return { ok: true };
-  return {
-    ok: false,
-    error: error.message ?? "Could not send invite email.",
-  };
-}
-
-async function inviteCoachAndRecover(
-  client: SupabaseClient,
-  email: string,
-  redirectTo: string,
-  metadata: { first_name: string; last_name: string },
-): Promise<CoachInviteActionResult> {
-  let result = await sendCoachInviteEmail(client, email, redirectTo, metadata);
-  if (result.ok) {
-    return result;
-  }
-
-  if (!isAlreadyRegisteredInviteError(result.error)) {
-    return result;
-  }
-
-  let authUser: Awaited<ReturnType<typeof findAuthUserByEmail>>;
-  try {
-    authUser = await findAuthUserByEmail(client, email);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Could not look up user.";
-    return { ok: false, error: msg };
-  }
-
-  if (!authUser) {
-    return result;
-  }
-
-  if (authUser.last_sign_in_at) {
-    return {
-      ok: false,
-      error: "They already have an account — ask them to sign in at /login.",
-    };
-  }
-
-  const { error: deleteError } = await client.auth.admin.deleteUser(authUser.id);
-  if (deleteError) {
-    return {
-      ok: false,
-      error: deleteError.message ?? "Could not reset invite user.",
-    };
-  }
-
-  return await sendCoachInviteEmail(client, email, redirectTo, metadata);
 }
 
 export async function createCoachInvite(
@@ -152,12 +243,40 @@ export async function createCoachInvite(
     };
   }
 
-  const adminCtx = await requireAdmin();
+  await requireAdmin();
   const svc = getSupabaseAdmin();
   if (!svc.ok) return { ok: false, error: svc.error };
 
+  const temporaryPassword =
+    data.loginMethod === "password" ? generateTemporaryPassword() : undefined;
+
+  const authResult = await ensureAuthUser(
+    svc.client,
+    data.email,
+    data.loginMethod,
+    temporaryPassword,
+  );
+  if (!authResult.ok) return authResult;
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await provisionCoachFromInvite(tx, {
+        authUserId: authResult.userId,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        role: data.role,
+        allowedClubIds: data.clubIds,
+      });
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "PROVISION_FAILED";
+    return { ok: false, error: mapProvisionError(msg) };
+  }
+
   const token = generateToken();
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+  const adminCtx = await requireAdmin();
 
   await prisma.coachInvite.create({
     data: {
@@ -173,23 +292,49 @@ export async function createCoachInvite(
   });
 
   const origin = await resolveAppOrigin();
-  const nextPath = `/coach/accept-invite?token=${encodeURIComponent(token)}`;
-  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+  const redirectTo = `${origin}/auth/callback`;
 
-  const result = await inviteCoachAndRecover(
-    svc.client,
-    data.email,
-    redirectTo,
-    { first_name: data.firstName, last_name: data.lastName },
-  );
-
-  if (!result.ok) {
-    await prisma.coachInvite.deleteMany({ where: { token } });
-    return result;
+  if (data.loginMethod === "password" && temporaryPassword) {
+    const loginUrl = `${origin}/login`;
+    const emailed = await sendCoachLoginEmail({
+      email: data.email,
+      firstName: data.firstName,
+      loginMethod: "password",
+      loginUrl,
+      temporaryPassword,
+    });
+    revalidatePath("/admin/coaches");
+    return {
+      ok: true,
+      loginMethod: "password",
+      email: data.email,
+      temporaryPassword,
+      loginUrl,
+      emailed,
+    };
   }
 
+  const linkResult = await generateMagicLink(svc.client, data.email, redirectTo);
+  if (!linkResult.ok) {
+    await prisma.coachInvite.deleteMany({ where: { token } });
+    return linkResult;
+  }
+
+  const emailed = await sendCoachLoginEmail({
+    email: data.email,
+    firstName: data.firstName,
+    loginMethod: "magiclink",
+    actionLink: linkResult.actionLink,
+  });
+
   revalidatePath("/admin/coaches");
-  redirect("/admin/coaches");
+  return {
+    ok: true,
+    loginMethod: "magiclink",
+    email: data.email,
+    actionLink: linkResult.actionLink,
+    emailed,
+  };
 }
 
 export async function revokeCoachInviteForm(formData: FormData): Promise<void> {
@@ -204,15 +349,16 @@ export async function resendCoachInviteForm(
 ): Promise<CoachInviteActionResult> {
   const idRaw = formData.get("inviteId");
   const inviteId = typeof idRaw === "string" ? idRaw.trim() : "";
-  return resendCoachInvite(inviteId);
+  const loginMethodRaw = formData.get("loginMethod");
+  const loginMethod =
+    loginMethodRaw === "password" ? "password" : "magiclink";
+  return resendCoachInvite(inviteId, loginMethod);
 }
 
-export async function revokeCoachInvite(
-  inviteId: string,
-): Promise<CoachInviteActionResult> {
+export async function revokeCoachInvite(inviteId: string): Promise<void> {
   await requireAdmin();
   const id = z.string().uuid().safeParse(inviteId);
-  if (!id.success) return { ok: false, error: "Invalid invite." };
+  if (!id.success) return;
 
   await prisma.coachInvite.updateMany({
     where: {
@@ -223,11 +369,11 @@ export async function revokeCoachInvite(
     data: { revokedAt: new Date() },
   });
   revalidatePath("/admin/coaches");
-  return { ok: true };
 }
 
 export async function resendCoachInvite(
   inviteId: string,
+  loginMethod: "magiclink" | "password" = "magiclink",
 ): Promise<CoachInviteActionResult> {
   await requireAdmin();
 
@@ -244,36 +390,78 @@ export async function resendCoachInvite(
     return { ok: false, error: "Invite expired. Create a new one." };
   }
 
-  const origin = await resolveAppOrigin();
-  const nextPath = `/coach/accept-invite?token=${encodeURIComponent(invite.token)}`;
-  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
-  const metadata = {
-    first_name: invite.firstName ?? "",
-    last_name: invite.lastName ?? "",
-  };
+  const temporaryPassword =
+    loginMethod === "password" ? generateTemporaryPassword() : undefined;
 
-  const result = await inviteCoachAndRecover(
+  const authResult = await ensureAuthUser(
     svc.client,
     invite.email,
-    redirectTo,
-    metadata,
+    loginMethod,
+    temporaryPassword,
   );
+  if (!authResult.ok) return authResult;
 
-  if (result.ok) {
-    revalidatePath("/admin/coaches");
+  try {
+    await prisma.$transaction(async (tx) => {
+      await provisionCoachFromInvite(tx, {
+        authUserId: authResult.userId,
+        email: invite.email,
+        firstName: invite.firstName ?? "",
+        lastName: invite.lastName ?? "",
+        role: invite.role,
+        allowedClubIds: invite.allowedClubIds,
+      });
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "PROVISION_FAILED";
+    return { ok: false, error: mapProvisionError(msg) };
   }
-  return result;
+
+  const origin = await resolveAppOrigin();
+  const redirectTo = `${origin}/auth/callback`;
+
+  if (loginMethod === "password" && temporaryPassword) {
+    const loginUrl = `${origin}/login`;
+    const emailed = await sendCoachLoginEmail({
+      email: invite.email,
+      firstName: invite.firstName ?? "",
+      loginMethod: "password",
+      loginUrl,
+      temporaryPassword,
+    });
+    revalidatePath("/admin/coaches");
+    return {
+      ok: true,
+      loginMethod: "password",
+      email: invite.email,
+      temporaryPassword,
+      loginUrl,
+      emailed,
+    };
+  }
+
+  const linkResult = await generateMagicLink(svc.client, invite.email, redirectTo);
+  if (!linkResult.ok) return linkResult;
+
+  const emailed = await sendCoachLoginEmail({
+    email: invite.email,
+    firstName: invite.firstName ?? "",
+    loginMethod: "magiclink",
+    actionLink: linkResult.actionLink,
+  });
+
+  revalidatePath("/admin/coaches");
+  return {
+    ok: true,
+    loginMethod: "magiclink",
+    email: invite.email,
+    actionLink: linkResult.actionLink,
+    emailed,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Inline commercial-detail editing for the staff/ZZP coach lists.
-//
-// These actions live alongside the invite ones so admins have one
-// surface for everything coach-account related. The hourly + court-rental
-// fields stay the source of truth for invoicing — they're already
-// mutated from `setCoachCourtRentalRate` (private-lessons surface) but
-// that page is buried behind a coach selector; the coaches list is the
-// natural place to keep them up to date day-to-day.
 // ---------------------------------------------------------------------------
 
 const NullableMoneySchema = z
@@ -309,11 +497,6 @@ export type UpdateCoachCommercialsResult =
   | { ok: true }
   | { ok: false; error: string };
 
-/**
- * Update the commercial fields on a staff `Coach` row from the admin
- * coaches list. Wraps an audit-logged transactional update so an
- * accidental rate change is always traceable.
- */
 export async function updateCoachCommercials(
   raw: z.input<typeof UpdateCoachCommercialsSchema>,
 ): Promise<UpdateCoachCommercialsResult> {
@@ -395,11 +578,6 @@ export type UpdateZzpCoachCommercialsResult =
   | { ok: true }
   | { ok: false; error: string };
 
-/**
- * ZZP-side equivalent of {@link updateCoachCommercials}. Kept as its
- * own action so the schema, audit row, and revalidation path stay
- * tight to the `zzp_coaches` table.
- */
 export async function updateZzpCoachCommercials(
   raw: z.input<typeof UpdateZzpCoachCommercialsSchema>,
 ): Promise<UpdateZzpCoachCommercialsResult> {

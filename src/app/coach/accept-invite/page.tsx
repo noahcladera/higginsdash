@@ -14,13 +14,15 @@ function buildErrorMessages(
 ): Record<string, string> {
   return {
     missing_token:
-      "This link is missing required information. Open the link from your invite email.",
+      "This link is missing required information. Ask an admin for a new coach login link.",
     invalid_invite: "This invite is not valid or was revoked.",
     expired: "This invite has expired. Ask an admin to send a new one.",
     email_mismatch:
       "You’re signed in with a different email than the invite. Sign out and use the invited address.",
     missing_person:
       "Your profile isn’t ready yet. Try again in a moment or contact the office.",
+    not_provisioned:
+      "Coach access is not set up yet. Ask an admin to resend your login link from Coaches → Pending invites.",
     has_zzp:
       `Your account already has an independent ${coachSingular.toLowerCase()} profile. Contact the office.`,
     has_staff_coach: `Your account already has a ${brandShortName} staff ${coachSingular.toLowerCase()} profile. Contact the office.`,
@@ -45,7 +47,7 @@ export default async function CoachAcceptInvitePage({
         <PageHeader
           kicker={coachRole}
           title="Invalid invite link"
-          description="Open the link from your invite email, or ask an admin to resend it."
+          description="Ask an admin for a coach login link from the Coaches screen."
         />
         <Button asChild variant="outline">
           <Link href="/login">Sign in</Link>
@@ -85,9 +87,6 @@ export default async function CoachAcceptInvitePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Make sure the signed-in auth user has a matching `people` row before
-  // the Activate button runs. Catching keeps the page renderable so a
-  // Prisma blip surfaces as visible copy, not a redacted RSC digest.
   if (user) {
     try {
       await ensurePersonForAuthUser({
@@ -99,13 +98,31 @@ export default async function CoachAcceptInvitePage({
     }
   }
 
+  const person =
+    user &&
+    (await prisma.person.findUnique({
+      where: { id: user.id },
+      include: { coach: true, zzpCoach: true },
+    }));
+
+  const hasCoachAccess =
+    person?.coach?.isActive === true || person?.zzpCoach?.isActive === true;
+
+  if (
+    user &&
+    user.email?.trim().toLowerCase() === invite.email.trim().toLowerCase() &&
+    hasCoachAccess
+  ) {
+    redirect("/coach");
+  }
+
   const loginNext = `/coach/accept-invite?token=${encodeURIComponent(token)}`;
 
   return (
     <div className="mx-auto max-w-lg space-y-6 px-4 py-16">
       <PageHeader
         kicker={`${terms.coach.singular} invite`}
-        title={`Finish setting up your ${terms.coach.singular.toLowerCase()} account`}
+        title={`Your ${terms.coach.singular.toLowerCase()} portal access`}
         description={
           invite.invitedBy.firstName || invite.invitedBy.lastName
             ? `Invited by ${[invite.invitedBy.firstName, invite.invitedBy.lastName].filter(Boolean).join(" ")}.`
@@ -137,12 +154,13 @@ export default async function CoachAcceptInvitePage({
       {!user ? (
         <div className="space-y-3">
           <p className="text-sm text-[var(--muted-foreground)]">
-            Sign in with the email address that received the invite. After you
-            sign in, return here if you’re not redirected automatically.
+            Sign in with the email address above using the magic link or
+            password your admin shared. You will land in the coach portal
+            automatically.
           </p>
           <Button asChild className="w-full">
             <Link href={`/login?next=${encodeURIComponent(loginNext)}`}>
-              Sign in to continue
+              Sign in
             </Link>
           </Button>
         </div>
@@ -158,13 +176,25 @@ export default async function CoachAcceptInvitePage({
         </div>
       ) : invite.expiresAt < new Date() ? (
         <p className="text-sm text-[var(--muted-foreground)]">
-          This invite expired. Ask an admin for a new invite.
+          This invite expired. Ask an admin for a new login link.
         </p>
+      ) : hasCoachAccess ? (
+        <div className="space-y-3">
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Your coach access is already active. Continue to the coach portal.
+          </p>
+          <Button asChild className="w-full">
+            <Link href="/coach">Go to coach portal</Link>
+          </Button>
+        </div>
       ) : (
         <form action={acceptCoachInvite} className="space-y-4">
           <input type="hidden" name="token" value={token} />
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Confirm to finish setup on this older invite link.
+          </p>
           <Button type="submit" className="w-full">
-            Activate coach portal access
+            Continue to coach portal
           </Button>
         </form>
       )}

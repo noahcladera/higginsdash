@@ -2,18 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { CoachEmploymentType, CoachInviteRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-function todayDateOnly(): Date {
-  const d = new Date();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
 /**
- * Completes CRM onboarding after the coach followed the Supabase invite link
- * and has an active session. Creates Coach or ZzpCoach + club scope, marks invite accepted.
+ * Legacy accept-invite confirmation. Coach roles are now assigned at invite
+ * time; this action only marks the invite accepted when a signed-in coach
+ * confirms or follows an older link.
  */
 export async function acceptCoachInvite(formData: FormData) {
   const tokenRaw = formData.get("token");
@@ -50,91 +45,27 @@ export async function acceptCoachInvite(formData: FormData) {
     redirect("/coach/accept-invite?error=email_mismatch");
   }
 
-  const existing = await prisma.person.findUnique({
+  const person = await prisma.person.findUnique({
     where: { id: user.id },
     include: { coach: true, zzpCoach: true },
   });
-  if (!existing) {
+  if (!person) {
     redirect("/coach/accept-invite?error=missing_person");
   }
-  if (invite.role === CoachInviteRole.staff_coach && existing.zzpCoach) {
-    redirect("/coach/accept-invite?error=has_zzp");
+
+  const hasCoachAccess =
+    person.coach?.isActive === true || person.zzpCoach?.isActive === true;
+
+  if (!hasCoachAccess) {
+    redirect("/coach/accept-invite?error=not_provisioned");
   }
-  if (invite.role === CoachInviteRole.zzp_coach && existing.coach) {
-    redirect("/coach/accept-invite?error=has_staff_coach");
-  }
 
-  await prisma.$transaction(async (tx) => {
-    const person = await tx.person.findUnique({
-      where: { id: user.id },
-      include: { coach: true, zzpCoach: true },
-    });
-    if (!person) {
-      throw new Error("MISSING_PERSON");
-    }
-
-    const firstName = invite.firstName?.trim() || person.firstName || "Coach";
-    const lastName = invite.lastName?.trim() || person.lastName || "";
-
-    await tx.person.update({
-      where: { id: person.id },
-      data: {
-        firstName,
-        lastName,
-      },
-    });
-
-    if (invite.role === CoachInviteRole.staff_coach) {
-      if (!person.coach) {
-        await tx.coach.create({
-          data: {
-            personId: person.id,
-            employmentType: CoachEmploymentType.employee,
-            joinedOn: todayDateOnly(),
-            isActive: true,
-          },
-        });
-      } else if (!person.coach.isActive) {
-        await tx.coach.update({
-          where: { personId: person.id },
-          data: { isActive: true, archivedAt: null },
-        });
-      }
-    } else {
-      if (!person.zzpCoach) {
-        await tx.zzpCoach.create({
-          data: {
-            personId: person.id,
-            isActive: true,
-          },
-        });
-      } else if (!person.zzpCoach.isActive) {
-        await tx.zzpCoach.update({
-          where: { personId: person.id },
-          data: { isActive: true, archivedAt: null },
-        });
-      }
-    }
-
-    await tx.coachClubAccess.deleteMany({
-      where: { personId: person.id },
-    });
-    if (invite.allowedClubIds.length > 0) {
-      await tx.coachClubAccess.createMany({
-        data: invite.allowedClubIds.map((clubId) => ({
-          personId: person.id,
-          clubId,
-        })),
-      });
-    }
-
-    await tx.coachInvite.update({
-      where: { id: invite.id },
-      data: {
-        acceptedAt: new Date(),
-        acceptedById: person.id,
-      },
-    });
+  await prisma.coachInvite.update({
+    where: { id: invite.id },
+    data: {
+      acceptedAt: new Date(),
+      acceptedById: person.id,
+    },
   });
 
   revalidatePath("/coach");
