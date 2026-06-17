@@ -28,7 +28,7 @@
  *
  * Pre-reqs:
  *   - `npm run db:seed` (programs, schools, venues, placeholder coach)
- *   - `npm run db:seed-stub-catalog` (creates the BSA pickup series)
+ *   - `npm run db:seed-real-catalog` (creates the BSA pickup series)
  */
 
 import assert from "node:assert/strict";
@@ -325,7 +325,7 @@ async function main() {
 
   if (programs.length === 0) {
     throw new Error(
-      "Catalog is empty — run `npm run db:seed-stub-catalog` first.",
+      "Catalog is empty — run `npm run db:seed-real-catalog` first.",
     );
   }
 
@@ -350,7 +350,7 @@ async function main() {
   });
   if (!bsaSeries) {
     throw new Error(
-      "No published BSA series found — run `npm run db:seed-stub-catalog`.",
+      "No published BSA series found — run `npm run db:seed-real-catalog`.",
     );
   }
 

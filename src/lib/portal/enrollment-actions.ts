@@ -30,7 +30,7 @@ import { isReturningHousehold as isReturningHouseholdHelper } from "@/lib/member
 import { notify, primaryEmailOf } from "@/lib/notifications";
 import { recordAudit } from "@/lib/audit";
 import { withSerializableRetry } from "@/lib/db/serializable";
-import { spendHouseholdCredit } from "@/lib/credits";
+import { spendHouseholdCredit, grantHouseholdCredit } from "@/lib/credits";
 
 /**
  * Self-enrollment + withdrawal server actions for the parent portal.
@@ -865,10 +865,12 @@ async function finalizePaidEnrollment(args: {
       });
     }
 
-    const enr = await tx.enrollment.findUniqueOrThrow({
+    // Link the enrollment to its payment for clean accounting/reconciliation.
+    await tx.enrollment.update({
       where: { id: args.enrollmentId },
-      select: { classSeriesId: true },
+      data: { paymentId: payment.id },
     });
+
     return {
       ok: true,
       status: "active" as const,
@@ -888,7 +890,7 @@ export async function withdrawEnrollment(input: {
   }
   const { enrollmentId, reason } = parsed.data;
 
-  const { person } = await requireMember();
+  const { person, householdId: actorHouseholdId } = await requireMember();
 
   const enrollment = await prisma.enrollment.findUnique({
     where: { id: enrollmentId },
@@ -955,6 +957,19 @@ export async function withdrawEnrollment(input: {
     firstSessionStart > now &&
     enrollment.status !== "waitlist";
 
+  // Auto-resolve before-start paid withdrawals as household credit instead of
+  // leaving a manual refund task for the office (at ~18% refund rate this is a
+  // big load). Credit is internal (no cash movement), reversible by an admin,
+  // and lessons-only — consistent with the credit ledger. Cash refunds remain
+  // a manual admin action. Requires a household to credit; otherwise we fall
+  // back to the manual refund flag.
+  const lessonCreditCents = Math.max(
+    0,
+    Math.round(Number(enrollment.pricePaid ?? 0) * 100),
+  );
+  const autoCredit =
+    flagForRefund && actorHouseholdId != null && lessonCreditCents > 0;
+
   // Promote the oldest waitlisted student inside the same transaction.
   // Picking the head with `FOR UPDATE SKIP LOCKED` means two parallel
   // withdraws on the same series can't both grab the same waitlister:
@@ -967,10 +982,13 @@ export async function withdrawEnrollment(input: {
         status: "withdrawn",
         withdrawnOn: now,
         withdrawalReason: reason ?? null,
-        refundRequestedAt: flagForRefund ? now : null,
-        refundRequestedReason: flagForRefund
-          ? reason ?? "Withdrawn before the series started while paid."
-          : null,
+        // When we auto-issue credit the refund is resolved, so don't also
+        // raise a manual refund flag for the office.
+        refundRequestedAt: flagForRefund && !autoCredit ? now : null,
+        refundRequestedReason:
+          flagForRefund && !autoCredit
+            ? reason ?? "Withdrawn before the series started while paid."
+            : null,
       },
     });
     await recordAudit({
@@ -984,9 +1002,24 @@ export async function withdrawEnrollment(input: {
         status: "withdrawn",
         withdrawnOn: now.toISOString(),
         withdrawalReason: reason ?? null,
-        refundRequestedAt: flagForRefund ? now.toISOString() : null,
+        refundRequestedAt: flagForRefund && !autoCredit ? now.toISOString() : null,
+        autoCreditCents: autoCredit ? lessonCreditCents : 0,
       },
     });
+
+    if (autoCredit && actorHouseholdId) {
+      await grantHouseholdCredit(
+        {
+          householdId: actorHouseholdId,
+          amountCents: lessonCreditCents,
+          reason: "withdrawal_refund",
+          createdByPersonId: person.id,
+          relatedEnrollmentId: enrollmentId,
+          note: `Auto-credit for withdrawal before the first session of ${enrollment.classSeries.name}.`,
+        },
+        tx,
+      );
+    }
 
     const heads = await tx.$queryRaw<
       { id: string; student_person_id: string }[]
@@ -1096,8 +1129,29 @@ export async function withdrawEnrollment(input: {
     });
   }
 
+  if (autoCredit) {
+    const payerEmail = await prisma.emailAddress.findFirst({
+      where: { personId: person.id, isPrimary: true, archivedAt: null },
+      select: { address: true },
+    });
+    await notify({
+      recipientPersonId: person.id,
+      recipientEmail: payerEmail?.address ?? null,
+      channels: payerEmail?.address ? ["in_app", "email"] : ["in_app"],
+      templateKey: "enrollment.withdrawn.credit",
+      subject: `Credit added for ${seriesName}`,
+      body:
+        `You withdrew ${studentName} from ${seriesName} before it started, so ` +
+        `we've added €${(lessonCreditCents / 100).toFixed(2)} of household credit ` +
+        `you can use toward a future class.`,
+      relatedTable: "enrollments",
+      relatedRowId: enrollmentId,
+    });
+  }
+
   revalidateAfterEnrollmentChange();
-  if (flagForRefund) {
+  revalidatePath("/portal/credits");
+  if (flagForRefund && !autoCredit) {
     revalidatePath("/admin/inbox");
     revalidatePath("/admin/payments");
   }

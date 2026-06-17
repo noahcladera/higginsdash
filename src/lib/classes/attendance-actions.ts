@@ -18,6 +18,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireMember } from "@/lib/auth/require-member";
+import { requireCoach } from "@/lib/auth/require-coach";
 import { isGuardianOf } from "@/lib/portal/queries";
 import { notify, primaryEmailOf } from "@/lib/notifications";
 import { recordAudit } from "@/lib/audit";
@@ -191,6 +192,125 @@ export async function markPlannedAbsence(input: {
   revalidatePath(`/admin/classes/${session.classSeries.id}`);
 
   return { ok: true, attendanceId: attendance.id };
+}
+
+// ---------------------------------------------------------------------------
+// Coach roll-call — mark present / absent / late / excused for a session.
+// ---------------------------------------------------------------------------
+
+const RollCallInput = z.object({
+  classSessionId: z.string().uuid(),
+  studentPersonId: z.string().uuid(),
+  status: z.enum(["present", "absent", "late", "excused"]),
+});
+
+export type RollCallResult =
+  | { ok: true; attendanceId: string; status: string }
+  | { ok: false; error: string };
+
+/**
+ * Coach marks a roster student present/absent/late/excused for one session.
+ * Authorization: the acting coach must be assigned to the series, OR be a
+ * substitute on this specific session. Idempotent upsert on
+ * `(classSessionId, studentPersonId)`.
+ */
+export async function markAttendance(input: {
+  classSessionId: string;
+  studentPersonId: string;
+  status: "present" | "absent" | "late" | "excused";
+}): Promise<RollCallResult> {
+  const parsed = RollCallInput.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input." };
+  const { classSessionId, studentPersonId, status } = parsed.data;
+
+  const { person } = await requireCoach();
+
+  const session = await prisma.classSession.findUnique({
+    where: { id: classSessionId },
+    select: {
+      id: true,
+      classSeries: {
+        select: {
+          id: true,
+          coaches: { select: { coachPersonId: true } },
+        },
+      },
+      coaches: {
+        select: { coachPersonId: true, substitutingForPersonId: true },
+      },
+    },
+  });
+  if (!session) return { ok: false, error: "Session not found." };
+
+  const isSeriesCoach = session.classSeries.coaches.some(
+    (c) => c.coachPersonId === person.id,
+  );
+  const isSessionCoach = session.coaches.some(
+    (c) =>
+      c.coachPersonId === person.id ||
+      c.substitutingForPersonId === person.id,
+  );
+  if (!isSeriesCoach && !isSessionCoach) {
+    return {
+      ok: false,
+      error: "You can only mark attendance for classes you coach.",
+    };
+  }
+
+  // Student must have a live (non-withdrawn) enrollment in this series.
+  const enrollment = await prisma.enrollment.findUnique({
+    where: {
+      classSeriesId_studentPersonId: {
+        classSeriesId: session.classSeries.id,
+        studentPersonId,
+      },
+    },
+    select: { status: true },
+  });
+  if (!enrollment || enrollment.status === "withdrawn") {
+    return {
+      ok: false,
+      error: "That student isn't on this class roster.",
+    };
+  }
+
+  // Attendance FK requires a Student row.
+  const studentExisting = await prisma.student.findUnique({
+    where: { personId: studentPersonId },
+    select: { personId: true },
+  });
+  if (!studentExisting) {
+    await prisma.student.create({ data: { personId: studentPersonId } });
+  }
+
+  const attendance = await prisma.attendance.upsert({
+    where: {
+      classSessionId_studentPersonId: { classSessionId, studentPersonId },
+    },
+    create: {
+      classSessionId,
+      studentPersonId,
+      status,
+      recordedByPersonId: person.id,
+    },
+    update: { status, recordedByPersonId: person.id },
+    select: { id: true, status: true },
+  });
+
+  await recordAudit({
+    tableName: "attendance",
+    rowId: attendance.id,
+    action: "update",
+    changedByPersonId: person.id,
+    after: { status, source: "coach_roll_call" },
+  });
+
+  revalidatePath(
+    `/coach/classes/${session.classSeries.id}/sessions/${classSessionId}`,
+  );
+  revalidatePath(`/admin/classes/${session.classSeries.id}`);
+
+  return { ok: true, attendanceId: attendance.id, status: attendance.status };
 }
 
 const UnmarkInput = z.object({

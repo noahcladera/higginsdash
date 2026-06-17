@@ -163,19 +163,25 @@ file.
       and `is_admin = true`.
 - [ ] Clicking "Sign out" returns you to `/login`.
 
-## What's NOT here yet
+## Status (updated)
 
-These are deferred to subsequent slices, in roughly this order:
+> The original "foundation slice" list below is **historical**. Most of it is
+> now built. As of the Phase-1 revamp the portal has: member self-signup,
+> membership purchase + renewal, class/camp/event enrollment (GoTimmy-style),
+> court booking + conflict detection, recurring blocks, ladder, in-app
+> notifications + transactional email, audit logging, and **real Mollie
+> checkout** (enrollment, membership, ladder, court booking) with demo fallback.
+> See [`handoff/summer-launch-runbook.md`](handoff/summer-launch-runbook.md)
+> for what's still config/manual at launch.
 
-1. Real data migration from `context/crm/` into `people` / `households` / etc.
-2. Heather's admin Members page (households + members + memberships table view).
-3. Member self-signup (parent creates household + members + buys membership).
-4. Court booking UI + conflict detection logic.
-5. Mollie payment integration.
-6. Class enrollment (GoTimmy replacement).
-7. Recurring blocks workflow (request → approve → invoice → active).
-8. Notifications sending pipeline.
-9. Audit log middleware (auto-write `audit_log` rows on writes).
+Still open / manual at launch:
+
+1. Full historical data migration from GoTimmy (parallel mode imports active
+   members/households only for the summer).
+2. Coach ZZP invoice checkout (collected manually).
+3. Cash refunds via the Mollie API (refunds are admin-entered; before-start
+   withdrawals auto-issue household credit).
+4. Joint-membership second-leg reconciliation (manual, by design).
 ## Deploy (Render or Vercel)
 
 Git remote: `https://github.com/noahcladera/higginsdash.git`

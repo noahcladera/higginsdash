@@ -1,5 +1,6 @@
 // Higgins Tennis NL — database schema
-// Source-of-truth: design/database.md (30 tables, 29 cross-entity rules, 5 ER sub-diagrams)
+// Source-of-truth: design/database.md (the conceptual model; note the schema has
+// since grown to 55 models / 57 enums as the product expanded — keep design.md in sync)
 //
 // Conventions:
 // - DB column / table names are snake_case (matches design/database.md 1:1)

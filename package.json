@@ -24,6 +24,7 @@
     "db:seed-examples": "dotenv -e .env.local -- tsx scripts/seed-examples.ts",
     "db:seed-coaches": "dotenv -e .env.local -- tsx scripts/seed-coaches.ts",
     "db:seed-real-catalog": "dotenv -e .env.local -- tsx scripts/seed-real-catalog.ts",
+    "db:import-brain": "dotenv -e .env.local -- tsx scripts/import-from-brain.ts",
     "db:backfill-class-prices": "dotenv -e .env.local -- tsx scripts/backfill-class-prices.ts",
     "smoke:gotimmy": "dotenv -e .env.local -- tsx scripts/smoke-gotimmy.ts",
     "deploy:check": "dotenv -e .env.local -- tsx scripts/verify-deploy-readiness.ts",

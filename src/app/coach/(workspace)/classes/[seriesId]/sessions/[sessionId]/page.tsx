@@ -18,6 +18,7 @@ import { formatSkillLevel } from "@/lib/skill-levels";
 import type { SkillLevelValue } from "@/lib/skill-levels";
 import { CoachLevelSelect } from "../../coach-level-select";
 import { RequestSubButton } from "./_request-sub-button";
+import { RollCallControl } from "./_roll-call";
 import { getStudentContactsBulk } from "@/lib/contacts/queries";
 import { ContactButton } from "@/components/contacts/contact-button";
 import { getCurrentBrand } from "@/lib/tenant";
@@ -74,7 +75,7 @@ export default async function CoachSessionPage({
       : series.venue.name;
 
   const studentIds = series.enrollments.map((e) => e.studentPersonId);
-  const [roles, plannedAbsences, subRequest, filledSubRow, contactGroups] = await Promise.all([
+  const [roles, plannedAbsences, subRequest, filledSubRow, contactGroups, attendanceRows] = await Promise.all([
     studentIds.length > 0
       ? prisma.householdMember.findMany({
           where: { personId: { in: studentIds } },
@@ -114,9 +115,23 @@ export default async function CoachSessionPage({
       },
     }),
     getStudentContactsBulk(studentIds),
+    studentIds.length > 0
+      ? prisma.attendance.findMany({
+          where: {
+            classSessionId: sessionId,
+            studentPersonId: { in: studentIds },
+          },
+          select: { studentPersonId: true, status: true },
+        })
+      : Promise.resolve(
+          [] as { studentPersonId: string; status: string }[],
+        ),
   ]);
   const contactByStudent = new Map(
     contactGroups.map((g) => [g.personId, g]),
+  );
+  const attendanceByStudent = new Map(
+    attendanceRows.map((a) => [a.studentPersonId, a.status]),
   );
   const roleByStudent = Object.fromEntries(
     roles.map((r) => [r.personId, r.roleInHousehold]),
@@ -272,6 +287,11 @@ export default async function CoachSessionPage({
                   <th className="px-4 py-3 font-medium">Student</th>
                   <th className="px-4 py-3 font-medium">Role</th>
                   <th className="px-4 py-3 font-medium">Level</th>
+                  {!isCancelled && (
+                    <th className="px-4 py-3 font-medium text-right">
+                      Attendance
+                    </th>
+                  )}
                   <th className="px-4 py-3 font-medium text-right">Contact</th>
                 </tr>
               </thead>
@@ -323,6 +343,24 @@ export default async function CoachSessionPage({
                           level={sl}
                         />
                       </td>
+                      {!isCancelled && (
+                        <td className="px-4 py-3 text-right">
+                          <RollCallControl
+                            classSessionId={sessionId}
+                            studentPersonId={e.studentPersonId}
+                            initialStatus={
+                              (attendanceByStudent.get(
+                                e.studentPersonId,
+                              ) as
+                                | "present"
+                                | "absent"
+                                | "late"
+                                | "excused"
+                                | undefined) ?? null
+                            }
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right">
                         {(() => {
                           const group = contactByStudent.get(e.studentPersonId);

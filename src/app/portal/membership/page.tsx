@@ -387,8 +387,9 @@ function MembershipCard({
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
         <p className="text-xs text-[var(--muted-foreground)]">
-          Renewals run through the office for now — Mollie self-checkout is on
-          the way.
+          {membership.daysUntilExpiry <= 30
+            ? "Your term ends soon — renew or change coverage from the buy menu below."
+            : "Renew or add coverage any time from the buy menu below."}
         </p>
         <div className="flex items-center gap-1">
           {membership.status === "active" &&
@@ -398,16 +399,15 @@ function MembershipCard({
                 expiresOnLabel={formatDate(membership.expiresOn)}
               />
             )}
-          <button
-            type="button"
-            disabled
-            title="Renewal self-service is coming soon. Contact the office to renew."
+          <Link
+            href="#buy"
+            title="Renew or change your coverage"
             className={cn(
-              "cursor-not-allowed rounded-full bg-[var(--surface-strong)] px-4 py-1.5 text-xs font-medium text-[var(--muted-foreground)]",
+              "rounded-full bg-[var(--triaz-ink)] px-4 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90",
             )}
           >
-            Renew (coming soon)
-          </button>
+            Renew
+          </Link>
         </div>
       </div>
     </article>

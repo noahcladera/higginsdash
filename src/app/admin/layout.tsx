@@ -131,6 +131,14 @@ export default async function AdminLayout({
   }
 
   const requestItems: ShellNavGroup["items"] = [];
+  if (f.classes) {
+    requestItems.push({
+      href: "/admin/enrollments/reviews",
+      label: "Enrollment reviews",
+      icon: <TicketIcon size={16} />,
+      badge: pending.enrollmentReviews,
+    });
+  }
   if (f.coachSubs) {
     requestItems.push({
       href: "/admin/coach-subs",
