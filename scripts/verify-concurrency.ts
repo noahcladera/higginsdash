@@ -185,7 +185,7 @@ async function tryEnroll(args: {
 }
 
 async function testEnrollmentCapacity(): Promise<boolean> {
-  console.log(`\n[1/2] enrollment capacity (parallel=${PARALLEL}, max=${MAX_STUDENTS})`);
+  console.log(`\n[1/1] enrollment capacity (parallel=${PARALLEL}, max=${MAX_STUDENTS})`);
   const f = await setupEnrollmentFixtures();
   try {
     const settled = await Promise.allSettled(
@@ -237,120 +237,10 @@ async function testEnrollmentCapacity(): Promise<boolean> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Test 2 — ladder position uniqueness
-// ---------------------------------------------------------------------------
-
-interface LadderFixtures {
-  seasonId: string;
-  personIds: string[];
-  cleanup: () => Promise<void>;
-}
-
-async function setupLadderFixtures(): Promise<LadderFixtures> {
-  const season = await prisma.ladderSeason.create({
-    data: {
-      name: `${TAG} season`,
-      startsOn: new Date(),
-      endsOn: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-      isActive: false,
-      entryFeeCents: 0,
-      challengeRange: 5,
-    },
-    select: { id: true },
-  });
-  const personIds: string[] = [];
-  for (let i = 0; i < PARALLEL; i++) {
-    const p = await prisma.person.create({
-      data: {
-        id: randomUUID(),
-        firstName: TAG,
-        lastName: `Ladder${i}`,
-      },
-      select: { id: true },
-    });
-    personIds.push(p.id);
-  }
-  return {
-    seasonId: season.id,
-    personIds,
-    cleanup: async () => {
-      await prisma.ladderEntry.deleteMany({ where: { seasonId: season.id } });
-      await prisma.ladderSeason.delete({ where: { id: season.id } });
-      await prisma.person.deleteMany({ where: { id: { in: personIds } } });
-    },
-  };
-}
-
-async function tryJoinLadder(seasonId: string, personId: string): Promise<number> {
-  return withSerializableRetry(async (tx) => {
-    const last = await tx.ladderEntry.findFirst({
-      where: { seasonId },
-      orderBy: { position: "desc" },
-      select: { position: true },
-    });
-    const nextPosition = (last?.position ?? 0) + 1;
-    await tx.ladderEntry.create({
-      data: {
-        seasonId,
-        personId,
-        position: nextPosition,
-        startPosition: nextPosition,
-        peakPosition: nextPosition,
-      },
-    });
-    return nextPosition;
-  });
-}
-
-async function testLadderPositions(): Promise<boolean> {
-  console.log(`\n[2/2] ladder position uniqueness (parallel=${PARALLEL})`);
-  const f = await setupLadderFixtures();
-  try {
-    const settled = await Promise.allSettled(
-      f.personIds.map((pid) => tryJoinLadder(f.seasonId, pid)),
-    );
-    const errors = settled.filter((s) => s.status === "rejected");
-    if (errors.length > 0) {
-      console.error("  FAIL: some joiners threw (expected zero P2002):");
-      for (const e of errors) {
-        console.error("   ", (e as PromiseRejectedResult).reason);
-      }
-      return false;
-    }
-    const positions = await prisma.ladderEntry.findMany({
-      where: { seasonId: f.seasonId },
-      select: { position: true },
-      orderBy: { position: "asc" },
-    });
-    const set = new Set(positions.map((p) => p.position));
-    if (set.size !== positions.length) {
-      console.error("  FAIL: duplicate positions detected", positions);
-      return false;
-    }
-    if (positions.length !== PARALLEL) {
-      console.error(
-        `  FAIL: expected ${PARALLEL} entries, got ${positions.length}`,
-      );
-      return false;
-    }
-    console.log("  positions:", positions.map((p) => p.position));
-    console.log("  PASS");
-    return true;
-  } finally {
-    await f.cleanup();
-  }
-}
-
-// ---------------------------------------------------------------------------
-// main
-// ---------------------------------------------------------------------------
-
 async function main() {
   let ok = true;
   try {
     ok = (await testEnrollmentCapacity()) && ok;
-    ok = (await testLadderPositions()) && ok;
   } finally {
     await prisma.$disconnect();
   }

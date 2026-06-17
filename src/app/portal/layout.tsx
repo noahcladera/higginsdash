@@ -154,8 +154,6 @@ function iconFor(href: string): React.ReactNode {
       return <ClassIcon />;
     case "/portal/request-trial":
       return <ClassIcon />;
-    case "/portal/ladder":
-      return <TrophyIcon />;
     case "/portal/inbox":
       return <InboxIcon />;
     case "/levels":

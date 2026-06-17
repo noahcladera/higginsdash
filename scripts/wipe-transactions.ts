@@ -116,34 +116,7 @@ async function main() {
       () => tx.coachSubRequest.count(),
     );
 
-    // 5. Ladder graph (awards -> matches -> availability -> entries -> seasons).
-    await step(
-      "ladder_awards",
-      () => tx.ladderAward.deleteMany({}),
-      () => tx.ladderAward.count(),
-    );
-    await step(
-      "ladder_matches",
-      () => tx.ladderMatch.deleteMany({}),
-      () => tx.ladderMatch.count(),
-    );
-    await step(
-      "ladder_availability",
-      () => tx.ladderAvailability.deleteMany({}),
-      () => tx.ladderAvailability.count(),
-    );
-    await step(
-      "ladder_entries",
-      () => tx.ladderEntry.deleteMany({}),
-      () => tx.ladderEntry.count(),
-    );
-    await step(
-      "ladder_seasons",
-      () => tx.ladderSeason.deleteMany({}),
-      () => tx.ladderSeason.count(),
-    );
-
-    // 6. Booking graph.
+    // 5. Booking graph.
     await step(
       "court_booking_partners",
       () => tx.courtBookingPartner.deleteMany({}),

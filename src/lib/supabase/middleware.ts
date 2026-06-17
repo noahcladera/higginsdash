@@ -81,8 +81,7 @@ export async function updateSession(request: NextRequest) {
     url.pathname.startsWith("/admin") ||
     (url.pathname.startsWith("/coach") && !isCoachAcceptInvite) ||
     url.pathname.startsWith("/portal") ||
-    url.pathname.startsWith("/levels") ||
-    url.pathname.startsWith("/lights");
+    url.pathname.startsWith("/levels");
   const isAuthRoute =
     url.pathname.startsWith("/login") ||
     url.pathname.startsWith("/signup") ||

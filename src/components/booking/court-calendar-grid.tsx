@@ -1173,13 +1173,6 @@ function CreateBookingDialog({
           />
 
           <div className="flex items-center justify-between gap-3">
-            <Link
-              href="/lights"
-              target="_blank"
-              className="text-xs text-[var(--accent)] underline underline-offset-2 hover:opacity-80"
-            >
-              Do you need to turn on the lights? →
-            </Link>
             {canPickDuration && (
               <button
                 type="button"

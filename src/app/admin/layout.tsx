@@ -11,7 +11,6 @@ import {
   CalendarIcon,
   TicketIcon,
   CardIcon,
-  TrophyIcon,
   InboxIcon,
 } from "@/components/icons";
 import { signOut } from "./actions";
@@ -224,13 +223,6 @@ export default async function AdminLayout({
       label: "Blocks",
       icon: <ClassIcon size={16} />,
       badge: pending.blockRequests,
-    });
-  }
-  if (f.ladder) {
-    bookingItems.push({
-      href: "/admin/ladder",
-      label: t.ladder.singular,
-      icon: <TrophyIcon size={16} />,
     });
   }
 

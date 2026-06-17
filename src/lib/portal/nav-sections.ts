@@ -105,7 +105,6 @@ async function _getPortalNavSections(
   const t = org.terms;
   const bookingsEnabled = f.courtBookings;
   const membershipsEnabled = f.memberships;
-  const ladderEnabled = f.ladder;
   const eventsEnabled = f.events;
   const inboxEnabled = f.inbox;
   const paymentsEnabled = f.payments;
@@ -194,13 +193,6 @@ async function _getPortalNavSections(
   }
   if (hasActiveMembership && bookingsEnabled) {
     playItems.push({ href: "/portal/bookings", label: "My bookings" });
-  }
-  if (hasActiveMembership && ladderEnabled) {
-    playItems.push({
-      href: "/portal/ladder",
-      label: t.ladder.singular,
-      hint: `${t.member.singular} challenge ${t.ladder.singular.toLowerCase()}`,
-    });
   }
 
   // Account group items

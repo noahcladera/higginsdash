@@ -532,35 +532,6 @@ async function seedLevelContent() {
   });
 }
 
-/**
- * Seed a single active LadderSeason so /portal/ladder doesn't render the
- * "between seasons" empty state in dev. We don't seed test entries here
- * — those need real `Person` rows from Supabase Auth which the catalog
- * seed deliberately doesn't create.
- */
-async function seedLadderSeason() {
-  const slug = "spring-2026";
-  const startsOn = new Date("2026-04-01T00:00:00Z");
-  const endsOn = new Date("2026-09-30T00:00:00Z");
-  await prisma.ladderSeason.upsert({
-    where: { slug },
-    create: {
-      name: "Spring 2026",
-      slug,
-      startsOn,
-      endsOn,
-      joinDeadline: new Date("2026-05-15T00:00:00Z"),
-      entryFeeCents: 1500,
-      challengeRange: 3,
-      isActive: true,
-      notes: "First adult ladder season — small fee covers court time.",
-    },
-    update: {
-      isActive: true,
-    },
-  });
-}
-
 async function main() {
   console.log("Seeding core anchor rows (system person + placeholder coach)…");
   await seedCore(prisma);
@@ -602,9 +573,6 @@ async function main() {
 
   console.log("Seeding korfball recurring_blocks…");
   await seedKorfballBlocks(courts);
-
-  console.log("Seeding ladder season…");
-  await seedLadderSeason();
 
   console.log("Seed complete.");
 }

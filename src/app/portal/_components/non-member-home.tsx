@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowRightIcon,
   CalendarIcon,
-  TrophyIcon,
   ClassIcon,
   FamilyIcon,
   UsersIcon,
@@ -81,8 +80,8 @@ export function NonMemberHome({
     ? "Find a lesson for the family. Membership when you're ready."
     : "Find a lesson. Become a member when you're ready.";
   const subtitle = isParent
-    ? `${greeting}${firstName ? `, ${firstName}` : ""}. Browse what's on for you and the kids — coaching is open to non-members too. A membership unlocks bookings, the ladder, and the best price on lessons.`
-    : `${greeting}${firstName ? `, ${firstName}` : ""}. Have a look at the lessons we run — anyone can sign up. A membership adds court bookings, ladder play, and member pricing.`;
+    ? `${greeting}${firstName ? `, ${firstName}` : ""}. Browse what's on for you and the kids — coaching is open to non-members too. A membership unlocks bookings and the best price on lessons.`
+    : `${greeting}${firstName ? `, ${firstName}` : ""}. Have a look at the lessons we run — anyone can sign up. A membership adds court bookings and member pricing.`;
 
   const randwijck = randwijckStatusOn();
   const adultJointSaving = jointSavings("adult", { isReturning: true });
@@ -147,8 +146,6 @@ export function NonMemberHome({
       <FamilyPitch hasAnyChild={hasAnyChild} />
 
       {/* 7 — Ladder teaser */}
-      <LadderTeaser brandName={brandName ?? ""} />
-
       {/* 8 — Season urgency */}
       <SeasonUrgency
         randwijckOpen={randwijck.isOpen}
@@ -253,8 +250,7 @@ function PriceAnchorStrip() {
 // 4 — Feature grid
 // ---------------------------------------------------------------------------
 
-function FeatureGrid({ brandName }: { brandName: string }) {
-  const ladderTitle = brandName ? `${brandName} ladder` : "Member ladder";
+function FeatureGrid({ brandName: _brandName }: { brandName: string }) {
   const features: {
     icon: React.ReactNode;
     title: string;
@@ -271,14 +267,9 @@ function FeatureGrid({ brandName }: { brandName: string }) {
       body: "Weekly classes for every level — beginner to high intermediate.",
     },
     {
-      icon: <TrophyIcon size={18} />,
-      title: ladderTitle,
-      body: "Adults challenge their way up the club rankings each season.",
-    },
-    {
-      icon: <FamilyIcon size={18} />,
-      title: "Cover the family",
-      body: "One family membership covers everyone in your household.",
+      icon: <UsersIcon size={18} />,
+      title: "Kids' programs",
+      body: "Group lessons, camps, school pickups, high performance.",
     },
     {
       icon: <ClockIcon size={18} />,
@@ -286,9 +277,9 @@ function FeatureGrid({ brandName }: { brandName: string }) {
       body: "Triaz drains in the rain — the season never really stops.",
     },
     {
-      icon: <UsersIcon size={18} />,
-      title: "Kids' programs",
-      body: "Group lessons, camps, school pickups, high performance.",
+      icon: <FamilyIcon size={18} />,
+      title: "Cover the family",
+      body: "One family membership covers everyone in your household.",
     },
   ];
   return (
@@ -476,46 +467,7 @@ function KidProgramTile({ title, body }: { title: string; body: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// 7 — Ladder teaser
-// ---------------------------------------------------------------------------
-
-function LadderTeaser({ brandName }: { brandName: string }) {
-  const title = brandName ? `The ${brandName} ladder` : "The ladder";
-  return (
-    <Section
-      title={title}
-      description="Once you're an adult member, challenge your way up the club rankings."
-    >
-      <div className="flex flex-col items-start gap-4 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--joint-soft)] text-[var(--joint-ink)]">
-            <TrophyIcon />
-          </div>
-          <div className="space-y-1">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
-              Members only
-            </div>
-            <h3 className="font-display text-xl font-medium tracking-tight">
-              Climb the ladder, win bragging rights.
-            </h3>
-            <p className="text-sm text-[var(--muted-foreground)]">
-              Adult members challenge each other every season — singles
-              ranking, real matches, real fun.
-            </p>
-          </div>
-        </div>
-        <Button asChild variant="outline" tone="neutral">
-          <Link href="/portal/ladder">
-            How it works <ArrowRightIcon size={14} />
-          </Link>
-        </Button>
-      </div>
-    </Section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 8 — Season urgency
+// 7 — Season urgency
 // ---------------------------------------------------------------------------
 
 function SeasonUrgency({

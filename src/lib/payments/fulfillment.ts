@@ -16,7 +16,6 @@ import {
 } from "@/app/portal/membership/actions";
 import { createEnrollment } from "@/lib/portal/enrollment-actions";
 import { createBooking } from "@/lib/booking/actions";
-import { joinLadder } from "@/lib/ladder/actions";
 
 export type CheckoutFulfillmentResult =
   | {
@@ -101,25 +100,6 @@ export async function fulfillCheckoutAction(
       revalidatePath("/portal/bookings");
       revalidatePath("/portal/book");
       revalidatePath("/admin/bookings");
-      return { ok: true };
-    }
-
-    case "ladder_join": {
-      const res = await joinLadder();
-      if (!res.ok) return { ok: false, error: res.error };
-      if (res.id) {
-        const entry = await prisma.ladderEntry.findUnique({
-          where: { id: res.id },
-          select: { paymentId: true },
-        });
-        if (entry?.paymentId) {
-          await prisma.payment.update({
-            where: { id: entry.paymentId },
-            data: { status: "paid", paidAt: new Date() },
-          });
-        }
-      }
-      revalidatePath("/portal/ladder");
       return { ok: true };
     }
   }

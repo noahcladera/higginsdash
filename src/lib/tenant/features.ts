@@ -74,14 +74,6 @@ export interface FeatureFlags {
   /** Per-site access rules when benefits differ by location. */
   clubAccessControl: boolean;
 
-  // ── Competition / Social ───────────────────────────────────────────────────
-  /** Ranked ladder or challenge list. */
-  ladder: boolean;
-  /** Seasonal league or division play. */
-  leagues: boolean;
-  /** Bracket or round-robin events. */
-  tournaments: boolean;
-
   // ── Memberships / Billing ──────────────────────────────────────────────────
   /** Recurring passes or plans with member-only pricing. */
   memberships: boolean;
@@ -93,21 +85,14 @@ export interface FeatureFlags {
   payments: boolean;
   /** Refund / cancellation workflow for past payments. */
   refunds: boolean;
-  /** Retail / merchandise checkout. */
-  proShop: boolean;
 
   // ── Delivery models ────────────────────────────────────────────────────────
   /** Programs delivered at partner schools or third-party sites. */
   schoolPartnerships: boolean;
   /** Collect learners at a school and bring them to your site. */
   pickupLogistics: boolean;
-  /** Volunteer shifts (desk, events) at member-run orgs. */
-  volunteerDuty: boolean;
 
   // ── Integrations ───────────────────────────────────────────────────────────
-  /** Optional Netherlands tennis federation (KNLTB) ratings and certification hooks. */
-  knltbIntegration: boolean;
-  /** Per-user iCal feed tokens for external calendars. */
   googleCalendarFeeds: boolean;
   /** WhatsApp links on series or term pages. */
   whatsappLinks: boolean;
@@ -162,23 +147,16 @@ export const BASE_FEATURE_FLAGS: FeatureFlags = {
   courtBookings: false,
   multiClub: false,
   clubAccessControl: false,
-  // Competition
-  ladder: false,
-  leagues: false,
-  tournaments: false,
   // Billing
   memberships: false,
   membershipCoverage: false,
   householdCredits: false,
   payments: false,
   refunds: false,
-  proShop: false,
   // Delivery
   schoolPartnerships: false,
   pickupLogistics: false,
-  volunteerDuty: false,
   // Integrations
-  knltbIntegration: false,
   googleCalendarFeeds: false,
   whatsappLinks: false,
   // Ops
@@ -399,32 +377,6 @@ export const FEATURE_FLAG_GROUPS: ReadonlyArray<FeatureFlagGroup> = [
     ],
   },
   {
-    id: "competition",
-    label: "Competition & ranked play",
-    description:
-      "Optional ranked ladders, seasonal leagues, and bracket-style events. Off for non-competitive schools or studios.",
-    flags: [
-      {
-        key: "ladder",
-        label: "Ranked challenge list",
-        description:
-          "Participants move up or down after scheduled fixtures or scored rounds.",
-      },
-      {
-        key: "leagues",
-        label: "Leagues / divisions",
-        description:
-          "Season-long structured competition across divisions or teams.",
-      },
-      {
-        key: "tournaments",
-        label: "Tournaments / brackets",
-        description:
-          "Short bracket or round-robin events with a defined start and end.",
-      },
-    ],
-  },
-  {
     id: "billing",
     label: "Memberships & billing",
     description: "Plans, payments, credits, and retail at the desk or online.",
@@ -461,12 +413,6 @@ export const FEATURE_FLAG_GROUPS: ReadonlyArray<FeatureFlagGroup> = [
           "Workflow for refunding past payments and handling cancellations.",
         requires: ["payments"],
       },
-      {
-        key: "proShop",
-        label: "Retail / merchandise",
-        description:
-          "Sell merchandise or supplies at the desk or through checkout (uniforms, accessories, sheet music, etc.).",
-      },
     ],
   },
   {
@@ -488,12 +434,6 @@ export const FEATURE_FLAG_GROUPS: ReadonlyArray<FeatureFlagGroup> = [
           "Collect learners at one site (e.g. a school) and bring them to your main location for sessions.",
         requires: ["schoolPartnerships"],
       },
-      {
-        key: "volunteerDuty",
-        label: "Volunteer shifts",
-        description:
-          "Schedule member or parent volunteer shifts (front desk, event setup). Common in member-run organizations.",
-      },
     ],
   },
   {
@@ -501,12 +441,6 @@ export const FEATURE_FLAG_GROUPS: ReadonlyArray<FeatureFlagGroup> = [
     label: "Integrations",
     description: "External calendars, chat links, and optional federation data.",
     flags: [
-      {
-        key: "knltbIntegration",
-        label: "KNLTB (Netherlands tennis federation)",
-        description:
-          "Optional regional integration: federation-style ratings and certification fields for staff and spaces. Niche outside racket sports in the Netherlands.",
-      },
       {
         key: "googleCalendarFeeds",
         label: "Calendar subscription feeds",

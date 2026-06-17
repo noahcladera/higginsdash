@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { setCoachAvailability } from "@/lib/coach/availability/actions";
-import { DAY_OF_WEEK_LABEL, formatMinuteOfDay } from "@/lib/ladder/rules";
+import { DAY_OF_WEEK_LABEL, formatMinuteOfDay } from "@/lib/scheduling/time-labels";
 import { useActionFeedback } from "@/lib/feedback";
 import { PlusIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";

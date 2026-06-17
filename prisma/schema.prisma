@@ -522,43 +522,7 @@ enum HouseholdCreditReason {
   @@map("household_credit_reason")
 }
 
-// Adult ladder
-enum LadderEntryStatus {
-  active
-  withdrawn
-
-  @@map("ladder_entry_status")
-}
-
-enum LadderMatchStatus {
-  /// Challenger has picked an opponent + slot, but hasn't sent yet (rare).
-  proposed
-  /// Sent to opponent, awaiting accept/decline.
-  awaiting_opponent
-  /// Both confirmed; court auto-booked.
-  scheduled
-  /// Played; one side has reported a score, awaiting the other to confirm.
-  awaiting_confirmation
-  /// Both sides agreed on the score; positions updated.
-  played
-  /// Cancelled before being played (no-show, withdrawal, declined, etc.).
-  cancelled
-  /// One side disputes the reported score; admin must resolve.
-  disputed
-
-  @@map("ladder_match_status")
-}
-
-enum LadderAwardKind {
-  /// Most wins in the calendar month.
-  mvp
-  /// Largest positive position climb (startPosition - currentPosition) in the month.
-  most_improved
-  /// Most matches played in the month.
-  iron_man
-
-  @@map("ladder_award_kind")
-}
+// Adult ladder enums removed — feature deleted for summer launch scope.
 
 // ============================================================================
 // 1. PEOPLE
@@ -634,9 +598,6 @@ model Person {
   classUpdatesPosted               ClassUpdate[]           @relation("ClassUpdatePostedBy")
   auditLogEntriesAuthored          AuditLog[]              @relation("AuditLogChangedBy")
   notifications                    Notification[]
-  ladderEntries                    LadderEntry[]
-  ladderMatchesReported            LadderMatch[]           @relation("LadderMatchReportedBy")
-  ladderAwards                     LadderAward[]
   householdCreditsCreated          HouseholdCredit[]       @relation("HouseholdCreditCreatedBy")
   classTransferRequestsRequested   ClassTransferRequest[]  @relation("ClassTransferRequestRequester")
   classTransferRequestsDecided     ClassTransferRequest[]  @relation("ClassTransferRequestDecidedBy")
@@ -1101,7 +1062,6 @@ model Club {
   courtBookings      CourtBooking[]
   recurringBlocks    RecurringBlock[]
   coachClubAccess    CoachClubAccess[]
-  ladderAvailability LadderAvailability[]
 
   @@map("clubs")
 }
@@ -1688,7 +1648,6 @@ model CourtBooking {
   cancellationDecidedBy Person?               @relation("CourtBookingCancellationDecidedBy", fields: [cancellationDecidedByPersonId], references: [id])
   partners              CourtBookingPartner[]
   paymentLines          PaymentLine[]
-  ladderMatches         LadderMatch[]
 
   @@index([courtId])
   @@index([clubId])
@@ -1809,7 +1768,6 @@ model Payment {
   enrollments         Enrollment[]
   courtBookings       CourtBooking[]
   recurringBlocks     RecurringBlock[]
-  ladderEntries       LadderEntry[]
   creditLedger        HouseholdCredit[]
   transferResolutions ClassTransferRequest[] @relation("ClassTransferResolutionPayment")
 
@@ -2147,165 +2105,6 @@ enum CalendarFeedScope {
   household
 
   @@map("calendar_feed_scope")
-}
-
-// ============================================================================
-// 7. ADULT LADDER
-// ============================================================================
-
-/// A named season of the adult ladder. Only one row should be `isActive=true`
-/// at a time. Players join the active season; matches accrue to it; positions
-/// reset when a new season opens. Past seasons are read-only history.
-model LadderSeason {
-  id             String    @id @default(uuid()) @db.Uuid
-  name           String
-  slug           String    @unique
-  startsOn       DateTime  @map("starts_on") @db.Date
-  endsOn         DateTime  @map("ends_on") @db.Date
-  joinDeadline   DateTime? @map("join_deadline") @db.Date
-  /// Entry fee in EUR cents. `0` = free.
-  entryFeeCents  Int       @default(1500) @map("entry_fee_cents")
-  isActive       Boolean   @default(false) @map("is_active")
-  /// How many positions above/below the viewer are challengeable.
-  challengeRange Int       @default(3) @map("challenge_range")
-  notes          String?
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  entries LadderEntry[]
-  matches LadderMatch[]
-  awards  LadderAward[]
-
-  @@index([isActive])
-  @@map("ladder_seasons")
-}
-
-/// A person's spot in a season's ranking. Position 1 = top of the ladder.
-/// Stats are cached for cheap leaderboard rendering and recomputed on each
-/// match completion.
-model LadderEntry {
-  id            String            @id @default(uuid()) @db.Uuid
-  seasonId      String            @map("season_id") @db.Uuid
-  personId      String            @map("person_id") @db.Uuid
-  position      Int
-  /// Position the entry was first placed at (always equal to `position` at
-  /// creation). Used to compute "Most improved" awards.
-  startPosition Int               @map("start_position")
-  /// Best (lowest) position ever reached this season.
-  peakPosition  Int               @map("peak_position")
-  joinedAt      DateTime          @default(now()) @map("joined_at") @db.Timestamptz(6)
-  /// Payment row for the entry fee. Null if the season was free or for
-  /// admin comp seats.
-  paymentId     String?           @map("payment_id") @db.Uuid
-  status        LadderEntryStatus @default(active)
-  withdrawnAt   DateTime?         @map("withdrawn_at") @db.Timestamptz(6)
-  wins          Int               @default(0)
-  losses        Int               @default(0)
-  matchesPlayed Int               @default(0) @map("matches_played")
-  lastPlayedAt  DateTime?         @map("last_played_at") @db.Timestamptz(6)
-  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  season              LadderSeason         @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-  person              Person               @relation(fields: [personId], references: [id])
-  payment             Payment?             @relation(fields: [paymentId], references: [id])
-  availability        LadderAvailability[]
-  matchesAsChallenger LadderMatch[]        @relation("LadderMatchChallenger")
-  matchesAsOpponent   LadderMatch[]        @relation("LadderMatchOpponent")
-  matchesWon          LadderMatch[]        @relation("LadderMatchWinner")
-
-  @@unique([seasonId, personId])
-  @@unique([seasonId, position])
-  @@index([seasonId])
-  @@index([personId])
-  @@map("ladder_entries")
-}
-
-/// A single recurring availability window for a ladder entry. Multiple
-/// rows let a player advertise e.g. "Sat 12-15 + Sun 11-13". Times are
-/// minutes-of-day in Europe/Amsterdam local time (0..1439). `clubId` is
-/// an optional preference; null = either club is fine.
-model LadderAvailability {
-  id          String   @id @default(uuid()) @db.Uuid
-  entryId     String   @map("entry_id") @db.Uuid
-  /// 0=Mon..6=Sun, matching `amsterdamDayOfWeek()` in src/lib/booking/time.ts.
-  dayOfWeek   Int      @map("day_of_week")
-  startMinute Int      @map("start_minute")
-  endMinute   Int      @map("end_minute")
-  clubId      String?  @map("club_id") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  entry LadderEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  club  Club?       @relation(fields: [clubId], references: [id])
-
-  @@index([entryId])
-  @@index([dayOfWeek])
-  @@map("ladder_availability")
-}
-
-/// A challenge / match between two ladder entries. Winning a challenge
-/// against a higher-ranked opponent triggers a position swap (handled in
-/// the score-confirmation server action). Score is stored as JSON of
-/// per-set games.
-model LadderMatch {
-  id                 String            @id @default(uuid()) @db.Uuid
-  seasonId           String            @map("season_id") @db.Uuid
-  challengerEntryId  String            @map("challenger_entry_id") @db.Uuid
-  opponentEntryId    String            @map("opponent_entry_id") @db.Uuid
-  status             LadderMatchStatus @default(awaiting_opponent)
-  /// Proposed slots (UTC) the challenger offered. Opponent picks one.
-  proposedSlots      DateTime[]        @map("proposed_slots") @db.Timestamptz(6)
-  /// The slot both players agreed on.
-  scheduledAt        DateTime?         @map("scheduled_at") @db.Timestamptz(6)
-  /// Auto-booked court for the agreed slot.
-  courtBookingId     String?           @map("court_booking_id") @db.Uuid
-  winnerEntryId      String?           @map("winner_entry_id") @db.Uuid
-  /// Per-set games as JSON, e.g. `[{a: 6, b: 4}, {a: 4, b: 6}, {a: 7, b: 5}]`
-  /// where `a` is the challenger and `b` is the opponent.
-  scoreJson          Json?             @map("score_json")
-  reportedByPersonId String?           @map("reported_by_person_id") @db.Uuid
-  reportedAt         DateTime?         @map("reported_at") @db.Timestamptz(6)
-  confirmedAt        DateTime?         @map("confirmed_at") @db.Timestamptz(6)
-  /// True after a swap was applied as a result of this match.
-  swapped            Boolean           @default(false)
-  cancelledAt        DateTime?         @map("cancelled_at") @db.Timestamptz(6)
-  cancelledReason    String?           @map("cancelled_reason")
-  disputeReason      String?           @map("dispute_reason")
-  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  season           LadderSeason  @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-  challengerEntry  LadderEntry   @relation("LadderMatchChallenger", fields: [challengerEntryId], references: [id])
-  opponentEntry    LadderEntry   @relation("LadderMatchOpponent", fields: [opponentEntryId], references: [id])
-  winnerEntry      LadderEntry?  @relation("LadderMatchWinner", fields: [winnerEntryId], references: [id])
-  courtBooking     CourtBooking? @relation(fields: [courtBookingId], references: [id])
-  reportedByPerson Person?       @relation("LadderMatchReportedBy", fields: [reportedByPersonId], references: [id])
-
-  @@index([seasonId, status])
-  @@index([challengerEntryId])
-  @@index([opponentEntryId])
-  @@index([scheduledAt])
-  @@map("ladder_matches")
-}
-
-/// Monthly recognition (MVP / Most improved / Iron man). Computed lazily
-/// when the ladder home page is visited; one row per (season, month, kind).
-model LadderAward {
-  id          String          @id @default(uuid()) @db.Uuid
-  seasonId    String          @map("season_id") @db.Uuid
-  /// First day of the month the award covers (date, no time).
-  month       DateTime        @db.Date
-  kind        LadderAwardKind
-  personId    String          @map("person_id") @db.Uuid
-  metricValue Int             @map("metric_value")
-  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  season LadderSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-  person Person       @relation(fields: [personId], references: [id])
-
-  @@unique([seasonId, month, kind])
-  @@index([seasonId, month])
-  @@map("ladder_awards")
 }
 
 /// Heather feedback v1: capture trial-lesson interest from people who

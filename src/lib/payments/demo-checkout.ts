@@ -82,8 +82,7 @@ export type DemoCheckoutAction =
         creditCentsApplied?: number;
       };
     }
-  | { kind: "court_booking_create"; payload: CreateBookingInput }
-  | { kind: "ladder_join"; payload: Record<string, never> };
+  | { kind: "court_booking_create"; payload: CreateBookingInput };
 
 export interface DemoCheckoutIntent {
   /** UUID, also the route param for `/demo/mollie/[id]`. */
