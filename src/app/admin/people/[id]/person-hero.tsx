@@ -5,7 +5,12 @@ import {
   formatSkillLevel,
   type SkillLevelValue,
 } from "@/lib/skill-levels";
-import { LevelInlineSelect } from "./level-select";
+import {
+  formatMedalLevel,
+  isMedalEligible,
+  type MedalLevelValue,
+} from "@/lib/medal-levels";
+import { StudentProgressionSelect } from "./progression-select";
 
 type Archetype = "student" | "parent" | "coach" | "plain";
 
@@ -16,6 +21,7 @@ type ChildSummary = {
   dateOfBirth: Date | null;
   gender: string | null;
   skillLevel: SkillLevelValue | null;
+  medalLevel: MedalLevelValue | null;
   isStudent: boolean;
 };
 
@@ -46,6 +52,7 @@ export type PersonHeroProps = {
   archetype: Archetype;
   student: {
     skillLevel: SkillLevelValue | null;
+  medalLevel: MedalLevelValue | null;
     enrollmentStatus: "active" | "paused" | "archived";
     school: string | null;
   } | null;
@@ -181,9 +188,14 @@ function StudentBlock({
   if (!student) return null;
   return (
     <dl className="grid grid-cols-[7rem_1fr] gap-x-4 gap-y-3 text-sm">
-      <Term>Level</Term>
+      <Term>{studentMedalEligible(person) ? "Medal" : "Level"}</Term>
       <Detail>
-        <LevelInlineSelect personId={person.id} level={student.skillLevel} />
+        <StudentProgressionSelect
+          personId={person.id}
+          medalEligible={studentMedalEligible(person)}
+          medalLevel={student.medalLevel}
+          skillLevel={student.skillLevel}
+        />
       </Detail>
 
       <Term>Status</Term>
@@ -272,7 +284,9 @@ function ParentBlock({ household, children }: PersonHeroProps) {
                   </span>
                   {c.isStudent && (
                     <Badge variant="outline" className="ml-auto">
-                      {formatSkillLevel(c.skillLevel)}
+                      {studentMedalEligible(c)
+                        ? formatMedalLevel(c.medalLevel)
+                        : formatSkillLevel(c.skillLevel)}
                     </Badge>
                   )}
                 </Link>
@@ -332,6 +346,12 @@ function EnrollmentBadge({
     case "archived":
       return <Badge variant="outline">Archived</Badge>;
   }
+}
+
+function studentMedalEligible(input: {
+  dateOfBirth: Date | null;
+}): boolean {
+  return isMedalEligible({ dateOfBirth: input.dateOfBirth });
 }
 
 function formatGender(g: string | null): string {

@@ -13,6 +13,7 @@ import { PersonDangerZone } from "./danger-zone";
 import { SYSTEM_PERSON_ID } from "@/lib/system-ids";
 import { format } from "@/lib/format";
 import type { SkillLevelValue } from "@/lib/skill-levels";
+import type { MedalLevelValue } from "@/lib/medal-levels";
 import { getPersonContacts } from "@/lib/contacts/queries";
 import { ContactButton } from "@/components/contacts/contact-button";
 import { getCurrentBrand } from "@/lib/tenant";
@@ -38,7 +39,7 @@ export default async function PersonDetailPage({
                 include: {
                   person: {
                     include: {
-                      student: { select: { skillLevel: true } },
+                      student: { select: { skillLevel: true, medalLevel: true } },
                       emails: {
                         where: { isPrimary: true, archivedAt: null },
                         select: { address: true },
@@ -156,6 +157,7 @@ export default async function PersonDetailPage({
           person.student
             ? {
                 skillLevel: person.student.skillLevel as SkillLevelValue | null,
+                medalLevel: person.student.medalLevel as MedalLevelValue | null,
                 enrollmentStatus: person.student.enrollmentStatus,
                 school: person.student.school,
               }
@@ -185,6 +187,8 @@ export default async function PersonDetailPage({
           gender: m.person.gender,
           skillLevel:
             (m.person.student?.skillLevel as SkillLevelValue | null) ?? null,
+          medalLevel:
+            (m.person.student?.medalLevel as MedalLevelValue | null) ?? null,
           isStudent: !!m.person.student,
         }))}
       />

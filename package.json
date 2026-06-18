@@ -30,6 +30,7 @@
     "smoke:coach": "dotenv -e .env.local -- tsx scripts/smoke-coach-e2e.ts",
     "qa:automated": "dotenv -e .env.local -- tsx scripts/run-qa-automated.ts",
     "deploy:check": "dotenv -e .env.local -- tsx scripts/verify-deploy-readiness.ts",
+    "mollie:check": "dotenv -e .env.local -- tsx scripts/check-mollie-config.ts",
     "db:migrate:prod": "dotenv -e .env.production.local -- prisma migrate deploy",
     "db:status:prod": "dotenv -e .env.production.local -- prisma migrate status",
     "db:seed:prod": "dotenv -e .env.production.local -- tsx prisma/seed.ts",

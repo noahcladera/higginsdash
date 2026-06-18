@@ -3,45 +3,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { KIDS_LEVELS, ADULT_LEVELS, type SkillLevelValue } from "@/lib/skill-levels";
+import { ADULT_LEVELS, type SkillLevelValue } from "@/lib/skill-levels";
+import { MEDAL_LEVELS, type MedalLevelValue } from "@/lib/medal-levels";
 
 /**
- * Age band + eligible skill-level multi-pill, shared by the create
+ * Age band + eligible level multi-pill, shared by the create
  * cascade and the locked edit page.
  *
- * Emits three hidden form inputs:
- *   - `minAge`               number | "" (blank = no lower bound)
- *   - `maxAge`               number | "" (blank = no upper bound)
- *   - `eligibleSkillLevels`  CSV of SkillLevel values
- *
- * `audience` ("kids" | "adults" | "mixed") drives which level pills
- * are visible: kids/mixed show the Tenniskids progression, adults/mixed
- * show the adult buckets.
+ * Kids programmes use medal levels; adults use skill levels.
  */
 export function AgeAndLevelField({
   audience,
   minAgeDefault = "",
   maxAgeDefault = "",
   levelsDefault = [],
+  medalLevelsDefault = [],
   onChange,
   onLevelsChange,
+  onMedalLevelsChange,
 }: {
   audience: "kids" | "adults" | "mixed";
   minAgeDefault?: string | number | "";
   maxAgeDefault?: string | number | "";
   levelsDefault?: SkillLevelValue[];
-  /**
-   * Fired whenever the age band changes. The parent uses this to feed
-   * the live "Series name" preview tile, since the series name now
-   * carries an `age 5-12` suffix derived from these inputs.
-   */
+  medalLevelsDefault?: MedalLevelValue[];
   onChange?: (band: { minAge: number | null; maxAge: number | null }) => void;
-  /**
-   * Fired whenever the eligible-level pill set changes. Adult series
-   * use this to drive the trailing level suffix in the live preview
-   * (e.g. `… adults Beginner & Intermediate`).
-   */
   onLevelsChange?: (levels: SkillLevelValue[]) => void;
+  onMedalLevelsChange?: (levels: MedalLevelValue[]) => void;
 }) {
   const [minAge, setMinAge] = useState<string>(
     minAgeDefault === "" || minAgeDefault == null ? "" : String(minAgeDefault),
@@ -52,11 +40,15 @@ export function AgeAndLevelField({
   const [levels, setLevels] = useState<Set<SkillLevelValue>>(
     () => new Set(levelsDefault),
   );
+  const [medalLevels, setMedalLevels] = useState<Set<MedalLevelValue>>(
+    () => new Set(medalLevelsDefault),
+  );
 
   const showKids = audience === "kids" || audience === "mixed";
   const showAdults = audience === "adults" || audience === "mixed";
 
-  const csv = useMemo(() => Array.from(levels).join(","), [levels]);
+  const skillCsv = useMemo(() => Array.from(levels).join(","), [levels]);
+  const medalCsv = useMemo(() => Array.from(medalLevels).join(","), [medalLevels]);
 
   useEffect(() => {
     if (!onChange) return;
@@ -73,8 +65,22 @@ export function AgeAndLevelField({
     onLevelsChange(Array.from(levels));
   }, [levels, onLevelsChange]);
 
-  function toggle(level: SkillLevelValue) {
+  useEffect(() => {
+    if (!onMedalLevelsChange) return;
+    onMedalLevelsChange(Array.from(medalLevels));
+  }, [medalLevels, onMedalLevelsChange]);
+
+  function toggleSkill(level: SkillLevelValue) {
     setLevels((prev) => {
+      const next = new Set(prev);
+      if (next.has(level)) next.delete(level);
+      else next.add(level);
+      return next;
+    });
+  }
+
+  function toggleMedal(level: MedalLevelValue) {
+    setMedalLevels((prev) => {
       const next = new Set(prev);
       if (next.has(level)) next.delete(level);
       else next.add(level);
@@ -86,7 +92,8 @@ export function AgeAndLevelField({
     <div className="space-y-4">
       <input type="hidden" name="minAge" value={minAge} />
       <input type="hidden" name="maxAge" value={maxAge} />
-      <input type="hidden" name="eligibleSkillLevels" value={csv} />
+      <input type="hidden" name="eligibleSkillLevels" value={skillCsv} />
+      <input type="hidden" name="eligibleMedalLevels" value={medalCsv} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -132,10 +139,13 @@ export function AgeAndLevelField({
         </div>
         {showKids && (
           <PillRow
-            title="Kids (Tenniskids)"
-            options={KIDS_LEVELS}
-            selected={levels}
-            onToggle={toggle}
+            title="Kids (medals)"
+            options={MEDAL_LEVELS.map((l) => ({
+              value: l.value,
+              label: `${l.shortCode} — ${l.label}`,
+            }))}
+            selected={medalLevels}
+            onToggle={(v) => toggleMedal(v as MedalLevelValue)}
           />
         )}
         {showAdults && (
@@ -143,7 +153,7 @@ export function AgeAndLevelField({
             title="Adults"
             options={ADULT_LEVELS}
             selected={levels}
-            onToggle={toggle}
+            onToggle={toggleSkill}
           />
         )}
         <p className="text-xs text-[var(--muted-foreground)]">
@@ -155,16 +165,16 @@ export function AgeAndLevelField({
   );
 }
 
-function PillRow({
+function PillRow<T extends string>({
   title,
   options,
   selected,
   onToggle,
 }: {
   title: string;
-  options: ReadonlyArray<{ value: SkillLevelValue; label: string }>;
-  selected: Set<SkillLevelValue>;
-  onToggle: (v: SkillLevelValue) => void;
+  options: ReadonlyArray<{ value: T; label: string }>;
+  selected: Set<T>;
+  onToggle: (v: T) => void;
 }) {
   return (
     <div className="space-y-1.5">

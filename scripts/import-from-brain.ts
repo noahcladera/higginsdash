@@ -26,7 +26,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
-import { PrismaClient, type Gender, type SkillLevel, type StudentEnrollmentStatus } from "@prisma/client";
+import { PrismaClient, type Gender, type MedalLevel, type SkillLevel, type StudentEnrollmentStatus } from "@prisma/client";
+import { skillLevelToMedalLevel } from "../src/lib/medal-levels";
 
 const prisma = new PrismaClient();
 
@@ -125,6 +126,37 @@ function skillLevelOf(raw: string): SkillLevel | null {
   if (s === "level_1" || s === "level1") return "red_1";
 
   return null;
+}
+
+/** Map workbook / brain medal codes onto Prisma MedalLevel. */
+function medalLevelOf(raw: string): MedalLevel | null {
+  const s = raw.trim().toLowerCase().replace(/\s+/g, "_");
+  if (!s) return null;
+  const direct: Record<string, MedalLevel> = {
+    rwb: "rwb",
+    red_white_blue: "rwb",
+    y: "yellow",
+    yellow: "yellow",
+    p: "purple",
+    purple: "purple",
+    b1: "blue_1",
+    blue_1: "blue_1",
+    b2: "blue_2",
+    blue_2: "blue_2",
+    r1: "red_1",
+    red_1: "red_1",
+    r2: "red_2",
+    red_2: "red_2",
+    o1: "orange_1",
+    orange_1: "orange_1",
+    o2: "orange_2",
+    orange_2: "orange_2",
+    g1: "green_1",
+    green_1: "green_1",
+    g2: "green_2",
+    green_2: "green_2",
+  };
+  return direct[s] ?? null;
 }
 
 function schoolOf(raw: string): string | null {
@@ -289,7 +321,10 @@ async function main() {
       stats.studentsCreated++;
       if (confirm && householdId) {
         const age = ageFrom(dob);
-        const skillLevel = skillLevelOf(s.skillLevel ?? "");
+        const rawLevel = s.skillLevel ?? s.medalLevel ?? "";
+        const skillLevel = skillLevelOf(rawLevel);
+        const medalLevel = skillLevelToMedalLevel(rawLevel) ?? medalLevelOf(rawLevel);
+        const isMinor = age == null || age < 18;
         const school = schoolOf(s.school ?? "");
         const studentId = randomUUID();
         await prisma.person.create({
@@ -304,7 +339,8 @@ async function main() {
               create: {
                 enrollmentStatus: enrollmentStatusOf(s.enrollmentStatus),
                 joinedOn: new Date(),
-                skillLevel: skillLevel ?? undefined,
+                skillLevel: isMinor ? undefined : (skillLevel ?? undefined),
+                medalLevel: isMinor ? (medalLevel ?? undefined) : undefined,
                 school: school ?? undefined,
               },
             },

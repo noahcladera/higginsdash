@@ -80,6 +80,30 @@ enum SkillLevel {
   @@map("skill_level")
 }
 
+/// Higgins medal ladder for under-18 students (workbook codes).
+enum MedalLevel {
+  rwb
+  yellow
+  purple
+  blue_1
+  blue_2
+  red_1
+  red_2
+  orange_1
+  orange_2
+  green_1
+  green_2
+
+  @@map("medal_level")
+}
+
+enum SeriesFeedbackVisibility {
+  coach_only
+  parent_visible
+
+  @@map("series_feedback_visibility")
+}
+
 /// Audience for CMS-style level descriptions (kids Tenniskids vs adult buckets).
 enum LevelAudience {
   kids
@@ -592,6 +616,9 @@ model Person {
   paymentCheckoutIntents           PaymentCheckoutIntent[]
   refundsProcessed                 Refund[]                @relation("RefundProcessedBy")
   skillHistoryChangesAuthored      StudentSkillHistory[]   @relation("SkillHistoryChangedBy")
+  medalHistoryChangesAuthored      StudentMedalHistory[]   @relation("MedalHistoryChangedBy")
+  seriesFeedbackAuthored           StudentSeriesFeedback[] @relation("SeriesFeedbackAuthor")
+  medalLevelContentsUpdated        MedalLevelContent[]     @relation("MedalLevelContentUpdatedBy")
   levelContentsUpdated             LevelContent[]          @relation("LevelContentUpdatedBy")
   studentLevelProgressAuthored     StudentLevelProgress[]  @relation("StudentLevelProgressAchievedBy")
   enrollmentLevelReviewsDecided    EnrollmentLevelReview[] @relation("EnrollmentLevelReviewDecidedBy")
@@ -685,6 +712,8 @@ model HouseholdMember {
 model Student {
   personId               String                  @id @map("person_id") @db.Uuid
   skillLevel             SkillLevel?             @map("skill_level")
+  /// Higgins medal level for minors (under-18). Single source of truth for kids.
+  medalLevel             MedalLevel?             @map("medal_level")
   enrollmentStatus       StudentEnrollmentStatus @default(active) @map("enrollment_status")
   joinedOn               DateTime                @default(now()) @map("joined_on") @db.Date
   preferredCoachPersonId String?                 @map("preferred_coach_person_id") @db.Uuid
@@ -701,9 +730,11 @@ model Student {
   enrollments    Enrollment[]
   attendance     Attendance[]
   skillHistory   StudentSkillHistory[]
+  medalHistory   StudentMedalHistory[]
   levelProgress  StudentLevelProgress[]
 
   @@index([skillLevel])
+  @@index([medalLevel])
   @@index([enrollmentStatus])
   @@map("students")
 }
@@ -724,6 +755,38 @@ model StudentSkillHistory {
 
   @@index([studentId, changedAt])
   @@map("student_skill_history")
+}
+
+/// Permanent audit trail of every medal-level change. Insert-only.
+model StudentMedalHistory {
+  id                String      @id @default(uuid()) @db.Uuid
+  studentId         String      @map("student_id") @db.Uuid
+  fromLevel         MedalLevel? @map("from_level")
+  toLevel           MedalLevel? @map("to_level")
+  changedAt         DateTime    @default(now()) @map("changed_at") @db.Timestamptz(6)
+  changedByPersonId String      @map("changed_by_person_id") @db.Uuid
+  reason            String?
+
+  student         Student @relation(fields: [studentId], references: [personId], onDelete: Cascade)
+  changedByPerson Person  @relation("MedalHistoryChangedBy", fields: [changedByPersonId], references: [id])
+
+  @@index([studentId, changedAt])
+  @@map("student_medal_history")
+}
+
+/// Admin-editable descriptions for each medal level (kids ladder).
+model MedalLevelContent {
+  medalLevel        MedalLevel @id @map("medal_level")
+  title             String     @map("title")
+  shortDescription  String?    @map("short_description")
+  longDescription   String     @default("") @map("long_description") @db.Text
+  howToGraduate     String?    @map("how_to_graduate") @db.Text
+  sortOrder         Int        @default(0) @map("sort_order")
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedByPersonId String?    @map("updated_by_person_id") @db.Uuid
+  updatedBy         Person?    @relation("MedalLevelContentUpdatedBy", fields: [updatedByPersonId], references: [id])
+
+  @@map("medal_level_content")
 }
 
 /// Admin-editable descriptions (and optional video URLs) for each skill level,
@@ -1280,6 +1343,7 @@ model ClassSeries {
   minStudents                Int?                  @map("min_students")
   waitlistEnabled            Boolean               @default(true) @map("waitlist_enabled")
   eligibleSkillLevels        SkillLevel[]          @map("eligible_skill_levels")
+  eligibleMedalLevels        MedalLevel[]          @map("eligible_medal_levels")
   minAge                     Int?                  @map("min_age")
   maxAge                     Int?                  @map("max_age")
   visibility                 ClassSeriesVisibility @default(public)
@@ -1354,6 +1418,7 @@ model ClassSeriesGroup {
   minAge              Int?         @map("min_age")
   maxAge              Int?         @map("max_age")
   eligibleSkillLevels SkillLevel[] @map("eligible_skill_levels")
+  eligibleMedalLevels MedalLevel[] @map("eligible_medal_levels")
   endTime             DateTime     @map("end_time") @db.Time(6)
   maxStudents         Int          @map("max_students")
   minStudents         Int?         @map("min_students")
@@ -1575,6 +1640,7 @@ model Enrollment {
   transfersFromThis ClassTransferRequest[] @relation("ClassTransferFromEnrollment")
   transfersToThis   ClassTransferRequest[] @relation("ClassTransferResultEnrollment")
   levelReview       EnrollmentLevelReview?
+  seriesFeedback    StudentSeriesFeedback?
 
   @@unique([classSeriesId, studentPersonId])
   @@index([studentPersonId])
@@ -1583,6 +1649,23 @@ model Enrollment {
   @@index([groupId])
   @@index([requiresReview])
   @@map("enrollments")
+}
+
+/// Coach feedback for a student on a specific class series (workbook Feedback column).
+model StudentSeriesFeedback {
+  id                String                   @id @default(uuid()) @db.Uuid
+  enrollmentId      String                   @unique @map("enrollment_id") @db.Uuid
+  body              String                   @db.Text
+  visibility        SeriesFeedbackVisibility @default(coach_only)
+  authorPersonId    String                   @map("author_person_id") @db.Uuid
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  author     Person     @relation("SeriesFeedbackAuthor", fields: [authorPersonId], references: [id])
+
+  @@index([authorPersonId])
+  @@map("student_series_feedback")
 }
 
 /// §2.12.8 — Per-session per-student attendance.

@@ -239,6 +239,44 @@ const SkillLevelCsvSchema = z
     return Array.from(new Set(out));
   });
 
+const MedalLevelEnum = z.enum([
+  "rwb",
+  "yellow",
+  "purple",
+  "blue_1",
+  "blue_2",
+  "red_1",
+  "red_2",
+  "orange_1",
+  "orange_2",
+  "green_1",
+  "green_2",
+]);
+
+const MedalLevelCsvSchema = z
+  .string()
+  .optional()
+  .transform((raw, ctx) => {
+    if (!raw || raw.trim() === "") return [] as z.infer<typeof MedalLevelEnum>[];
+    const tokens = raw
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const out: z.infer<typeof MedalLevelEnum>[] = [];
+    for (const tok of tokens) {
+      const parsed = MedalLevelEnum.safeParse(tok);
+      if (!parsed.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Invalid medal level: ${tok}`,
+        });
+        return z.NEVER;
+      }
+      out.push(parsed.data);
+    }
+    return Array.from(new Set(out));
+  });
+
 const SeriesSchema = z
   .object({
     programId: OptionalUuidSchema,
@@ -257,6 +295,7 @@ const SeriesSchema = z
     minAge: OptionalIntSchema,
     maxAge: OptionalIntSchema,
     eligibleSkillLevels: SkillLevelCsvSchema,
+    eligibleMedalLevels: MedalLevelCsvSchema,
     /** When provided, supersedes `leadCoachPersonId`/`assistantCoachPersonIds` */
     coachAssignmentsJson: CoachAssignmentsJsonSchema,
     /** Legacy lead/assistant fields, used when coachAssignmentsJson is empty. */
@@ -734,6 +773,7 @@ function ensureAtLeastOneGroup(args: {
     minAge: number | null;
     maxAge: number | null;
     eligibleSkillLevels: z.infer<typeof SkillLevelEnum>[];
+    eligibleMedalLevels?: z.infer<typeof MedalLevelEnum>[];
   };
 }): GroupInput[] {
   if (args.groups.length > 0) return args.groups;
@@ -748,6 +788,7 @@ function ensureAtLeastOneGroup(args: {
       minAge: args.fallback.minAge,
       maxAge: args.fallback.maxAge,
       eligibleSkillLevels: args.fallback.eligibleSkillLevels,
+      eligibleMedalLevels: args.fallback.eligibleMedalLevels ?? [],
       internalNotes: null,
       coachPersonId: null,
     },
@@ -990,6 +1031,7 @@ export async function createClassSeries(formData: FormData) {
       minAge: data.minAge,
       maxAge: data.maxAge,
       eligibleSkillLevels: data.eligibleSkillLevels,
+      eligibleMedalLevels: data.eligibleMedalLevels,
     },
   });
 
@@ -1222,6 +1264,7 @@ export async function createClassSeries(formData: FormData) {
         minAge: data.minAge,
         maxAge: data.maxAge,
         eligibleSkillLevels: data.eligibleSkillLevels,
+        eligibleMedalLevels: data.eligibleMedalLevels,
         maxStudents: data.maxStudents,
         minStudents: data.minStudents,
         internalNotes: data.internalNotes,
@@ -2353,6 +2396,7 @@ const AgeAndLevelSchema = z
     minAge: OptionalIntSchema,
     maxAge: OptionalIntSchema,
     eligibleSkillLevels: SkillLevelCsvSchema,
+    eligibleMedalLevels: MedalLevelCsvSchema,
   })
   .refine((s) => s.minAge == null || s.maxAge == null || s.minAge <= s.maxAge, {
     message: "minAge must be ≤ maxAge",
@@ -2416,6 +2460,7 @@ export async function updateAgeAndLevel(formData: FormData) {
       minAge: data.minAge,
       maxAge: data.maxAge,
       eligibleSkillLevels: data.eligibleSkillLevels,
+      eligibleMedalLevels: data.eligibleMedalLevels,
       name: nextName,
     },
   });

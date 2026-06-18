@@ -10,11 +10,18 @@ import {
   getCoachOtherSeriesForStudent,
 } from "@/lib/coach/class-series-queries";
 import {
+  formatStudentLevel,
+  studentMedalEligible,
+} from "@/lib/medals/coach-roster";
+import { formatMedalLevel } from "@/lib/medal-levels";
+import type { MedalLevelValue } from "@/lib/medal-levels";
+import {
   formatSkillLevel,
   getNextSkillLevel,
   type SkillLevelValue,
 } from "@/lib/skill-levels";
-import { CoachLevelSelect } from "../../coach-level-select";
+import { CoachStudentLevelSelect } from "../../coach-student-level-select";
+import { CoachSeriesFeedback } from "../../coach-series-feedback";
 import { getStudentContacts } from "@/lib/contacts/queries";
 import { ContactButton } from "@/components/contacts/contact-button";
 import { getCurrentBrand } from "@/lib/tenant";
@@ -53,8 +60,10 @@ export default async function CoachStudentProfilePage({
   const displayName =
     [p.firstName, p.lastName].filter(Boolean).join(" ").trim() || "Student";
   const sl = row.student.skillLevel as SkillLevelValue | null;
+  const medalLevel = row.student.medalLevel as MedalLevelValue | null;
+  const medalEligible = studentMedalEligible(p, null);
 
-  const [household, otherSeries, contactGroup, criteria, skillHistory] =
+  const [household, otherSeries, contactGroup, criteria, levelHistory] =
     await Promise.all([
       getStudentHouseholdAdults(personId),
       getCoachOtherSeriesForStudent(coach.id, personId, seriesId, {
@@ -66,21 +75,37 @@ export default async function CoachStudentProfilePage({
         : Promise.resolve(
             [] as Awaited<ReturnType<typeof getStudentCriteriaWithProgress>>,
           ),
-      prisma.studentSkillHistory.findMany({
-        where: { studentId: personId },
-        orderBy: { changedAt: "desc" },
-        take: 10,
-        select: {
-          id: true,
-          fromLevel: true,
-          toLevel: true,
-          changedAt: true,
-          reason: true,
-          changedByPerson: {
-            select: { firstName: true, lastName: true },
-          },
-        },
-      }),
+      medalEligible
+        ? prisma.studentMedalHistory.findMany({
+            where: { studentId: personId },
+            orderBy: { changedAt: "desc" },
+            take: 10,
+            select: {
+              id: true,
+              fromLevel: true,
+              toLevel: true,
+              changedAt: true,
+              reason: true,
+              changedByPerson: {
+                select: { firstName: true, lastName: true },
+              },
+            },
+          })
+        : prisma.studentSkillHistory.findMany({
+            where: { studentId: personId },
+            orderBy: { changedAt: "desc" },
+            take: 10,
+            select: {
+              id: true,
+              fromLevel: true,
+              toLevel: true,
+              changedAt: true,
+              reason: true,
+              changedByPerson: {
+                select: { firstName: true, lastName: true },
+              },
+            },
+          }),
     ]);
 
   const totalCriteria = criteria.length;
@@ -96,7 +121,13 @@ export default async function CoachStudentProfilePage({
         description={
           <>
             {series.name} · Current level:{" "}
-            <span className="font-medium">{formatSkillLevel(sl)}</span>
+            <span className="font-medium">
+              {formatStudentLevel({
+                medalEligible,
+                medalLevel,
+                skillLevel: sl,
+              })}
+            </span>
           </>
         }
         actions={
@@ -119,14 +150,28 @@ export default async function CoachStudentProfilePage({
         }
       />
 
-      <Section title="Skill level" description="Visible to coaches for this class.">
-        <CoachLevelSelect
+      <Section
+        title={medalEligible ? "Medal level" : "Skill level"}
+        description="Visible to coaches for this class."
+      >
+        <CoachStudentLevelSelect
           classSeriesId={seriesId}
           studentPersonId={personId}
-          level={sl}
+          medalEligible={medalEligible}
+          medalLevel={medalLevel}
+          skillLevel={sl}
         />
       </Section>
 
+      <Section title="Season feedback" description="Optional note for this programme.">
+        <CoachSeriesFeedback
+          enrollmentId={row.id}
+          initialBody={row.seriesFeedback?.body ?? ""}
+          initialVisibility={row.seriesFeedback?.visibility ?? "coach_only"}
+        />
+      </Section>
+
+      {!medalEligible && (
       <Section
         title="Progression"
         description={
@@ -255,26 +300,32 @@ export default async function CoachStudentProfilePage({
           </div>
         )}
       </Section>
+      )}
 
       <Section
-        title="Skill history"
+        title={medalEligible ? "Medal history" : "Skill history"}
         description="Most recent level changes for this student."
       >
-        {skillHistory.length === 0 ? (
+        {levelHistory.length === 0 ? (
           <p className="text-sm text-[var(--muted-foreground)]">
-            No skill changes recorded yet.
+            No changes recorded yet.
           </p>
         ) : (
           <ol className="space-y-2 text-sm">
-            {skillHistory.map((h) => (
+            {levelHistory.map((h) => (
               <li key={h.id} className="flex flex-wrap items-baseline gap-x-2">
                 <span className="tabular-nums text-[var(--muted-foreground)]">
                   {h.changedAt.toLocaleDateString()}
                 </span>
                 <span>
-                  {formatSkillLevel(h.fromLevel)} →{" "}
+                  {(medalEligible ? formatMedalLevel : formatSkillLevel)(
+                    h.fromLevel,
+                  )}{" "}
+                  →{" "}
                   <span className="font-medium">
-                    {formatSkillLevel(h.toLevel)}
+                    {(medalEligible ? formatMedalLevel : formatSkillLevel)(
+                      h.toLevel,
+                    )}
                   </span>
                 </span>
                 <span className="text-xs text-[var(--muted-foreground)]">

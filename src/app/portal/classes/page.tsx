@@ -9,6 +9,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { ClassIcon } from "@/components/icons";
 import { formatSkillLevel } from "@/lib/skill-levels";
+import { formatMedalLevel } from "@/lib/medal-levels";
+import { MedalBadge } from "@/components/medals/medal-badge";
 import { getUpcomingSessionsForStudents } from "@/lib/portal/queries";
 import {
   computeClassTiming,
@@ -150,9 +152,14 @@ export default async function PortalClassesPage({
           },
         },
         student: {
-          include: {
-            person: { select: { firstName: true, lastName: true } },
+          select: {
+            skillLevel: true,
+            medalLevel: true,
           },
+        },
+        seriesFeedback: {
+          where: { visibility: "parent_visible" },
+          select: { body: true, updatedAt: true },
         },
       },
       orderBy: { enrolledOn: "desc" },
@@ -180,7 +187,7 @@ export default async function PortalClassesPage({
     enrollableSelf
       ? prisma.student.findUnique({
           where: { personId: person.id },
-          select: { skillLevel: true },
+          select: { skillLevel: true, medalLevel: true },
         })
       : Promise.resolve(null),
   ]);
@@ -219,7 +226,9 @@ export default async function PortalClassesPage({
             Your level
           </span>
           <Badge tone="triaz" variant="solid" className="text-sm">
-            {formatSkillLevel(viewerStudent?.skillLevel)}
+            {viewerStudent?.medalLevel
+              ? formatMedalLevel(viewerStudent.medalLevel)
+              : formatSkillLevel(viewerStudent?.skillLevel)}
           </Badge>
           <span className="text-xs text-[var(--muted-foreground)]">
             Coaches keep this up to date — chat to them if you think it should change.
@@ -314,6 +323,14 @@ export default async function PortalClassesPage({
                               ? ` · ${e.classSeries.club.name}`
                               : ""}
                         </p>
+                        {e.student.medalLevel && (
+                          <MedalBadge level={e.student.medalLevel} />
+                        )}
+                        {e.seriesFeedback && (
+                          <blockquote className="mt-2 border-l-2 border-[var(--triaz)]/30 pl-3 text-sm text-[var(--foreground)]">
+                            {e.seriesFeedback.body}
+                          </blockquote>
+                        )}
                       </div>
                     </div>
                     <div className="mt-auto flex items-center justify-end gap-2 pt-2 border-t border-[var(--border)]">

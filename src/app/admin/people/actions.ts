@@ -8,6 +8,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { SYSTEM_PERSON_ID } from "@/lib/system-ids";
+import { isAdultSkillEligible, isMedalEligible } from "@/lib/medal-levels";
+import type { MedalLevel } from "@prisma/client";
 import { recordAudit } from "@/lib/audit";
 
 // ---------------------------------------------------------------------------
@@ -113,10 +115,33 @@ const SKILL_LEVELS = [
 
 const SkillLevelEnum = z.enum(SKILL_LEVELS);
 
+const MEDAL_LEVELS = [
+  "rwb",
+  "yellow",
+  "purple",
+  "blue_1",
+  "blue_2",
+  "red_1",
+  "red_2",
+  "orange_1",
+  "orange_2",
+  "green_1",
+  "green_2",
+] as const;
+
+const MedalLevelEnum = z.enum(MEDAL_LEVELS);
+
 const StudentInputSchema = z.object({
   enrollmentStatus: z.enum(["active", "paused", "archived"]),
   school: blank.pipe(z.string().max(200).optional()),
   medicalNotes: blank.pipe(z.string().max(2000).optional()),
+});
+
+const MedalLevelInputSchema = z.object({
+  medalLevel: z
+    .string()
+    .transform((v) => (v.trim() === "" ? null : v.trim()))
+    .pipe(z.union([MedalLevelEnum, z.null()])),
 });
 
 const SkillLevelInputSchema = z.object({
@@ -396,6 +421,13 @@ export async function setSkillLevel(personId: string, level: string | null) {
   const { person: adminPerson } = await requireAdmin();
   assertNotSystem(personId);
 
+  const eligibility = await getStudentEligibility(personId);
+  if (!eligibility.adultSkillEligible) {
+    throw new Error(
+      "Under-18 students use medal levels. Set their medal instead.",
+    );
+  }
+
   const { skillLevel } = SkillLevelInputSchema.parse({
     skillLevel: level ?? "",
   });
@@ -425,4 +457,69 @@ export async function setSkillLevel(personId: string, level: string | null) {
   ]);
 
   revalidatePath(`/admin/people/${personId}`);
+}
+
+export async function setMedalLevel(personId: string, level: string | null) {
+  const { person: adminPerson } = await requireAdmin();
+  assertNotSystem(personId);
+
+  const eligibility = await getStudentEligibility(personId);
+  if (!eligibility.medalEligible) {
+    throw new Error(
+      "Adults use skill levels, not medal levels. Set their skill level instead.",
+    );
+  }
+
+  const { medalLevel } = MedalLevelInputSchema.parse({
+    medalLevel: level ?? "",
+  });
+
+  const before = await prisma.student.findUnique({
+    where: { personId },
+    select: { medalLevel: true },
+  });
+  if (!before) {
+    throw new Error("This person is not a student.");
+  }
+
+  await prisma.$transaction([
+    prisma.student.update({
+      where: { personId },
+      data: { medalLevel: medalLevel as MedalLevel | null },
+    }),
+    prisma.studentMedalHistory.create({
+      data: {
+        studentId: personId,
+        fromLevel: before.medalLevel,
+        toLevel: medalLevel as MedalLevel | null,
+        changedByPersonId: adminPerson.id,
+        reason: "admin_edit",
+      },
+    }),
+  ]);
+
+  revalidatePath(`/admin/people/${personId}`);
+  revalidatePath("/portal/family");
+  revalidatePath("/admin/medals");
+}
+
+async function getStudentEligibility(personId: string) {
+  const row = await prisma.person.findUnique({
+    where: { id: personId },
+    select: {
+      dateOfBirth: true,
+      householdMember: { select: { roleInHousehold: true } },
+    },
+  });
+  if (!row) throw new Error("Person not found.");
+  return {
+    medalEligible: isMedalEligible({
+      dateOfBirth: row.dateOfBirth,
+      roleInHousehold: row.householdMember?.roleInHousehold ?? null,
+    }),
+    adultSkillEligible: isAdultSkillEligible({
+      dateOfBirth: row.dateOfBirth,
+      roleInHousehold: row.householdMember?.roleInHousehold ?? null,
+    }),
+  };
 }

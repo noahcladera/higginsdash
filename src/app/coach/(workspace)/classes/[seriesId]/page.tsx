@@ -10,11 +10,14 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getCoachSeriesWithRoster } from "@/lib/coach/class-series-queries";
 import { formatLocalDate } from "@/lib/booking/time";
 import {
-  formatSkillLevel,
-  getNextSkillLevel,
-  type SkillLevelValue,
-} from "@/lib/skill-levels";
-import { CoachLevelSelect } from "./coach-level-select";
+  formatStudentLevel,
+  getNextStudentLevel,
+  studentMedalEligible,
+} from "@/lib/medals/coach-roster";
+import type { MedalLevelValue } from "@/lib/medal-levels";
+import type { SkillLevelValue } from "@/lib/skill-levels";
+import { CoachStudentLevelSelect } from "./coach-student-level-select";
+import { CoachSeriesFeedback } from "./coach-series-feedback";
 import { cn } from "@/lib/utils";
 import { getStudentContactsBulk } from "@/lib/contacts/queries";
 import { ContactButton } from "@/components/contacts/contact-button";
@@ -69,12 +72,10 @@ export default async function CoachClassSeriesPage({
       },
     }),
     studentIds.length > 0
-      ? prisma.studentSkillHistory.groupBy({
+      ? prisma.studentMedalHistory.groupBy({
           by: ["studentId"],
           where: {
             studentId: { in: studentIds },
-            // Anything recorded after the series started counts as
-            // "the coach already confirmed this season".
             changedAt: { gte: series.startsOn },
           },
           _max: { changedAt: true },
@@ -127,19 +128,28 @@ export default async function CoachClassSeriesPage({
       {seasonReviewWindowOpen && enrollmentsNeedingReview.length > 0 && (
         <SeasonReviewBanner
           endsOn={series.endsOn}
-          enrollments={enrollmentsNeedingReview.map((e) => ({
-            id: e.id,
-            studentPersonId: e.studentPersonId,
-            displayName:
-              [
-                e.student.person.firstName,
-                e.student.person.lastName,
-              ]
-                .filter(Boolean)
-                .join(" ")
-                .trim() || "Unnamed",
-            currentLevel: e.student.skillLevel as SkillLevelValue | null,
-          }))}
+          enrollments={enrollmentsNeedingReview.map((e) => {
+            const medalEligible = studentMedalEligible(
+              e.student.person,
+              roleByStudent[e.studentPersonId],
+            );
+            return {
+              id: e.id,
+              studentPersonId: e.studentPersonId,
+              displayName:
+                [
+                  e.student.person.firstName,
+                  e.student.person.lastName,
+                ]
+                  .filter(Boolean)
+                  .join(" ")
+                  .trim() || "Unnamed",
+              currentLevel: medalEligible
+                ? (e.student.medalLevel as MedalLevelValue | null)
+                : (e.student.skillLevel as SkillLevelValue | null),
+              medalEligible,
+            };
+          })}
         />
       )}
 
@@ -168,7 +178,7 @@ export default async function CoachClassSeriesPage({
 
       <Section
         title="Students"
-        description="Skill level saves automatically. Tap a name for household contacts."
+        description="Medal or skill level saves automatically. Add season feedback per student."
       >
         {series.enrollments.length === 0 ? (
           <EmptyState
@@ -183,6 +193,7 @@ export default async function CoachClassSeriesPage({
                   <th className="px-4 py-3 font-medium">Student</th>
                   <th className="px-4 py-3 font-medium">Role</th>
                   <th className="px-4 py-3 font-medium">Level</th>
+                  <th className="px-4 py-3 font-medium">Feedback</th>
                   <th className="px-4 py-3 font-medium text-right">Contact</th>
                 </tr>
               </thead>
@@ -193,7 +204,14 @@ export default async function CoachClassSeriesPage({
                     [p.firstName, p.lastName].filter(Boolean).join(" ").trim() ||
                     "Unnamed";
                   const role = roleByStudent[e.studentPersonId] ?? null;
+                  const medalEligible = studentMedalEligible(p, role);
+                  const medalLevel = e.student.medalLevel as MedalLevelValue | null;
                   const sl = e.student.skillLevel as SkillLevelValue | null;
+                  const levelLabel = formatStudentLevel({
+                    medalEligible,
+                    medalLevel,
+                    skillLevel: sl,
+                  });
                   const needsReview =
                     promptActive && !reviewedThisSeason.has(e.studentPersonId);
                   return (
@@ -224,7 +242,7 @@ export default async function CoachClassSeriesPage({
                       </td>
                       <td className="px-4 py-3">
                         <div className="mb-1 flex items-center gap-2 md:hidden">
-                          <span>{formatSkillLevel(sl)}</span>
+                          <span>{levelLabel}</span>
                           {needsReview && (
                             <Badge tone="warning" variant="soft" className="text-[10px]">
                               Confirm
@@ -232,10 +250,12 @@ export default async function CoachClassSeriesPage({
                           )}
                         </div>
                         <div className="hidden items-center gap-2 md:flex">
-                          <CoachLevelSelect
+                          <CoachStudentLevelSelect
                             classSeriesId={seriesId}
                             studentPersonId={e.studentPersonId}
-                            level={sl}
+                            medalEligible={medalEligible}
+                            medalLevel={medalLevel}
+                            skillLevel={sl}
                           />
                           {needsReview && (
                             <Badge tone="warning" variant="soft" className="text-[10px]">
@@ -244,12 +264,23 @@ export default async function CoachClassSeriesPage({
                           )}
                         </div>
                         <div className="md:hidden">
-                          <CoachLevelSelect
+                          <CoachStudentLevelSelect
                             classSeriesId={seriesId}
                             studentPersonId={e.studentPersonId}
-                            level={sl}
+                            medalEligible={medalEligible}
+                            medalLevel={medalLevel}
+                            skillLevel={sl}
                           />
                         </div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <CoachSeriesFeedback
+                          enrollmentId={e.id}
+                          initialBody={e.seriesFeedback?.body ?? ""}
+                          initialVisibility={
+                            e.seriesFeedback?.visibility ?? "coach_only"
+                          }
+                        />
                       </td>
                       <td className="px-4 py-3 text-right">
                         {(() => {
@@ -292,7 +323,8 @@ function SeasonReviewBanner({
     id: string;
     studentPersonId: string;
     displayName: string;
-    currentLevel: SkillLevelValue | null;
+    currentLevel: MedalLevelValue | SkillLevelValue | null;
+    medalEligible: boolean;
   }>;
 }) {
   return (
@@ -307,7 +339,39 @@ function SeasonReviewBanner({
       </div>
       <ul className="mt-4 divide-y divide-[var(--border)] rounded-md border border-[var(--border)] bg-[var(--background)]">
         {enrollments.map((e) => {
-          const next = getNextSkillLevel(e.currentLevel);
+          const next = getNextStudentLevel({
+            medalEligible: e.medalEligible,
+            medalLevel: e.medalEligible
+              ? (e.currentLevel as MedalLevelValue | null)
+              : null,
+            skillLevel: e.medalEligible
+              ? null
+              : (e.currentLevel as SkillLevelValue | null),
+          });
+          const currentLabel = e.medalEligible
+            ? formatStudentLevel({
+                medalEligible: true,
+                medalLevel: e.currentLevel as MedalLevelValue | null,
+                skillLevel: null,
+              })
+            : formatStudentLevel({
+                medalEligible: false,
+                medalLevel: null,
+                skillLevel: e.currentLevel as SkillLevelValue | null,
+              });
+          const nextLabel = next
+            ? e.medalEligible
+              ? formatStudentLevel({
+                  medalEligible: true,
+                  medalLevel: next as MedalLevelValue,
+                  skillLevel: null,
+                })
+              : formatStudentLevel({
+                  medalEligible: false,
+                  medalLevel: null,
+                  skillLevel: next as SkillLevelValue,
+                })
+            : null;
           return (
             <li
               key={e.id}
@@ -316,7 +380,7 @@ function SeasonReviewBanner({
               <div className="space-y-0.5">
                 <div className="font-medium">{e.displayName}</div>
                 <div className="text-xs text-[var(--muted-foreground)]">
-                  Currently {formatSkillLevel(e.currentLevel)}
+                  Currently {currentLabel}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -324,15 +388,15 @@ function SeasonReviewBanner({
                   <input type="hidden" name="enrollmentId" value={e.id} />
                   <input type="hidden" name="outcome" value="stayed" />
                   <Button type="submit" variant="outline" size="sm">
-                    Stay at {formatSkillLevel(e.currentLevel)}
+                    Stay at {currentLabel}
                   </Button>
                 </form>
-                {next && (
+                {next && nextLabel && (
                   <form action={recordReview}>
                     <input type="hidden" name="enrollmentId" value={e.id} />
                     <input type="hidden" name="outcome" value="promoted" />
                     <Button type="submit" size="sm">
-                      Promote to {formatSkillLevel(next)}
+                      Promote to {nextLabel}
                     </Button>
                   </form>
                 )}
@@ -359,12 +423,12 @@ function SkillReviewBanner({
       <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <div className="font-semibold">
-            Time to confirm skill levels
+            Time to confirm medal / skill levels
           </div>
           <p className="text-[var(--muted-foreground)]">
             You&apos;ve taught {sessionsCompleted} session
             {sessionsCompleted === 1 ? "" : "s"} of this series.
-            Take a moment to set or update the skill level for{" "}
+            Take a moment to set or update the medal or skill level for{" "}
             <span className="font-medium text-[var(--triaz-ink)]">
               {remaining} of {totalRoster}
             </span>{" "}

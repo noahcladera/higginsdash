@@ -22,7 +22,16 @@ import {
   getPreviousSkillLevel,
   type SkillLevelValue,
 } from "@/lib/skill-levels";
+import {
+  formatMedalLevel,
+  getNextMedalLevel,
+  getPreviousMedalLevel,
+  isMedalEligible,
+  type MedalLevelValue,
+} from "@/lib/medal-levels";
 import { changeStudentSkillLevel } from "@/lib/levels/student-level-pipeline";
+import { changeStudentMedalLevel } from "@/lib/medals/student-medal-pipeline";
+import type { MedalLevel, SkillLevel } from "@prisma/client";
 
 const SKILL_LEVELS = [
   "red_1",
@@ -41,11 +50,26 @@ const SKILL_LEVELS = [
   "adult_advanced",
 ] as const;
 
+const MEDAL_LEVELS = [
+  "rwb",
+  "yellow",
+  "purple",
+  "blue_1",
+  "blue_2",
+  "red_1",
+  "red_2",
+  "orange_1",
+  "orange_2",
+  "green_1",
+  "green_2",
+] as const;
+
+const MedalLevelEnum = z.enum(MEDAL_LEVELS);
+
 const RecordReviewSchema = z.object({
   enrollmentId: z.string().uuid(),
   outcome: z.enum(["stayed", "promoted", "demoted"]),
-  /** Optional explicit target — defaults to neighbouring level on the ladder. */
-  toLevel: z.enum(SKILL_LEVELS).optional(),
+  toLevel: z.union([z.enum(SKILL_LEVELS), MedalLevelEnum]).optional(),
   comment: z
     .string()
     .max(2000)
@@ -79,7 +103,15 @@ export async function recordReview(formData: FormData) {
       student: {
         select: {
           skillLevel: true,
-          person: { select: { firstName: true, lastName: true } },
+          medalLevel: true,
+          person: {
+            select: {
+              firstName: true,
+              lastName: true,
+              dateOfBirth: true,
+              householdMember: { select: { roleInHousehold: true } },
+            },
+          },
         },
       },
       levelReview: { select: { id: true } },
@@ -96,37 +128,79 @@ export async function recordReview(formData: FormData) {
     );
   }
 
-  const fromLevel = enrollment.student.skillLevel as SkillLevelValue | null;
+  const medalEligible = isMedalEligible({
+    dateOfBirth: enrollment.student.person.dateOfBirth,
+    roleInHousehold:
+      enrollment.student.person.householdMember?.roleInHousehold ?? null,
+  });
 
-  // Resolve the target level when the form didn't pin one. `stayed`
-  // keeps the same level (toLevel = null in the DB). promoted/demoted
-  // walk the ladder.
-  let resolvedToLevel: SkillLevelValue | null = null;
+  const fromSkillLevel = enrollment.student.skillLevel as SkillLevelValue | null;
+  const fromMedalLevel = enrollment.student.medalLevel as MedalLevelValue | null;
+  const formatLevel = (level: string | null) =>
+    medalEligible ? formatMedalLevel(level) : formatSkillLevel(level);
+
+  let resolvedToSkill: SkillLevel | null = null;
+  let resolvedToMedal: MedalLevel | null = null;
+
   if (parsed.outcome === "stayed") {
-    resolvedToLevel = null;
+    resolvedToSkill = null;
+    resolvedToMedal = null;
   } else if (parsed.outcome === "promoted") {
-    resolvedToLevel = parsed.toLevel ?? getNextSkillLevel(fromLevel);
-    if (!resolvedToLevel) {
-      throw new Error(
-        `${formatSkillLevel(fromLevel)} is the top of the ladder; nothing to promote to.`,
-      );
+    if (medalEligible) {
+      resolvedToMedal =
+        (parsed.toLevel as MedalLevel | undefined) ??
+        getNextMedalLevel(fromMedalLevel);
+      if (!resolvedToMedal) {
+        throw new Error(
+          `${formatMedalLevel(fromMedalLevel)} is the top of the medal ladder; nothing to promote to.`,
+        );
+      }
+    } else {
+      resolvedToSkill =
+        (parsed.toLevel as SkillLevel | undefined) ??
+        getNextSkillLevel(fromSkillLevel);
+      if (!resolvedToSkill) {
+        throw new Error(
+          `${formatSkillLevel(fromSkillLevel)} is the top of the ladder; nothing to promote to.`,
+        );
+      }
     }
   } else {
-    resolvedToLevel = parsed.toLevel ?? getPreviousSkillLevel(fromLevel);
-    if (!resolvedToLevel) {
-      throw new Error(
-        `${formatSkillLevel(fromLevel)} is the bottom of the ladder; nothing to demote to.`,
-      );
+    if (medalEligible) {
+      resolvedToMedal =
+        (parsed.toLevel as MedalLevel | undefined) ??
+        getPreviousMedalLevel(fromMedalLevel);
+      if (!resolvedToMedal) {
+        throw new Error(
+          `${formatMedalLevel(fromMedalLevel)} is the bottom of the medal ladder; nothing to demote to.`,
+        );
+      }
+    } else {
+      resolvedToSkill =
+        (parsed.toLevel as SkillLevel | undefined) ??
+        getPreviousSkillLevel(fromSkillLevel);
+      if (!resolvedToSkill) {
+        throw new Error(
+          `${formatSkillLevel(fromSkillLevel)} is the bottom of the ladder; nothing to demote to.`,
+        );
+      }
     }
   }
+
+  const fromLevel = medalEligible ? fromMedalLevel : fromSkillLevel;
+  const resolvedToLevel = medalEligible ? resolvedToMedal : resolvedToSkill;
 
   await prisma.enrollmentLevelReview.create({
     data: {
       enrollmentId: enrollment.id,
       decidedByPersonId: person.id,
       outcome: parsed.outcome,
-      fromLevel: fromLevel ?? undefined,
-      toLevel: resolvedToLevel ?? undefined,
+      fromLevel: medalEligible
+        ? undefined
+        : ((fromSkillLevel ?? undefined) as SkillLevel | undefined),
+      toLevel: medalEligible
+        ? undefined
+        : ((resolvedToSkill ?? undefined) as SkillLevel | undefined),
       comment: parsed.comment,
     },
   });
@@ -148,8 +222,8 @@ export async function recordReview(formData: FormData) {
     const actor =
       [person.firstName, person.lastName].filter(Boolean).join(" ") ||
       "Your coach";
-    const subject = `${studentName} stays at ${formatSkillLevel(fromLevel)}`;
-    const body = `${actor} reviewed ${studentName}'s level for the season and is keeping them at ${formatSkillLevel(fromLevel)}.${parsed.comment ? `\n\n${parsed.comment}` : ""}`;
+    const subject = `${studentName} stays at ${formatLevel(fromLevel)}`;
+    const body = `${actor} reviewed ${studentName}'s level for the season and is keeping them at ${formatLevel(fromLevel)}.${parsed.comment ? `\n\n${parsed.comment}` : ""}`;
     for (const adultId of adults) {
       await notify({
         recipientPersonId: adultId,
@@ -160,14 +234,21 @@ export async function recordReview(formData: FormData) {
         relatedRowId: enrollment.studentPersonId,
       });
     }
+  } else if (medalEligible) {
+    await changeStudentMedalLevel({
+      studentPersonId: enrollment.studentPersonId,
+      toLevel: resolvedToMedal,
+      changedByPersonId: person.id,
+      changedByDisplayName:
+        [person.firstName, person.lastName].filter(Boolean).join(" ") ||
+        undefined,
+      reason: "season_review",
+      note: parsed.comment,
+    });
   } else {
-    // Promotion / demotion writes through the shared pipeline so we
-    // get the StudentSkillHistory row and notification fan-out for
-    // free. Reason maps to "season_review" so the audit trail is
-    // distinguishable from ad-hoc edits and one-off promotes.
     await changeStudentSkillLevel({
       studentPersonId: enrollment.studentPersonId,
-      toLevel: resolvedToLevel,
+      toLevel: resolvedToSkill,
       changedByPersonId: person.id,
       changedByDisplayName:
         [person.firstName, person.lastName].filter(Boolean).join(" ") ||

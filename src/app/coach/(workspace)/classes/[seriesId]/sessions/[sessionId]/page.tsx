@@ -14,9 +14,13 @@ import {
   deliveryModeLabel,
 } from "@/lib/classes/timing";
 import { format } from "@/lib/format";
-import { formatSkillLevel } from "@/lib/skill-levels";
+import {
+  formatStudentLevel,
+  studentMedalEligible,
+} from "@/lib/medals/coach-roster";
+import type { MedalLevelValue } from "@/lib/medal-levels";
 import type { SkillLevelValue } from "@/lib/skill-levels";
-import { CoachLevelSelect } from "../../coach-level-select";
+import { CoachStudentLevelSelect } from "../../coach-student-level-select";
 import { RequestSubButton } from "./_request-sub-button";
 import { RollCallControl } from "./_roll-call";
 import { getStudentContactsBulk } from "@/lib/contacts/queries";
@@ -271,7 +275,7 @@ export default async function CoachSessionPage({
         description={
           skippingCount > 0
             ? `${series.enrollments.length} on the roster · ${skippingCount} skipping this session.`
-            : `${series.enrollments.length} on the roster. Skill level saves automatically.`
+            : `${series.enrollments.length} on the roster. Level saves automatically.`
         }
       >
         {series.enrollments.length === 0 ? (
@@ -302,6 +306,8 @@ export default async function CoachSessionPage({
                     [p.firstName, p.lastName].filter(Boolean).join(" ").trim() ||
                     "Unnamed";
                   const role = roleByStudent[e.studentPersonId] ?? null;
+                  const medalEligible = studentMedalEligible(p, role);
+                  const medalLevel = e.student.medalLevel as MedalLevelValue | null;
                   const sl = e.student.skillLevel as SkillLevelValue | null;
                   const skipNote = skipByStudent.get(e.studentPersonId);
                   const isSkipping = skipByStudent.has(e.studentPersonId);
@@ -335,12 +341,18 @@ export default async function CoachSessionPage({
                       </td>
                       <td className="px-4 py-3">
                         <div className="mb-1 md:hidden">
-                          {formatSkillLevel(sl)}
+                          {formatStudentLevel({
+                            medalEligible,
+                            medalLevel,
+                            skillLevel: sl,
+                          })}
                         </div>
-                        <CoachLevelSelect
+                        <CoachStudentLevelSelect
                           classSeriesId={seriesId}
                           studentPersonId={e.studentPersonId}
-                          level={sl}
+                          medalEligible={medalEligible}
+                          medalLevel={medalLevel}
+                          skillLevel={sl}
                         />
                       </td>
                       {!isCancelled && (

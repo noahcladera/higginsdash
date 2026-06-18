@@ -12,6 +12,7 @@ import {
   type HouseholdMemberSummary,
   type UpcomingSession,
 } from "@/lib/portal/queries";
+import { MedalBadge } from "@/components/medals/medal-badge";
 import { formatSkillLevel, type SkillLevelValue } from "@/lib/skill-levels";
 import {
   getStudentProgressSummariesBulk,
@@ -53,12 +54,14 @@ export default async function FamilyPage({ searchParams }: FamilyPageProps) {
   const sessions = await getUpcomingSessionsForStudents(studentChildIds, 30);
   const sessionsByChild = groupBy(sessions, (s) => s.studentPersonId);
 
-  // Per-child progress against the rubric for their current level.
-  // Skipped (returns empty map) for kids without a level set.
+  // Per-child progress against the rubric for their current adult skill level.
   const progressPairs = children
     .filter(
       (c): c is HouseholdMemberSummary & { studentSkillLevel: string } =>
-        c.isStudent && c.studentSkillLevel != null,
+        c.isStudent &&
+        c.role === "child" &&
+        c.studentSkillLevel != null &&
+        c.studentMedalLevel == null,
     )
     .map((c) => ({
       studentPersonId: c.personId,
@@ -103,7 +106,7 @@ export default async function FamilyPage({ searchParams }: FamilyPageProps) {
               sessions={sessionsByChild.get(c.personId) ?? []}
               viewerPersonId={person.id}
               progress={
-                c.studentSkillLevel
+                c.studentSkillLevel && c.studentMedalLevel == null
                   ? (progressByChild.get(
                       `${c.personId}::${c.studentSkillLevel}`,
                     ) ?? null)
@@ -164,9 +167,16 @@ function ChildCard({
                   <span>{child.studentSchool}</span>
                 </>
               )}
-              <SkillBadge level={child.studentSkillLevel} />
+              {child.role === "child" ? (
+                <MedalBadge level={child.studentMedalLevel} />
+              ) : (
+                <SkillBadge level={child.studentSkillLevel} />
+              )}
             </div>
-            {child.studentSkillLevel && progress && progress.total > 0 && (
+            {child.studentSkillLevel &&
+              child.studentMedalLevel == null &&
+              progress &&
+              progress.total > 0 && (
               <ProgressBar
                 level={child.studentSkillLevel}
                 achieved={progress.achieved}
@@ -338,7 +348,7 @@ function SkillBadge({ level }: { level: string | null }) {
         variant="outline"
         className="font-normal hover:bg-[var(--muted)]/40"
       >
-        <Link href="/levels/kids" title="See what each level means">
+        <Link href="/levels/kids" title="See what each medal means">
           Level not set
         </Link>
       </Badge>

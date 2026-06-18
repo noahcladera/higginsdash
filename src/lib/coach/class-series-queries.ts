@@ -20,8 +20,15 @@ const coachSeriesRosterInclude = {
               id: true,
               firstName: true,
               lastName: true,
+              dateOfBirth: true,
             },
           },
+        },
+      },
+      seriesFeedback: {
+        select: {
+          body: true,
+          visibility: true,
         },
       },
     },
@@ -52,8 +59,15 @@ const coachSessionInclude = {
                   id: true,
                   firstName: true,
                   lastName: true,
+                  dateOfBirth: true,
                 },
               },
+            },
+          },
+          seriesFeedback: {
+            select: {
+              body: true,
+              visibility: true,
             },
           },
         },

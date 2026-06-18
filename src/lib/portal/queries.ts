@@ -387,6 +387,7 @@ export interface HouseholdMemberSummary {
   isStudent: boolean;
   studentSchool: string | null;
   studentSkillLevel: string | null;
+  studentMedalLevel: string | null;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   emergencyContactRelationship: string | null;
@@ -418,6 +419,7 @@ async function _getHouseholdMembers(
     isStudent: !!m.person.student,
     studentSchool: m.person.student?.school ?? null,
     studentSkillLevel: m.person.student?.skillLevel ?? null,
+    studentMedalLevel: m.person.student?.medalLevel ?? null,
     emergencyContactName: m.person.emergencyContactName,
     emergencyContactPhone: m.person.emergencyContactPhone,
     emergencyContactRelationship: m.person.emergencyContactRelationship,

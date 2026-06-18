@@ -97,7 +97,14 @@ export async function getEnrollmentsNeedingReview(seriesId: string) {
       student: {
         select: {
           skillLevel: true,
-          person: { select: { firstName: true, lastName: true } },
+          medalLevel: true,
+          person: {
+            select: {
+              firstName: true,
+              lastName: true,
+              dateOfBirth: true,
+            },
+          },
         },
       },
     },

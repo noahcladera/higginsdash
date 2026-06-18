@@ -107,6 +107,13 @@ export default async function AdminLayout({
       icon: <ClassIcon size={16} />,
     });
   }
+  if (f.classes) {
+    programItems.push({
+      href: "/admin/medals",
+      label: "Medals",
+      icon: <TicketIcon size={16} />,
+    });
+  }
   if (f.events) {
     programItems.push({
       href: "/admin/events",

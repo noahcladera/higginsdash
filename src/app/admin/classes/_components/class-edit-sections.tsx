@@ -708,12 +708,14 @@ export function AgeAndLevelSectionEditor({
   defaultMinAge,
   defaultMaxAge,
   defaultLevels,
+  defaultMedalLevels = [],
 }: {
   classSeriesId: string;
   audience: "kids" | "adults" | "mixed";
   defaultMinAge: number | null;
   defaultMaxAge: number | null;
   defaultLevels: SkillLevelValue[];
+  defaultMedalLevels?: import("@/lib/medal-levels").MedalLevelValue[];
 }) {
   return (
     <>
@@ -723,6 +725,7 @@ export function AgeAndLevelSectionEditor({
         minAgeDefault={defaultMinAge ?? ""}
         maxAgeDefault={defaultMaxAge ?? ""}
         levelsDefault={defaultLevels}
+        medalLevelsDefault={defaultMedalLevels}
       />
     </>
   );

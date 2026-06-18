@@ -668,6 +668,9 @@ export default async function EditClassPage({
             defaultMinAge={series.minAge}
             defaultMaxAge={series.maxAge}
             defaultLevels={series.eligibleSkillLevels as SkillLevelValue[]}
+            defaultMedalLevels={
+              series.eligibleMedalLevels as import("@/lib/medal-levels").MedalLevelValue[]
+            }
           />
         }
       />

@@ -58,6 +58,23 @@ export const GroupInputSchema = z.object({
     .optional()
     .nullable(),
   eligibleSkillLevels: z.array(SkillLevelEnum).default([]),
+  eligibleMedalLevels: z
+    .array(
+      z.enum([
+        "rwb",
+        "yellow",
+        "purple",
+        "blue_1",
+        "blue_2",
+        "red_1",
+        "red_2",
+        "orange_1",
+        "orange_2",
+        "green_1",
+        "green_2",
+      ]),
+    )
+    .default([]),
   internalNotes: z
     .string()
     .max(2000)
