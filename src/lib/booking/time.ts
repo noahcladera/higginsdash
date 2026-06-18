@@ -131,6 +131,13 @@ export function localMinutesSinceMidnight(hour: number, minute: number): number 
   return hour * 60 + minute;
 }
 
+/** Visual grid row height in minutes (matches `buildBookingTimeSlots` step). */
+export function bookingGridStepMinutes(
+  startTimeConstraint: "any" | "on_the_hour" | "on_the_half_hour",
+): number {
+  return startTimeConstraint === "on_the_half_hour" ? 30 : 60;
+}
+
 /**
  * Calendar row starts for a club day: each entry is a bookable start time
  * where `start + bookingDurationMinutes <= closes`.
@@ -145,8 +152,7 @@ export function buildBookingTimeSlots(args: {
   const closes = timeToHourMinute(args.closesAtLocalTime);
   const opensMin = localMinutesSinceMidnight(opens.hour, opens.minute);
   const closesMin = localMinutesSinceMidnight(closes.hour, closes.minute);
-  const stepMinutes =
-    args.startTimeConstraint === "on_the_half_hour" ? 30 : 60;
+  const stepMinutes = bookingGridStepMinutes(args.startTimeConstraint);
   const duration = args.bookingDurationMinutes;
 
   const slots: { hour: number; minute: number }[] = [];

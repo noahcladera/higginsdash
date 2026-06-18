@@ -2304,5 +2304,29 @@ model Organization {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  stockMedia StockMedia[]
+
   @@map("organizations")
+}
+
+/// Curated marketing / facility photos imported from drive migrations.
+/// Referenced by the admin ImageUpload stock picker (logo + cover fields).
+model StockMedia {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgSlug      String   @map("org_slug")
+  url          String
+  storagePath  String   @map("storage_path")
+  title        String
+  sourcePath   String   @unique @map("source_path")
+  region       String?
+  domain       String?
+  width        Int?
+  height       Int?
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgSlug], references: [slug])
+
+  @@index([orgSlug, displayOrder])
+  @@map("stock_media")
 }

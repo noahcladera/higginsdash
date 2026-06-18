@@ -202,6 +202,7 @@ Git remote: `https://github.com/noahcladera/higginsdash.git`
    - If `/auth/callback` is missing, magic links fall back to Site URL (`/`) and login loops until you redeploy with the PKCE redirect fix in middleware.
 7. After first deploy, run migrations against the same database:
    `npx prisma migrate deploy` (locally with production `DATABASE_URL`, or Render shell).
-8. Optional: `npm run db:seed` on an empty database for catalog data.
+8. Set **`RESEND_API_KEY`** and **`EMAIL_FROM`** on Render for coach invite autosend and receipts. Verify the sender domain in [Resend](https://resend.com). Without Resend, use **Coaches → Pending invites → Copy login link**.
+9. Optional: `npm run db:seed` on an empty database for catalog data.
 
-Render: this repo includes [`render.yaml`](render.yaml) (build: `npm ci && npx prisma generate && npm run build`, start: `npm run start`).
+Render: this repo includes [`render.yaml`](render.yaml) (build: `npm ci && npx prisma generate && npx prisma migrate deploy && npm run build`, start: `npm run start`).

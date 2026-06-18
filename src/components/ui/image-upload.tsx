@@ -5,6 +5,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { uploadImage, type ImageUploadKind } from "@/lib/uploads/image-upload";
+import { listStockMedia, type StockMediaItem } from "@/lib/uploads/stock-media";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,6 +45,11 @@ export interface ImageUploadProps {
   helpText?: string;
   /** Fires whenever the URL changes (upload succeeds, or removal). */
   onChange?: (url: string) => void;
+  /**
+   * Show the curated stock photo grid below the upload tile.
+   * Defaults to true for logo/cover; false for personal profile photos.
+   */
+  showStockPicker?: boolean;
   className?: string;
 }
 
@@ -67,9 +73,14 @@ export function ImageUpload({
   label,
   helpText,
   onChange,
+  showStockPicker,
   className,
 }: ImageUploadProps) {
   const [url, setUrl] = React.useState<string>(defaultUrl ?? "");
+  const [stockPhotos, setStockPhotos] = React.useState<StockMediaItem[]>([]);
+  const [stockStatus, setStockStatus] = React.useState<
+    "idle" | "loading" | "error"
+  >("idle");
   const [status, setStatus] = React.useState<
     | { kind: "idle" }
     | { kind: "uploading" }
@@ -79,6 +90,27 @@ export function ImageUpload({
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const resolvedAspect = aspect ?? DEFAULT_ASPECT_BY_KIND[kind];
+  const resolvedShowStockPicker =
+    showStockPicker ?? (kind === "logo" || kind === "cover");
+
+  React.useEffect(() => {
+    if (!resolvedShowStockPicker) return;
+    let cancelled = false;
+    setStockStatus("loading");
+    listStockMedia()
+      .then((photos) => {
+        if (!cancelled) {
+          setStockPhotos(photos);
+          setStockStatus("idle");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStockStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedShowStockPicker]);
 
   function setValue(nextUrl: string) {
     setUrl(nextUrl);
@@ -208,6 +240,47 @@ export function ImageUpload({
 
       {status.kind === "error" && (
         <p className="text-sm text-[var(--destructive)]">{status.message}</p>
+      )}
+
+      {resolvedShowStockPicker && stockPhotos.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-[var(--muted-foreground)]">
+            Or pick a stock photo
+          </p>
+          <div className="grid max-h-48 max-w-md grid-cols-4 gap-2 overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-2">
+            {stockPhotos.map((photo) => {
+              const selected = url === photo.url;
+              return (
+                <button
+                  key={photo.id}
+                  type="button"
+                  title={photo.title}
+                  onClick={() => setValue(photo.url)}
+                  disabled={isUploading}
+                  className={cn(
+                    "relative aspect-square overflow-hidden rounded-md border transition-colors",
+                    selected
+                      ? "border-[var(--ring)] ring-2 ring-[var(--ring)]"
+                      : "border-[var(--border)] hover:border-[var(--ring)]",
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.url}
+                    alt={photo.title}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {resolvedShowStockPicker && stockStatus === "loading" && (
+        <p className="text-xs text-[var(--muted-foreground)]">
+          Loading stock photos…
+        </p>
       )}
 
       <input

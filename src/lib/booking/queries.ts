@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import {
   amsterdamHourUtc,
   amsterdamMidnightUtc,
+  bookingGridStepMinutes,
   buildBookingTimeSlots,
   formatLocalDate,
   formatLocalHour,
@@ -268,8 +269,11 @@ function buildCourtSlots(args: {
         slot.hour,
         slot.minute,
       );
+      const rowWindowMinutes = bookingGridStepMinutes(
+        args.settings.startTimeConstraint,
+      );
       const endsAtUtc = new Date(
-        startsAtUtc.getTime() + args.settings.bookingDurationMinutes * 60_000,
+        startsAtUtc.getTime() + rowWindowMinutes * 60_000,
       );
 
       const state = computeSlotState({

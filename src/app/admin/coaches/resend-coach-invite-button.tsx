@@ -26,10 +26,16 @@ export function ResendCoachInviteButton({ inviteId }: { inviteId: string }) {
 
       {state?.ok === true && state.loginMethod === "magiclink" && (
         <div className="w-full max-w-md space-y-1">
-          <p className="text-xs text-[var(--muted-foreground)]">
+          <p
+            className={
+              state.emailed
+                ? "text-xs text-[var(--muted-foreground)]"
+                : "text-xs text-amber-800"
+            }
+          >
             {state.emailed
               ? "Link generated and emailed."
-              : "Link generated — copy below (email not sent)."}
+              : "Link generated — copy below. Email was not sent (set RESEND_API_KEY on the server or share the link manually)."}
           </p>
           <CopyableText value={state.actionLink} label="Copy link" />
         </div>

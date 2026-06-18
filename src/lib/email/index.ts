@@ -16,7 +16,8 @@ export interface OutboundEmail {
 const DEFAULT_FROM =
   process.env.EMAIL_FROM?.trim() || "Higgins Tennis <noreply@higginstennis.nl>";
 
-export async function sendEmail(email: OutboundEmail): Promise<void> {
+/** Returns true when Resend accepted the message; false when not configured. */
+export async function sendEmail(email: OutboundEmail): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
 
   if (!apiKey) {
@@ -30,7 +31,7 @@ export async function sendEmail(email: OutboundEmail): Promise<void> {
         `[email-stub] -> ${email.to}\n  subject: ${email.subject}\n  body: ${email.body}`,
       );
     }
-    return;
+    return false;
   }
 
   const resend = new Resend(apiKey);
@@ -46,4 +47,6 @@ export async function sendEmail(email: OutboundEmail): Promise<void> {
     console.error("[email] Resend error:", error);
     throw new Error(error.message);
   }
+
+  return true;
 }

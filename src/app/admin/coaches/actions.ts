@@ -148,7 +148,7 @@ async function sendCoachLoginEmail(args: {
 
   try {
     if (args.loginMethod === "magiclink" && args.actionLink) {
-      await sendEmail({
+      return await sendEmail({
         to: args.email,
         subject: `${brand.shortName} coach portal — sign in`,
         body: [
@@ -164,12 +164,13 @@ async function sendCoachLoginEmail(args: {
           `— ${brand.shortName}`,
         ].join("\n"),
       });
-    } else if (
+    }
+    if (
       args.loginMethod === "password" &&
       args.loginUrl &&
       args.temporaryPassword
     ) {
-      await sendEmail({
+      return await sendEmail({
         to: args.email,
         subject: `${brand.shortName} coach portal — your login`,
         body: [
@@ -187,7 +188,7 @@ async function sendCoachLoginEmail(args: {
         ].join("\n"),
       });
     }
-    return true;
+    return false;
   } catch (err) {
     console.error("[coach-invite] email delivery failed", err);
     return false;

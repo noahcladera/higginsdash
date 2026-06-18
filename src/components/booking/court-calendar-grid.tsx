@@ -48,6 +48,7 @@ import {
   requestBookingCancellation,
 } from "@/lib/booking/actions";
 import type { CalendarWeek, CalendarSlot } from "@/lib/booking/queries";
+import { bookingGridStepMinutes } from "@/lib/booking/time";
 import { startCheckout as beginCheckout } from "@/lib/payments/start-checkout";
 import { useActionFeedback } from "@/lib/feedback";
 import { PartyInput, type PartyEntry } from "./party-input";
@@ -152,7 +153,7 @@ export function CourtCalendarGrid({
 
   // Day view falls back to the first day of the first row for the header.
   const day = rowDays[0]?.[0] ?? data.days[0];
-  const slotDurationMin = data.settings.bookingDurationMinutes;
+  const rowStepMin = bookingGridStepMinutes(data.settings.startTimeConstraint);
   const denseGrid = data.hours.length > 20;
   const { todayLocalDate, nowMinutes } = useMemo(() => {
     const now = new Date();
@@ -473,12 +474,20 @@ export function CourtCalendarGrid({
                   const isNowRow =
                     todayInThisRow &&
                     rowMin <= nowMinutes &&
-                    nowMinutes < rowMin + slotDurationMin;
+                    nowMinutes < rowMin + rowStepMin;
                   const isHalfHourRow = hour.endsWith(":30");
+                  const clockHour = parseInt(hour.split(":")[0], 10);
+                  const isAltHourBand = clockHour % 2 === 1;
                   return (
                     <tr
                       key={hour}
-                      className="border-t border-[var(--border-strong)] hover:bg-[var(--muted)]/5"
+                      className={cn(
+                        isHalfHourRow
+                          ? "border-t border-[var(--border)]/30"
+                          : "border-t-2 border-[var(--border-strong)]",
+                        isAltHourBand && "bg-[var(--muted)]/[0.04]",
+                        "hover:bg-[var(--muted)]/8",
+                      )}
                     >
                       <td
                         className={cn(
@@ -501,7 +510,7 @@ export function CourtCalendarGrid({
                           const dimPast =
                             d.date < todayLocalDate ||
                             (isToday &&
-                              rowMin + slotDurationMin <= nowMinutes);
+                              rowMin + rowStepMin <= nowMinutes);
                           const showNowLine = isNowRow && isToday;
                           if (!slot) {
                             return (

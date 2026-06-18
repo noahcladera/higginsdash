@@ -30,7 +30,7 @@ export function InviteCoachForm({ clubs }: { clubs: Club[] }) {
             credentials below — they will land in the coach portal after sign-in.
             {state.emailed
               ? " A copy was also emailed via Resend."
-              : " Email delivery failed or is not configured; copy the details manually."}
+              : " Email was not sent — set RESEND_API_KEY on the server, or copy the link below and share it manually."}
           </p>
         </div>
 
