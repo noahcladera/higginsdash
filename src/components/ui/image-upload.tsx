@@ -77,10 +77,9 @@ export function ImageUpload({
   className,
 }: ImageUploadProps) {
   const [url, setUrl] = React.useState<string>(defaultUrl ?? "");
-  const [stockPhotos, setStockPhotos] = React.useState<StockMediaItem[]>([]);
-  const [stockStatus, setStockStatus] = React.useState<
-    "idle" | "loading" | "error"
-  >("idle");
+  const [stockPhotos, setStockPhotos] = React.useState<StockMediaItem[] | null>(
+    null,
+  );
   const [status, setStatus] = React.useState<
     | { kind: "idle" }
     | { kind: "uploading" }
@@ -96,16 +95,12 @@ export function ImageUpload({
   React.useEffect(() => {
     if (!resolvedShowStockPicker) return;
     let cancelled = false;
-    setStockStatus("loading");
     listStockMedia()
       .then((photos) => {
-        if (!cancelled) {
-          setStockPhotos(photos);
-          setStockStatus("idle");
-        }
+        if (!cancelled) setStockPhotos(photos);
       })
       .catch(() => {
-        if (!cancelled) setStockStatus("error");
+        if (!cancelled) setStockPhotos([]);
       });
     return () => {
       cancelled = true;
@@ -242,7 +237,7 @@ export function ImageUpload({
         <p className="text-sm text-[var(--destructive)]">{status.message}</p>
       )}
 
-      {resolvedShowStockPicker && stockPhotos.length > 0 && (
+      {resolvedShowStockPicker && stockPhotos && stockPhotos.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-[var(--muted-foreground)]">
             Or pick a stock photo
@@ -277,7 +272,7 @@ export function ImageUpload({
           </div>
         </div>
       )}
-      {resolvedShowStockPicker && stockStatus === "loading" && (
+      {resolvedShowStockPicker && stockPhotos === null && (
         <p className="text-xs text-[var(--muted-foreground)]">
           Loading stock photos…
         </p>

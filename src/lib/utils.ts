@@ -6,7 +6,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 function isPrefixMatch(pathname: string, href: string): boolean {
-  return pathname === href || pathname.startsWith(href + "/");
+  const base = href.split("#")[0] ?? href;
+  return pathname === base || pathname.startsWith(base + "/");
 }
 
 /**

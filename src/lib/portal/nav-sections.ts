@@ -218,7 +218,7 @@ async function _getPortalNavSections(
   } else {
     if (membershipsEnabled) {
       accountItems.push({
-        href: "/portal/membership",
+        href: "/portal/membership#buy",
         label: `Get a ${t.membership.singular.toLowerCase()}`,
         hint: `Pick the right tier and ${t.club.plural.toLowerCase()}`,
         emphasis: "primary",

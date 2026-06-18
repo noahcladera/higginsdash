@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "postinstall": "node scripts/postinstall.mjs",
     "db:migrate": "dotenv -e .env.local -- prisma migrate deploy",
     "db:new": "dotenv -e .env.local -- node scripts/db-new-migration.mjs",
