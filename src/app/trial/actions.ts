@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimitByIp } from "@/lib/rate-limit";
 
 const SubmitSchema = z.object({
   audience: z.enum(["kids", "adults"]),
@@ -62,6 +63,15 @@ export type SubmitTrialInterestResult =
 export async function submitTrialInterest(
   raw: SubmitTrialInterestInput,
 ): Promise<SubmitTrialInterestResult> {
+  // Public, unauthenticated form — throttle by IP to prevent spam floods.
+  const rl = await checkRateLimitByIp("trial", { limit: 5, windowSec: 600 });
+  if (!rl.success) {
+    return {
+      ok: false,
+      error: "Too many submissions. Please wait a few minutes and try again.",
+    };
+  }
+
   const parsed = SubmitSchema.safeParse(raw);
   if (!parsed.success) {
     return {

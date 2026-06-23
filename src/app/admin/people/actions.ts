@@ -173,36 +173,52 @@ function assertNotSystem(id: string) {
 // ---------------------------------------------------------------------------
 
 export async function createPerson(formData: FormData) {
-  await requireAdmin();
+  const { person: actor } = await requireAdmin();
   const parsed = PersonInputSchema.parse(Object.fromEntries(formData));
 
   // Person.id has no @default — it's the same UUID as auth.users.id when
   // created via login. For admin-created people there's no auth.users row yet,
   // so we mint a fresh UUID here.
-  const created = await prisma.person.create({
-    data: {
-      id: randomUUID(),
-      firstName: parsed.firstName,
-      lastName: parsed.lastName,
-      dateOfBirth: dateOrNull(parsed.dateOfBirth),
-      gender: parsed.gender ?? null,
-      phone: parsed.phone ?? null,
-      addressLine1: parsed.addressLine1 ?? null,
-      addressLine2: parsed.addressLine2 ?? null,
-      postalCode: parsed.postalCode ?? null,
-      city: parsed.city ?? null,
-      country: parsed.country ?? "NL",
-      emergencyContactName: parsed.emergencyContactName ?? null,
-      emergencyContactPhone: parsed.emergencyContactPhone ?? null,
-      emergencyContactRelationship: parsed.emergencyContactRelationship ?? null,
-      notes: parsed.notes ?? null,
-      isAdmin: parsed.isAdmin,
-    },
-    select: { id: true },
+  const newId = randomUUID();
+  await prisma.$transaction(async (tx) => {
+    await tx.person.create({
+      data: {
+        id: newId,
+        firstName: parsed.firstName,
+        lastName: parsed.lastName,
+        dateOfBirth: dateOrNull(parsed.dateOfBirth),
+        gender: parsed.gender ?? null,
+        phone: parsed.phone ?? null,
+        addressLine1: parsed.addressLine1 ?? null,
+        addressLine2: parsed.addressLine2 ?? null,
+        postalCode: parsed.postalCode ?? null,
+        city: parsed.city ?? null,
+        country: parsed.country ?? "NL",
+        emergencyContactName: parsed.emergencyContactName ?? null,
+        emergencyContactPhone: parsed.emergencyContactPhone ?? null,
+        emergencyContactRelationship: parsed.emergencyContactRelationship ?? null,
+        notes: parsed.notes ?? null,
+        isAdmin: parsed.isAdmin,
+      },
+      select: { id: true },
+    });
+    await recordAudit({
+      tx,
+      tableName: "people",
+      rowId: newId,
+      action: "insert",
+      changedByPersonId: actor.id,
+      changeSource: "admin_console",
+      after: {
+        firstName: parsed.firstName,
+        lastName: parsed.lastName,
+        isAdmin: parsed.isAdmin,
+      },
+    });
   });
 
   revalidatePath("/admin/people");
-  redirect(`/admin/people/${created.id}`);
+  redirect(`/admin/people/${newId}`);
 }
 
 export async function updatePerson(id: string, formData: FormData) {
@@ -214,26 +230,51 @@ export async function updatePerson(id: string, formData: FormData) {
   // Safety: don't let an admin remove their own admin flag (would lock
   // themselves out). They can ask another admin to do it.
   const isSelf = actor.id === id;
+  const nextIsAdmin = isSelf ? true : parsed.isAdmin;
 
-  await prisma.person.update({
+  // Snapshot the admin flag before the write so the audit trail captures any
+  // privilege change (grant/revoke of admin is security-sensitive).
+  const before = await prisma.person.findUnique({
     where: { id },
-    data: {
-      firstName: parsed.firstName,
-      lastName: parsed.lastName,
-      dateOfBirth: dateOrNull(parsed.dateOfBirth),
-      gender: parsed.gender ?? null,
-      phone: parsed.phone ?? null,
-      addressLine1: parsed.addressLine1 ?? null,
-      addressLine2: parsed.addressLine2 ?? null,
-      postalCode: parsed.postalCode ?? null,
-      city: parsed.city ?? null,
-      country: parsed.country ?? "NL",
-      emergencyContactName: parsed.emergencyContactName ?? null,
-      emergencyContactPhone: parsed.emergencyContactPhone ?? null,
-      emergencyContactRelationship: parsed.emergencyContactRelationship ?? null,
-      notes: parsed.notes ?? null,
-      isAdmin: isSelf ? true : parsed.isAdmin,
-    },
+    select: { isAdmin: true, firstName: true, lastName: true },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.person.update({
+      where: { id },
+      data: {
+        firstName: parsed.firstName,
+        lastName: parsed.lastName,
+        dateOfBirth: dateOrNull(parsed.dateOfBirth),
+        gender: parsed.gender ?? null,
+        phone: parsed.phone ?? null,
+        addressLine1: parsed.addressLine1 ?? null,
+        addressLine2: parsed.addressLine2 ?? null,
+        postalCode: parsed.postalCode ?? null,
+        city: parsed.city ?? null,
+        country: parsed.country ?? "NL",
+        emergencyContactName: parsed.emergencyContactName ?? null,
+        emergencyContactPhone: parsed.emergencyContactPhone ?? null,
+        emergencyContactRelationship: parsed.emergencyContactRelationship ?? null,
+        notes: parsed.notes ?? null,
+        isAdmin: nextIsAdmin,
+      },
+    });
+    await recordAudit({
+      tx,
+      tableName: "people",
+      rowId: id,
+      action: "update",
+      changedByPersonId: actor.id,
+      changeSource: "admin_console",
+      before: before ?? undefined,
+      after: {
+        firstName: parsed.firstName,
+        lastName: parsed.lastName,
+        isAdmin: nextIsAdmin,
+        adminChanged: (before?.isAdmin ?? false) !== nextIsAdmin,
+      },
+    });
   });
 
   revalidatePath("/admin/people");

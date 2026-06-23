@@ -16,7 +16,9 @@ import type { SkillLevelValue } from "@/lib/skill-levels";
 import type { MedalLevelValue } from "@/lib/medal-levels";
 import { getPersonContacts } from "@/lib/contacts/queries";
 import { ContactButton } from "@/components/contacts/contact-button";
-import { getCurrentBrand } from "@/lib/tenant";
+import { getCurrentBrand, getFeatureFlags } from "@/lib/tenant";
+import { getLegacyProfileForPerson } from "@/lib/admin/legacy-profile";
+import { LegacyHistorySection } from "@/components/admin/legacy-history-section";
 
 export default async function PersonDetailPage({
   params,
@@ -97,6 +99,11 @@ export default async function PersonDetailPage({
     person.emails.find((e) => e.isPrimary && !e.archivedAt)?.address ?? null;
 
   const contactGroup = await getPersonContacts(person.id);
+
+  const features = await getFeatureFlags();
+  const legacyProfile = features.legacyHistory
+    ? await getLegacyProfileForPerson(person.id)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -261,6 +268,8 @@ export default async function PersonDetailPage({
           }))}
         />
       </Section>
+
+      <LegacyHistorySection profile={legacyProfile} />
 
       <Section title="Account meta" surface="card">
         <DescList>

@@ -82,9 +82,13 @@ export async function startCoachInvoiceCheckout(
   input: CoachInvoiceCheckoutInput,
 ): Promise<CheckoutResult> {
   const account = input.account ?? getMollieAccountForOperations();
-  console.info(
-    `[payments-stub] would start Mollie checkout (account=${account}): coach-invoice=${input.invoiceNumber} amount=€${input.amountEur} payer=${input.payerEmail ?? input.payerPersonId}`,
-  );
+  // Don't log payer PII in production; gate the dev diagnostic like the court
+  // stub above does.
+  if (process.env.NEXT_PUBLIC_DEMO_MOLLIE === "false") {
+    console.info(
+      `[payments-stub] would start Mollie checkout (account=${account}): coach-invoice=${input.invoiceNumber} amount=€${input.amountEur} payer=${input.payerPersonId}`,
+    );
+  }
   return {
     checkoutUrl: `/portal/payments/${input.paymentId}?stub_checkout=1&invoice=${encodeURIComponent(input.invoiceNumber)}`,
     providerPaymentId: `stub_coach_${input.paymentId}`,

@@ -17,10 +17,12 @@
  * Run: `npm run db:wipe-bookings`
  */
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveConfirmed } from "./_safety";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  assertDestructiveConfirmed("db:wipe-bookings (court bookings)");
   const before = await prisma.courtBooking.count();
   console.log(`court_bookings before: ${before}`);
 

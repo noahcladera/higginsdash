@@ -16,7 +16,9 @@ import {
   getHouseholdCreditLedger,
 } from "@/lib/credits";
 import { getStudentContactsBulk } from "@/lib/contacts/queries";
-import { getCurrentBrand } from "@/lib/tenant";
+import { getCurrentBrand, getFeatureFlags } from "@/lib/tenant";
+import { getLegacyProfileForHousehold } from "@/lib/admin/legacy-profile";
+import { LegacyHistorySection } from "@/components/admin/legacy-history-section";
 
 export default async function HouseholdDetailPage({
   params,
@@ -74,6 +76,11 @@ export default async function HouseholdDetailPage({
       [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || null,
     ]),
   );
+
+  const features = await getFeatureFlags();
+  const legacyProfile = features.legacyHistory
+    ? await getLegacyProfileForHousehold(household.id)
+    : null;
 
   const memberContactGroups = await getStudentContactsBulk(
     household.members.map((m) => m.personId),
@@ -202,6 +209,8 @@ export default async function HouseholdDetailPage({
           />
         </Section>
       )}
+
+      <LegacyHistorySection profile={legacyProfile} />
 
       {!isSystem && (
         <Section title="Danger zone" surface="card">

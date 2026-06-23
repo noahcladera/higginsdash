@@ -5,13 +5,38 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireCoachAccess } from "@/lib/auth/require-coach-access";
 
+/**
+ * A photo URL must be an https URL on our own Supabase Storage host (that's
+ * where `uploadImage` writes). This blocks `javascript:` / `data:` and
+ * arbitrary external URLs from being stored and later rendered.
+ */
+function isAllowedPhotoUrl(value: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") return false;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (supabaseUrl) {
+    try {
+      if (parsed.host !== new URL(supabaseUrl).host) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 const StaffCoachProfessionalSchema = z.object({
   bio: z.string().trim().optional().transform((v) => (v === "" || v == null ? null : v)),
   photoUrl: z
     .string()
     .trim()
     .optional()
-    .transform((v) => (v === "" || v == null ? null : v)),
+    .transform((v) => (v === "" || v == null ? null : v))
+    .refine((v) => v == null || isAllowedPhotoUrl(v), "Invalid photo URL."),
 });
 
 const ZzpCoachProfessionalSchema = z.object({

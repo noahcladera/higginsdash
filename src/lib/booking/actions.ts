@@ -269,6 +269,7 @@ async function resolveEffectiveBooker(
 
 export async function createBooking(
   rawInput: CreateBookingInput,
+  opts?: { verifyPaidEur?: number | null },
 ): Promise<ActionResult> {
   let actor: ResolvedActor;
   try {
@@ -496,6 +497,17 @@ export async function createBooking(
     requiresPayment && pricePerHour
       ? pricePerHour.mul(effectiveDurationMinutes).div(60)
       : null;
+
+  // Payment-integrity guard for the verified checkout path: the court price
+  // is authoritative (computed here from club settings). Refuse to create a
+  // booking that wasn't paid for.
+  if (
+    opts?.verifyPaidEur != null &&
+    priceCharged &&
+    priceCharged.toNumber() > opts.verifyPaidEur + 0.5
+  ) {
+    return { ok: false, error: "Payment did not cover the booking price." };
+  }
 
   // ---- Insert with EXCLUDE-violation handling ----------------------------
   //

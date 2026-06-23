@@ -37,15 +37,21 @@ export async function fulfillCheckoutAction(
   const paidAt = context?.paidAt ?? new Date();
   const amountEur = context?.amountEur ?? 0;
 
+  // When fulfillment runs from the verified Mollie sync path, `amountEur` is
+  // the amount Mollie actually captured (validated upstream). Pass it as the
+  // payment-integrity floor so domain actions refuse to grant goods that were
+  // underpaid. `context` is undefined only on legacy/no-context calls.
+  const verifyPaidEur = context ? amountEur : null;
+
   switch (action.kind) {
     case "membership_create": {
-      const res = await createMembership(action.payload);
+      const res = await createMembership(action.payload, { verifyPaidEur });
       if (!res.ok) return { ok: false, error: res.error };
       return { ok: true };
     }
 
     case "membership_upgrade": {
-      const res = await upgradeMembership(action.payload);
+      const res = await upgradeMembership(action.payload, { verifyPaidEur });
       if (!res.ok) return { ok: false, error: res.error };
       return { ok: true };
     }
@@ -89,7 +95,7 @@ export async function fulfillCheckoutAction(
     }
 
     case "court_booking_create": {
-      const res = await createBooking(action.payload);
+      const res = await createBooking(action.payload, { verifyPaidEur });
       if (!res.ok) return { ok: false, error: res.error };
       await prisma.courtBooking
         .update({

@@ -18,10 +18,12 @@
 import { PrismaClient } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 import { SYSTEM_PERSON_ID, SYSTEM_HOUSEHOLD_ID } from "../src/lib/system-ids";
+import { assertDestructiveConfirmed } from "./_safety";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  assertDestructiveConfirmed("db:wipe-all (all CRM data)");
   console.log("Wiping all CRM data…\n");
 
   // Identify the people we're keeping: System placeholder + any admin.

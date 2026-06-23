@@ -231,6 +231,9 @@ export async function createCoachInviteForm(
 export async function createCoachInvite(
   raw: z.infer<typeof CreateCoachInviteSchema>,
 ): Promise<CoachInviteActionResult> {
+  // Guard first — privileged action provisions an auth user + coach record.
+  const { person: actor } = await requireAdmin();
+
   const parsed = CreateCoachInviteSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -244,7 +247,6 @@ export async function createCoachInvite(
     };
   }
 
-  await requireAdmin();
   const svc = getSupabaseAdmin();
   if (!svc.ok) return { ok: false, error: svc.error };
 
@@ -277,9 +279,8 @@ export async function createCoachInvite(
 
   const token = generateToken();
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-  const adminCtx = await requireAdmin();
 
-  await prisma.coachInvite.create({
+  const invite = await prisma.coachInvite.create({
     data: {
       token,
       email: data.email,
@@ -287,8 +288,23 @@ export async function createCoachInvite(
       lastName: data.lastName,
       role: data.role,
       allowedClubIds: data.clubIds,
-      invitedById: adminCtx.person.id,
+      invitedById: actor.id,
       expiresAt,
+    },
+    select: { id: true },
+  });
+  // Audit: provisioning a coach account is privileged. Never log the token.
+  await recordAudit({
+    tableName: "coach_invites",
+    rowId: invite.id,
+    action: "insert",
+    changedByPersonId: actor.id,
+    changeSource: "admin_console",
+    after: {
+      email: data.email,
+      role: data.role,
+      allowedClubIds: data.clubIds,
+      loginMethod: data.loginMethod,
     },
   });
 
@@ -357,11 +373,11 @@ export async function resendCoachInviteForm(
 }
 
 export async function revokeCoachInvite(inviteId: string): Promise<void> {
-  await requireAdmin();
+  const { person: actor } = await requireAdmin();
   const id = z.string().uuid().safeParse(inviteId);
   if (!id.success) return;
 
-  await prisma.coachInvite.updateMany({
+  const updated = await prisma.coachInvite.updateMany({
     where: {
       id: inviteId,
       acceptedAt: null,
@@ -369,6 +385,16 @@ export async function revokeCoachInvite(inviteId: string): Promise<void> {
     },
     data: { revokedAt: new Date() },
   });
+  if (updated.count > 0) {
+    await recordAudit({
+      tableName: "coach_invites",
+      rowId: inviteId,
+      action: "update",
+      changedByPersonId: actor.id,
+      changeSource: "admin_console",
+      after: { revoked: true },
+    });
+  }
   revalidatePath("/admin/coaches");
 }
 
@@ -376,7 +402,7 @@ export async function resendCoachInvite(
   inviteId: string,
   loginMethod: "magiclink" | "password" = "magiclink",
 ): Promise<CoachInviteActionResult> {
-  await requireAdmin();
+  const { person: actor } = await requireAdmin();
 
   const svc = getSupabaseAdmin();
   if (!svc.ok) return { ok: false, error: svc.error };
@@ -387,6 +413,14 @@ export async function resendCoachInvite(
   if (!invite || invite.revokedAt || invite.acceptedAt) {
     return { ok: false, error: "Invite not found or no longer active." };
   }
+  await recordAudit({
+    tableName: "coach_invites",
+    rowId: invite.id,
+    action: "update",
+    changedByPersonId: actor.id,
+    changeSource: "admin_console",
+    after: { resent: true, loginMethod },
+  });
   if (invite.expiresAt < new Date()) {
     return { ok: false, error: "Invite expired. Create a new one." };
   }

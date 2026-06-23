@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { SeriesFeedbackVisibility } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireCoach } from "@/lib/auth/require-coach";
+import { requireMember } from "@/lib/auth/require-member";
 import { classSeriesClubScope } from "@/lib/coach/club-scope";
 
 const UpsertFeedbackSchema = z.object({
@@ -99,6 +100,23 @@ export async function getSeriesFeedbackForCoach(enrollmentId: string) {
 export async function getParentVisibleFeedbackForStudent(
   studentPersonId: string,
 ) {
+  // Authorization: only an admin or a guardian in the same household as the
+  // student may read parent-visible feedback. Without this, any logged-in
+  // member could read another family's feedback by passing a student id.
+  const { person, householdId } = await requireMember();
+  if (!person.isAdmin) {
+    if (!householdId) {
+      throw new Error("Not allowed.");
+    }
+    const sharesHousehold = await prisma.householdMember.findFirst({
+      where: { householdId, personId: studentPersonId },
+      select: { id: true },
+    });
+    if (!sharesHousehold) {
+      throw new Error("Not allowed.");
+    }
+  }
+
   const rows = await prisma.studentSeriesFeedback.findMany({
     where: {
       visibility: "parent_visible",

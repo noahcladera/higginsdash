@@ -711,6 +711,19 @@ async function finalizePaidEnrollment(args: {
   | { ok: true; status: "active"; paymentId: string | null; membershipId: string | null }
   | { ok: false; error: string }
 > {
+  // Payment-integrity guard: the authoritative price is `breakdown.total`
+  // (lesson + any membership add-on), recomputed server-side. The buyer must
+  // have covered it with their Mollie payment plus any household credit
+  // applied — otherwise refuse to activate (blocks tampered/underpaid
+  // checkouts from granting a seat).
+  {
+    const authoritativeTotal = args.breakdown.total ?? 0;
+    const creditEur = Math.max(0, args.paymentContext.creditCentsApplied ?? 0) / 100;
+    if (authoritativeTotal > args.paymentContext.amountPaid + creditEur + 0.5) {
+      return { ok: false, error: "Payment did not cover the enrollment price." };
+    }
+  }
+
   // Already settled and covered → nothing to do.
   if (args.existingStatus === "active") {
     const owed =

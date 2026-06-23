@@ -26,6 +26,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveConfirmed } from "./_safety";
 
 const prisma = new PrismaClient();
 
@@ -36,6 +37,7 @@ interface StepResult {
 }
 
 async function main() {
+  assertDestructiveConfirmed("db:wipe-transactions");
   if (!process.env.DATABASE_URL) {
     console.error(
       "DATABASE_URL is not set. Run via `npm run db:wipe-transactions` so it loads .env.local.",

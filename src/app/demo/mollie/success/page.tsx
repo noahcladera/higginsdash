@@ -13,6 +13,8 @@
 import { Suspense, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { isSafeInternalPath } from "@/lib/safe-redirect";
+
 const REDIRECT_AFTER_MS = 1200;
 
 export default function DemoMollieSuccessPage() {
@@ -27,7 +29,9 @@ function SuccessInner() {
   const router = useRouter();
   const params = useSearchParams();
 
-  const returnUrl = params.get("return") || "/portal";
+  const returnParam = params.get("return");
+  // Only same-origin paths — never honor an attacker-supplied external URL.
+  const returnUrl = isSafeInternalPath(returnParam) ? returnParam : "/portal";
   const amountRaw = params.get("amount");
   const method = params.get("method");
   const bank = params.get("bank");

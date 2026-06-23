@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_PERSON_IDS } from "@/lib/system-ids";
 
-function parsePlatformAdminEmails(): Set<string> {
+export function parsePlatformAdminEmails(): Set<string> {
   const raw = process.env.PLATFORM_ADMIN_EMAILS?.trim();
   if (!raw) return new Set();
   return new Set(
@@ -12,9 +12,25 @@ function parsePlatformAdminEmails(): Set<string> {
   );
 }
 
-function isPlatformAdminEmail(email: string | null | undefined): boolean {
+export function isPlatformAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
   return parsePlatformAdminEmails().has(email.trim().toLowerCase());
+}
+
+/**
+ * Single source of truth for "should this newly-created person be an admin?".
+ * Only the very first real user is ever auto-promoted, and only when either no
+ * allowlist is configured (dev/bootstrap) OR their email is on the allowlist.
+ * When an allowlist IS set, a non-allowlisted first signup is NOT made admin —
+ * this closes the "first public registrant becomes admin" takeover path.
+ */
+export function shouldGrantFirstUserAdmin(args: {
+  isFirstUser: boolean;
+  email: string | null | undefined;
+}): boolean {
+  if (!args.isFirstUser) return false;
+  const allowlist = parsePlatformAdminEmails();
+  return allowlist.size === 0 || isPlatformAdminEmail(args.email);
 }
 
 /**
@@ -50,10 +66,10 @@ export async function ensurePersonForAuthUser(args: {
           where: { id: { notIn: [...SYSTEM_PERSON_IDS] } },
         });
         const isFirstUser = realPeopleCount === 0;
-        const allowlist = parsePlatformAdminEmails();
-        const grantAdmin =
-          isFirstUser &&
-          (allowlist.size === 0 || isPlatformAdminEmail(normalizedEmail));
+        const grantAdmin = shouldGrantFirstUserAdmin({
+          isFirstUser,
+          email: normalizedEmail,
+        });
 
         await tx.person.upsert({
           where: { id: authUserId },

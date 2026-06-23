@@ -48,6 +48,29 @@ export async function searchClubMembers(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Sign in to search partners." };
 
+  // Only real members / coaches / admins may enumerate the member directory.
+  // Orphan accounts (auth user with no household/coach/student/admin) must not.
+  const me = await prisma.person.findUnique({
+    where: { id: user.id },
+    select: {
+      isAdmin: true,
+      householdMember: { select: { id: true } },
+      coach: { select: { personId: true } },
+      zzpCoach: { select: { personId: true } },
+      student: { select: { personId: true } },
+    },
+  });
+  const isRealMember =
+    !!me &&
+    (me.isAdmin ||
+      !!me.householdMember ||
+      !!me.coach ||
+      !!me.zzpCoach ||
+      !!me.student);
+  if (!isRealMember) {
+    return { ok: false, error: "Not allowed." };
+  }
+
   const parsed = SearchInput.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: "Type at least two letters." };

@@ -3004,21 +3004,35 @@ export async function addEnrollment(formData: FormData) {
     throw new Error("Selected sub-group does not belong to this class series.");
   }
 
-  await prisma.enrollment.upsert({
-    where: {
-      classSeriesId_studentPersonId: {
+  await prisma.$transaction(async (tx) => {
+    const row = await tx.enrollment.upsert({
+      where: {
+        classSeriesId_studentPersonId: {
+          classSeriesId,
+          studentPersonId,
+        },
+      },
+      create: {
         classSeriesId,
         studentPersonId,
+        groupId,
+        enrolledByPersonId: person.id,
+        status: "active",
       },
-    },
-    create: {
-      classSeriesId,
-      studentPersonId,
-      groupId,
-      enrolledByPersonId: person.id,
-      status: "active",
-    },
-    update: { status: "active", groupId },
+      update: { status: "active", groupId },
+      select: { id: true },
+    });
+    // Audit: an admin force-activating an enrollment bypasses payment, so it
+    // must be traceable.
+    await recordAudit({
+      tx,
+      tableName: "enrollments",
+      rowId: row.id,
+      action: "update",
+      changedByPersonId: person.id,
+      changeSource: "admin_console",
+      after: { classSeriesId, studentPersonId, groupId, status: "active", adminAdded: true },
+    });
   });
 
   revalidatePath(`/admin/classes/${classSeriesId}`);

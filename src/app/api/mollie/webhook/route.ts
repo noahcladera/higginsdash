@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { syncAndFulfillByMolliePaymentId } from "@/lib/payments/hosted-checkout";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 /**
  * Mollie payment status webhook. Mollie POSTs `id=tr_...`
@@ -18,6 +19,20 @@ import { syncAndFulfillByMolliePaymentId } from "@/lib/payments/hosted-checkout"
  * order.
  */
 export async function POST(req: Request) {
+  // The endpoint is public (Mollie can't sign requests), so throttle per-IP to
+  // blunt abuse — legitimate Mollie traffic is well under this ceiling.
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip")?.trim() ||
+    "unknown";
+  const rl = await checkRateLimit("mollie-webhook", ip, {
+    limit: 120,
+    windowSec: 60,
+  });
+  if (!rl.success) {
+    return NextResponse.json({ ok: false, error: "rate limited" }, { status: 429 });
+  }
+
   let molliePaymentId: string | null = null;
 
   const contentType = req.headers.get("content-type") ?? "";

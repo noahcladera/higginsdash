@@ -23,6 +23,12 @@ export async function GET(req: Request) {
     url.searchParams.get("exclude_in_household") === "1";
   const householdId = url.searchParams.get("household_id");
 
+  // Require a real search term so the endpoint can't be used to dump the
+  // member directory with an empty query.
+  if (q.length < 2) {
+    return NextResponse.json({ results: [] });
+  }
+
   const conditions: Prisma.PersonWhereInput[] = [{ archivedAt: null }];
 
   if (q) {

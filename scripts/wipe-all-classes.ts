@@ -18,10 +18,12 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveConfirmed } from "./_safety";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  assertDestructiveConfirmed("db:wipe-classes (all class data)");
   console.log("Wiping all class data…\n");
 
   // Snapshot before for reporting.

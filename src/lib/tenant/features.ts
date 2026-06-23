@@ -106,6 +106,9 @@ export interface FeatureFlags {
   notifications: boolean;
   /** Admin audit log. */
   auditLog: boolean;
+  /** Read-only "Customer 360" panel showing pre-migration history (from the
+   *  brain) on admin person & household pages. */
+  legacyHistory: boolean;
 }
 
 /**
@@ -164,6 +167,7 @@ export const BASE_FEATURE_FLAGS: FeatureFlags = {
   inbox: false,
   notifications: false,
   auditLog: false,
+  legacyHistory: false,
 };
 
 /** Section heading on the admin "Features" screen. */
@@ -482,6 +486,12 @@ export const FEATURE_FLAG_GROUPS: ReadonlyArray<FeatureFlagGroup> = [
         key: "auditLog",
         label: "Audit log",
         description: "Who changed what, with timestamps. Useful for compliance.",
+      },
+      {
+        key: "legacyHistory",
+        label: "Legacy history (Customer 360)",
+        description:
+          "Show a read-only pre-migration history panel (past payments, classes, calendar, and email) on admin person and household pages, matched by email. Reference only — never written into live records.",
       },
     ],
   },

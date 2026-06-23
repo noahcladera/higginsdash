@@ -88,6 +88,31 @@ export async function syncAndFulfillCheckoutIntent(
 
   const mollieStatus = molliePayment.status;
   if (mollieStatus === "paid") {
+    // Integrity checks before we grant anything: the amount Mollie actually
+    // captured must equal what the intent recorded, in EUR, and the payment
+    // must carry our intent id in its metadata. This blocks tampered or
+    // mismatched payments from triggering fulfillment.
+    const expected = Number(intent.amount).toFixed(2);
+    const paidValue = molliePayment.amount?.value ?? "";
+    const paidCurrency = molliePayment.amount?.currency ?? "";
+    const metaIntentId =
+      (molliePayment.metadata as { intentId?: string } | null)?.intentId ?? null;
+
+    if (paidCurrency !== "EUR" || paidValue !== expected || metaIntentId !== intent.id) {
+      await prisma.paymentCheckoutIntent.update({
+        where: { id: intent.id },
+        data: {
+          status: "failed",
+          failureReason: `Payment integrity check failed (paid ${paidValue} ${paidCurrency}, expected ${expected} EUR, metaIntent ${metaIntentId ?? "none"}).`,
+        },
+      });
+      return {
+        ok: false,
+        error: "Payment could not be verified. Please contact the office.",
+        status: "failed",
+      };
+    }
+
     if (intent.status !== "paid") {
       const action = intent.action as DemoCheckoutAction;
       // Marker so we can find exactly the Payment row(s) this fulfillment

@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { pollCheckoutIntent } from "@/lib/payments/checkout-actions";
+import { isSafeInternalPath } from "@/lib/safe-redirect";
 
 /**
  * Landing page after Mollie hosted checkout. Polls until the webhook
@@ -38,9 +39,12 @@ export default function CheckoutReturnPage() {
       if (cancelled) return;
 
       if (res.ok && res.status === "paid") {
-        setReturnUrl(res.returnUrl);
+        // Defense-in-depth: only ever navigate to a same-origin path, even
+        // though returnUrl is validated at intent creation.
+        const safe = isSafeInternalPath(res.returnUrl) ? res.returnUrl : "/portal";
+        setReturnUrl(safe);
         setState("success");
-        window.location.replace(res.returnUrl);
+        window.location.replace(safe);
         return;
       }
       if (res.ok && res.status === "pending") {

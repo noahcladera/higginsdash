@@ -46,13 +46,23 @@ async function main() {
   }
 
   const adminEmails = process.env.PLATFORM_ADMIN_EMAILS?.trim();
-  warn(
-    "PLATFORM_ADMIN_EMAILS",
-    !!adminEmails,
-    adminEmails
-      ? `${adminEmails.split(",").length} allowlisted`
-      : "unset — first login may become admin on empty DB",
-  );
+  if (process.env.NODE_ENV === "production") {
+    // In production an empty allowlist means the first person to sign up could
+    // be auto-promoted to admin on an empty DB — treat as a hard failure.
+    if (!check("PLATFORM_ADMIN_EMAILS (required in prod)", !!adminEmails,
+      adminEmails ? `${adminEmails.split(",").length} allowlisted`
+        : "MUST be set in production to prevent admin takeover")) {
+      allOk = false;
+    }
+  } else {
+    warn(
+      "PLATFORM_ADMIN_EMAILS",
+      !!adminEmails,
+      adminEmails
+        ? `${adminEmails.split(",").length} allowlisted`
+        : "unset — first login may become admin on empty DB",
+    );
+  }
 
   const mollieTriaz = !!process.env.MOLLIE_API_KEY_TRIAZ?.trim();
   const mollieHiggins = !!process.env.MOLLIE_API_KEY_HIGGINS?.trim();
@@ -75,6 +85,17 @@ async function main() {
     resend
       ? "coach invites + receipts enabled"
       : "admin must copy magic links manually; no receipt email",
+  );
+
+  const upstash =
+    !!process.env.UPSTASH_REDIS_REST_URL?.trim() &&
+    !!process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+  warn(
+    "UPSTASH_REDIS (rate limiting)",
+    upstash,
+    upstash
+      ? "login/signup/trial/webhook throttled"
+      : "rate limiting DISABLED (fails open) — set before production",
   );
 
   if (process.env.NODE_ENV === "production") {

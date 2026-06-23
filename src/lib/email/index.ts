@@ -27,8 +27,10 @@ export async function sendEmail(email: OutboundEmail): Promise<boolean> {
         { to: email.to, subject: email.subject },
       );
     } else {
+      // Dev stub. Do NOT log the body — it can contain magic links, temporary
+      // passwords, or other secrets. Log only the envelope.
       console.info(
-        `[email-stub] -> ${email.to}\n  subject: ${email.subject}\n  body: ${email.body}`,
+        `[email-stub] -> ${email.to}\n  subject: ${email.subject}\n  (body redacted; set RESEND_API_KEY to actually send)`,
       );
     }
     return false;

@@ -2330,3 +2330,41 @@ model StockMedia {
   @@index([orgSlug, displayOrder])
   @@map("stock_media")
 }
+
+/// Read-only "Customer 360" history precomputed by the Higgins brain from
+/// pre-migration sources (GoTimmy enrollments/payments, calendars, office
+/// Gmail). One row per legacy household. NEVER mixed into the live CRM —
+/// admins view it for reference only. Imported via scripts/import-legacy-profiles.ts.
+model LegacyProfile {
+  id                 String   @id @default(uuid()) @db.Uuid
+  /// Stable key from the brain export (the legacy household owner email).
+  householdKey       String   @unique @map("household_key")
+  displayName        String   @map("display_name")
+  memberNames        String[] @map("member_names")
+  totalPaidCents     Int      @default(0) @map("total_paid_cents")
+  totalRefundedCents Int      @default(0) @map("total_refunded_cents")
+  bookingCount       Int      @default(0) @map("booking_count")
+  emailCount         Int      @default(0) @map("email_count")
+  complaintCount     Int      @default(0) @map("complaint_count")
+  firstSeen          DateTime? @map("first_seen") @db.Date
+  lastSeen           DateTime? @map("last_seen") @db.Date
+  /// Full trimmed dossier: { payments[], calendar[], emails[] }. No email bodies.
+  data               Json
+  importedAt         DateTime @default(now()) @map("imported_at") @db.Timestamptz(6)
+
+  emails LegacyProfileEmail[]
+
+  @@map("legacy_profiles")
+}
+
+/// Lookup table: maps every known legacy owner email to a LegacyProfile so the
+/// portal can resolve a current Person (by their EmailAddress) to its history.
+model LegacyProfileEmail {
+  email     String @id
+  profileId String @map("profile_id") @db.Uuid
+
+  profile LegacyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("legacy_profile_emails")
+}

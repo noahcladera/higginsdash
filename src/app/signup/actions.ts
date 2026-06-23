@@ -2,11 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 import { v5 as uuidv5 } from "uuid";
 import { prisma } from "@/lib/prisma";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SYSTEM_PERSON_IDS } from "@/lib/system-ids";
+import { shouldGrantFirstUserAdmin } from "@/lib/auth/ensure-person";
+import { checkRateLimitByIp } from "@/lib/rate-limit";
 
 /** Same RFC 4122 NS_DNS namespace the seed script uses for deterministic ids. */
 const CHILD_ID_NAMESPACE = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
@@ -95,6 +97,15 @@ export type SignUpResult = { ok: true } | { ok: false; error: string };
  * they sign up for a lesson.
  */
 export async function signUp(input: SignUpInput): Promise<SignUpResult> {
+  // Throttle public signups per IP to prevent mass account/CRM creation.
+  const rl = await checkRateLimitByIp("signup", { limit: 5, windowSec: 3600 });
+  if (!rl.success) {
+    return {
+      ok: false,
+      error: "Too many sign-up attempts. Please wait a while and try again.",
+    };
+  }
+
   const parsed = SignUpSchema.safeParse(input);
   if (!parsed.success) {
     return {
@@ -134,12 +145,14 @@ export async function signUp(input: SignUpInput): Promise<SignUpResult> {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // 1. Create the auth user (email pre-confirmed, no verification email).
+  // 1. Create the auth user. Email is NOT pre-confirmed — Supabase sends a
+  //    verification email and the user cannot sign in until they confirm.
+  //    (Requires email confirmations enabled + SMTP configured in Supabase.)
   const { data: created, error: createErr } =
     await admin.auth.admin.createUser({
       email: data.email,
       password: data.password,
-      email_confirm: true,
+      email_confirm: false,
     });
   if (createErr || !created.user) {
     // Surface friendly message for "already registered" without leaking details.
@@ -157,11 +170,18 @@ export async function signUp(input: SignUpInput): Promise<SignUpResult> {
   //    a half-built household if anything blows up.
   try {
     await prisma.$transaction(async (tx) => {
-      // First-real-user-becomes-admin (matches ensurePersonForAuthUser).
+      // First-real-user-becomes-admin, but ONLY when allowed by the
+      // PLATFORM_ADMIN_EMAILS allowlist (shared with ensurePersonForAuthUser).
+      // Serializable isolation prevents two concurrent first signups from both
+      // observing an empty table and both being promoted.
       const realPeopleCount = await tx.person.count({
         where: { id: { notIn: [...SYSTEM_PERSON_IDS] } },
       });
       const isFirstUser = realPeopleCount === 0;
+      const grantAdmin = shouldGrantFirstUserAdmin({
+        isFirstUser,
+        email: data.email,
+      });
 
       await tx.person.create({
         data: {
@@ -181,7 +201,7 @@ export async function signUp(input: SignUpInput): Promise<SignUpResult> {
           postalCode: data.postalCode,
           city: data.city,
           country: data.country,
-          isAdmin: isFirstUser,
+          isAdmin: grantAdmin,
           lastLoginAt: new Date(),
         },
       });
@@ -258,7 +278,7 @@ export async function signUp(input: SignUpInput): Promise<SignUpResult> {
           });
         }
       }
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (err) {
     // Roll back the auth user so the customer can re-try with the same email.
     await admin.auth.admin.deleteUser(authUserId).catch(() => {
@@ -268,18 +288,10 @@ export async function signUp(input: SignUpInput): Promise<SignUpResult> {
     return { ok: false, error: msg };
   }
 
-  // 3. Sign the user in so the session cookie is on the response.
-  const supabase = await createSupabaseServerClient();
-  const { error: signInErr } = await supabase.auth.signInWithPassword({
-    email: data.email,
-    password: data.password,
-  });
-  if (signInErr) {
-    // Account exists; just send them to the login page with a friendly nudge.
-    redirect("/login?error=signup_succeeded_signin_failed");
-  }
-
-  redirect("/portal?welcome=1");
+  // 3. Do NOT auto-sign-in. The account must verify its email first; Supabase
+  //    rejects sign-in until confirmed. Send them to login with a friendly
+  //    "check your inbox" nudge.
+  redirect("/login?verify_email=1");
 }
 
 function parseDate(value: string): Date | null {

@@ -103,6 +103,7 @@ export type UpgradeMembershipResult =
  */
 export async function createMembership(
   input: unknown,
+  opts?: { verifyPaidEur?: number | null },
 ): Promise<CreateMembershipResult> {
   try {
     const { person, householdId } = await requireMember();
@@ -251,6 +252,21 @@ export async function createMembership(
       }
     }
 
+    // Payment-integrity guard: when called from the verified checkout path,
+    // refuse to grant a membership that wasn't actually paid for. We assert
+    // against the FULL plan total — including both legs of a joint membership —
+    // so a joint membership can never be activated unless the captured payment
+    // covered the entire amount (closes the "pay one leg, get both" gap).
+    if (opts?.verifyPaidEur != null) {
+      const planTotal = paymentPlan.reduce((sum, leg) => sum + leg.amount, 0);
+      if (planTotal > opts.verifyPaidEur + 0.5) {
+        return {
+          ok: false,
+          error: "Payment did not cover the full membership price.",
+        };
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       const created = await tx.membership.create({
         data: {
@@ -345,6 +361,7 @@ export async function createMembership(
  */
 export async function upgradeMembership(
   input: unknown,
+  opts?: { verifyPaidEur?: number | null },
 ): Promise<UpgradeMembershipResult> {
   const { person, householdId } = await requireMember();
   if (!householdId) {
@@ -389,6 +406,13 @@ export async function upgradeMembership(
 
   const seasonError = ensureClubsInSeason(offer.target.clubs);
   if (seasonError) return { ok: false, error: seasonError };
+
+  // Payment-integrity guard for the verified checkout path: the net upgrade
+  // price is authoritative and recomputed above, so refuse if the captured
+  // payment didn't cover it.
+  if (opts?.verifyPaidEur != null && offer.netPrice > opts.verifyPaidEur + 0.5) {
+    return { ok: false, error: "Payment did not cover the upgrade price." };
+  }
 
   const clubRows = await prisma.club.findMany({
     where: { slug: { in: offer.target.clubs }, isActive: true, archivedAt: null },
