@@ -4,11 +4,12 @@ import { resolveAccessDetailed } from "@/lib/auth/person-access";
 /**
  * Server-side guard for /portal/* routes and member server actions.
  *
- * Anyone with a non-archived `people` row may use the portal if they:
- *   - have a Student record, OR
- *   - are an admin (admins can inspect the member portal for debugging), OR
- *   - belong to a Household (including brand-new self-signups before they
- *     buy a membership — they need the portal to reach `/portal/membership`).
+ * Anyone with a non-archived `people` row may use the portal, including
+ * brand-new signups who don't have a household or student row yet
+ * (`kind === "none"`). `defaultRouteForPerson` sends those users here so
+ * they see the onboarding surface — bouncing them to `/login?error=
+ * not_member` would loop because middleware immediately sends signed-in
+ * visitors back to `/`.
  *
  * Coaches are NOT members of this portal: they live exclusively in
  * `/coach`. A non-admin coach who hits `/portal` is bounced to their
@@ -36,10 +37,6 @@ export async function requireMember() {
   // not /portal. Send them home silently — there's no error to show.
   if (access.isCoachLike && !access.isAdmin) {
     redirect("/coach");
-  }
-
-  if (!access.isMember) {
-    redirect("/login?error=not_member");
   }
 
   return {

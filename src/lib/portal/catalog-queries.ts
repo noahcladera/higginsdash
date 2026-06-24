@@ -448,7 +448,6 @@ export async function getVisibleSeriesById(
           },
         },
       },
-      campOptions: true,
       _count: {
         select: {
           enrollments: {
