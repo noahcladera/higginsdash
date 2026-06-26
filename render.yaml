@@ -2,6 +2,9 @@
 # After connect: set env vars from .env.example (Supabase + NEXT_PUBLIC_SITE_URL).
 # NEXT_PUBLIC_SITE_URL must be https://<your-service>.onrender.com (not localhost).
 # Redeploy after changing any NEXT_PUBLIC_* variable.
+#
+# Mollie: set both API keys (sync: false below), NEXT_PUBLIC_DEMO_MOLLIE=false,
+# and register webhook https://<your-host>/api/mollie/webhook in each Mollie account.
 services:
   - type: web
     name: higgins-portal
@@ -14,3 +17,33 @@ services:
         value: "20"
       - key: NODE_ENV
         value: production
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: MOLLIE_API_KEY_TRIAZ
+        sync: false
+      - key: MOLLIE_API_KEY_HIGGINS
+        sync: false
+      - key: NEXT_PUBLIC_DEMO_MOLLIE
+        value: "false"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: PLATFORM_ADMIN_EMAILS
+        sync: false
+      - key: PLATFORM_SUPPORT_EMAILS
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false

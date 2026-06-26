@@ -204,5 +204,8 @@ Git remote: `https://github.com/noahcladera/higginsdash.git`
    `npx prisma migrate deploy` (locally with production `DATABASE_URL`, or Render shell).
 8. Set **`RESEND_API_KEY`** and **`EMAIL_FROM`** on Render for coach invite autosend and receipts. Verify the sender domain in [Resend](https://resend.com). Without Resend, use **Coaches → Pending invites → Copy login link**.
 9. Optional: `npm run db:seed` on an empty database for catalog data.
+10. **Mollie payments:** set `MOLLIE_API_KEY_TRIAZ` and `MOLLIE_API_KEY_HIGGINS` (same test key is fine until Triaz has its own org), `NEXT_PUBLIC_DEMO_MOLLIE=false`, and **`NEXT_PUBLIC_SITE_URL=https://higginsdash.onrender.com`** (then redeploy). In each Mollie dashboard → Developers → Webhooks, register:
+    - `https://higginsdash.onrender.com/api/mollie/webhook`
+    Verify locally: `dotenv -e .env.local -- npx tsx scripts/check-mollie-config.ts`
 
 Render: this repo includes [`render.yaml`](render.yaml) (build: `npm ci && npx prisma generate && npx prisma migrate deploy && npm run build`, start: `npm run start`).
