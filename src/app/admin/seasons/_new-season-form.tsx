@@ -45,7 +45,7 @@ export function NewSeasonForm() {
     <form
       ref={formRef}
       action={(fd) => run(() => createSeason(fd))}
-      className="space-y-5 rounded-[var(--radius-md)] bg-[var(--card)] p-5 shadow-[var(--shadow-sm)]"
+      className="space-y-5 elev-card rounded-[var(--radius-md)] p-5"
     >
       <p className="text-sm text-[var(--muted-foreground)]">
         Seasons group classes and help name them. Enrollment timing is set on

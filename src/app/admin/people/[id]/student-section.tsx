@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useActionFeedback } from "@/lib/feedback";
 import { updateStudent } from "../actions";
 import { SchoolSelect } from "./school-select";
 
@@ -24,22 +24,16 @@ export function StudentSection({
   personId: string;
   student: StudentRow;
 }) {
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function onSubmit(formData: FormData) {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await updateStudent(personId, formData);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Save failed.");
-      }
-    });
-  }
+  const { run, pending, error } = useActionFeedback({
+    success: "Student details saved",
+    errorTitle: "Couldn't save student details",
+  });
 
   return (
-    <form action={onSubmit} className="space-y-4">
+    <form
+      action={(formData) => run(() => updateStudent(personId, formData))}
+      className="space-y-4"
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="enrollmentStatus">Enrollment status</Label>

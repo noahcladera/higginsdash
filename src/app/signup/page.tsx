@@ -13,7 +13,11 @@ export default async function SignupPage() {
   return (
     <main className="min-h-screen bg-[var(--background)]">
       <div className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
-        <SignupCard brandName={brand.displayName} />
+        <SignupCard
+          brandName={brand.displayName}
+          brandLogoUrl={brand.logoUrl}
+          officeEmail={brand.officeEmail}
+        />
       </div>
     </main>
   );

@@ -5,18 +5,10 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useActionFeedback } from "@/lib/feedback";
 
 import { updateOrgGeneral } from "../actions";
-
-const COUNTRY_OPTIONS = [
-  { value: "NL", label: "Netherlands" },
-  { value: "US", label: "United States" },
-  { value: "UK", label: "United Kingdom" },
-  { value: "DE", label: "Germany" },
-  { value: "FR", label: "France" },
-  { value: "BE", label: "Belgium" },
-  { value: "OTHER", label: "Other" },
-];
+import { COUNTRY_OPTIONS } from "@/lib/countries";
 
 const LOCALE_OPTIONS = [
   { value: "nl-NL", label: "Dutch (Netherlands)" },
@@ -58,16 +50,13 @@ export function GeneralEditor({
   const [locale, setLocale] = React.useState(defaultLocale);
   const [currency, setCurrency] = React.useState(defaultCurrency);
   const [officeEmail, setOfficeEmail] = React.useState(defaultOfficeEmail);
-  const [status, setStatus] = React.useState<
-    | { kind: "idle" }
-    | { kind: "saving" }
-    | { kind: "saved" }
-    | { kind: "error"; message: string }
-  >({ kind: "idle" });
+  const { run, pending, error } = useActionFeedback({
+    success: "Saved",
+    successDescription: "Reload any open tab to see it everywhere.",
+  });
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setStatus({ kind: "saving" });
     const form = new FormData();
     form.set("displayName", displayName);
     form.set("shortName", shortName);
@@ -75,16 +64,7 @@ export function GeneralEditor({
     form.set("locale", locale);
     form.set("currency", currency);
     form.set("officeEmail", officeEmail);
-    try {
-      const result = await updateOrgGeneral(form);
-      if (result.ok) setStatus({ kind: "saved" });
-      else setStatus({ kind: "error", message: result.error });
-    } catch {
-      setStatus({
-        kind: "error",
-        message: "Save failed. Check your connection and try again.",
-      });
-    }
+    run(() => updateOrgGeneral(form));
   }
 
   return (
@@ -201,18 +181,11 @@ export function GeneralEditor({
       </section>
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={status.kind === "saving"}>
-          {status.kind === "saving" ? "Saving…" : "Save changes"}
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save changes"}
         </Button>
-        {status.kind === "saved" && (
-          <span className="text-sm text-[var(--muted-foreground)]">
-            Saved. Reload any open tab to see it everywhere.
-          </span>
-        )}
-        {status.kind === "error" && (
-          <span className="text-sm text-[var(--destructive)]">
-            {status.message}
-          </span>
+        {error && (
+          <span className="text-sm text-[var(--destructive)]">{error}</span>
         )}
       </div>
     </form>

@@ -7,6 +7,7 @@ import {
 } from "@/components/portal/app-shell";
 import { getPortalNavSections } from "@/lib/portal/nav-sections";
 import { getMembershipsForHousehold } from "@/lib/portal/queries";
+import { getHouseholdCreditBalanceCents } from "@/lib/credits/balance";
 import { themeBySlug } from "@/lib/club-theme";
 import { getCurrentOrg, splitBrandForWordmark } from "@/lib/tenant";
 import { TermsProvider } from "@/components/tenant/terms-provider";
@@ -50,9 +51,12 @@ export default async function PortalLayout({
     user.email ||
     "Member";
 
-  const [memberships, org] = await Promise.all([
+  const [memberships, org, creditBalanceCents] = await Promise.all([
     getMembershipsForHousehold(householdId),
     getCurrentOrg(),
+    householdId
+      ? getHouseholdCreditBalanceCents(householdId)
+      : Promise.resolve(0),
   ]);
   const brand = org.brand;
   const terms = org.terms;
@@ -71,9 +75,14 @@ export default async function PortalLayout({
     householdId,
     isStudent: !!person.student,
     hasActiveMembership,
+    creditBalanceCents,
   });
 
-  const subline = describeCoverage(memberships, terms);
+  const { subline, sublineHref } = describeCoverage(
+    memberships,
+    terms,
+    hasActiveMembership,
+  );
   const avatarTone = inferTone(memberships);
 
   const groups: ShellNavGroup[] = sections.groups.map((g) => ({
@@ -109,7 +118,9 @@ export default async function PortalLayout({
         identity={{
           name: displayName,
           subline,
+          sublineHref,
           avatarTone,
+          navAccentTone: avatarTone,
         }}
         accountMenu={{
           profileHref: "/portal/profile",
@@ -150,6 +161,8 @@ function iconFor(href: string): React.ReactNode {
       return <FamilyIcon />;
     case "/portal/payments":
       return <CardIcon />;
+    case "/portal/credits":
+      return <CardIcon />;
     case "/portal/classes":
       return <ClassIcon />;
     case "/portal/request-trial":
@@ -166,17 +179,23 @@ function iconFor(href: string): React.ReactNode {
 function describeCoverage(
   memberships: Awaited<ReturnType<typeof getMembershipsForHousehold>>,
   terms: { member: { singular: string }; membership: { singular: string } },
-): string {
+  hasActiveMembership: boolean,
+): { subline: string; sublineHref?: string } {
   const active = memberships.filter((m) => m.status === "active");
-  if (active.length === 0) {
-    return `Choose a ${terms.membership.singular.toLowerCase()} →`;
+  if (active.length === 0 || !hasActiveMembership) {
+    return {
+      subline: `Choose a ${terms.membership.singular.toLowerCase()} →`,
+      sublineHref: "/portal/membership#buy",
+    };
   }
   const slugs = new Set<string>();
   for (const m of active) for (const s of m.clubSlugs) slugs.add(s);
   const labels = Array.from(slugs).map((s) => themeBySlug(s).label);
-  if (labels.length === 0) return terms.member.singular;
-  if (labels.length === 1) return `${terms.member.singular} · ${labels[0]}`;
-  return `${terms.member.singular} · ${labels.join(" + ")}`;
+  if (labels.length === 0) return { subline: terms.member.singular };
+  if (labels.length === 1) {
+    return { subline: `${terms.member.singular} · ${labels[0]}` };
+  }
+  return { subline: `${terms.member.singular} · ${labels.join(" + ")}` };
 }
 
 function inferTone(

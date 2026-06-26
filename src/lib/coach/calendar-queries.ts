@@ -5,6 +5,18 @@ import {
 } from "@/lib/coach/club-scope";
 import { computeClassTiming } from "@/lib/classes/timing";
 import type { ClassDeliveryMode } from "@/lib/classes/timing";
+import { venueMapUrl } from "@/lib/maps";
+import { resolveVenueClubSlug } from "@/lib/club-theme";
+
+const VENUE_SELECT = {
+  name: true,
+  slug: true,
+  addressLine1: true,
+  postalCode: true,
+  city: true,
+  mapUrl: true,
+  club: { select: { slug: true } },
+} as const;
 
 /**
  * One session's worth of data for the coach calendar, with timing anchors
@@ -27,7 +39,12 @@ export type CoachCalendarSession = {
   programName: string;
   role: "lead" | "assistant";
   deliveryMode: ClassDeliveryMode;
+  clubSlug: string | null;
   venueName: string;
+  venueAddressLine1: string | null;
+  venuePostalCode: string | null;
+  venueCity: string | null;
+  venueMapUrl: string | null;
   schoolName: string | null;
   /** Pickup-mode only: coach leaves Triaz with the gocab. */
   leaveAt: Date | null;
@@ -118,7 +135,7 @@ export async function getCoachCalendarEvents(
         classSeries: {
           include: {
             program: { select: { name: true } },
-            venue: { select: { name: true } },
+            venue: { select: VENUE_SELECT },
             school: {
               select: {
                 name: true,
@@ -168,70 +185,10 @@ export async function getCoachCalendarEvents(
     }),
   ]);
 
-  const sessionEvents: CoachCalendarEvent[] = sessions.map((s) => {
-    const series = s.classSeries;
-    const seriesCoachRow = series.coaches[0];
-    const sessionCoachRow = s.coaches[0];
-
-    // Per-session row wins for `participatesInPickup` (so a sub or
-    // an ad-hoc edit can override) but falls back to the series-level
-    // default when the session has no override (NULL).
-    const participatesInPickup =
-      sessionCoachRow?.participatesInPickup ??
-      seriesCoachRow?.participatesInPickup ??
-      true;
-
-    // Group scope is taken from the session-level row first; if no
-    // session-level scope was set (none array), fall back to the
-    // series-level scope. Empty list → "all groups" (full series end).
-    const sessionScopes = sessionCoachRow?.groupScopes ?? [];
-    const seriesScopes = seriesCoachRow?.groupScopes ?? [];
-    const scopeRows = sessionScopes.length > 0 ? sessionScopes : seriesScopes;
-    const groupEndTimes =
-      scopeRows.length > 0
-        ? scopeRows.map((sc) =>
-            liftGroupEndOntoSession(s.startsAt, sc.group.endTime),
-          )
-        : undefined;
-
-    const timing = computeClassTiming({
-      session: { startsAt: s.startsAt, endsAt: s.endsAt },
-      series: {
-        deliveryMode: series.deliveryMode,
-        pickupAt: series.pickupAt,
-      },
-      school: series.school
-        ? { coachArriveAtHubMinutes: series.school.coachArriveAtHubMinutes }
-        : null,
-      coach: {
-        participatesInPickup,
-        groupEndTimes,
-      },
-    });
-
-    const blockStart = timing.coachArriveAt ?? timing.classStartAt;
-    const blockMinutes = Math.max(
-      30,
-      Math.round((timing.classEndAt.getTime() - blockStart.getTime()) / 60_000),
-    );
-
-    return {
-      kind: "session",
-      sessionId: s.id,
-      classSeriesId: series.id,
-      seriesName: series.name,
-      programName: series.program.name,
-      role: sessionCoachRow?.role ?? seriesCoachRow?.role ?? "lead",
-      deliveryMode: series.deliveryMode,
-      venueName: series.venue.name,
-      schoolName: series.school?.name ?? null,
-      leaveAt: timing.coachArriveAt ?? null,
-      pickupAt: timing.pickupAt ?? null,
-      classStartAt: timing.classStartAt,
-      classEndAt: timing.classEndAt,
-      blockMinutes,
-    };
-  });
+  const sessionEvents: CoachCalendarEvent[] = sessions.map((s) => ({
+    kind: "session" as const,
+    ...mapSessionToCoachCalendarSession(s),
+  }));
 
   const bookingEvents: CoachCalendarEvent[] = bookings.map((b) => ({
     kind: "booking",
@@ -297,4 +254,176 @@ export function eventStart(event: CoachCalendarEvent): Date {
 /** Block end-instant (class end / booking end). */
 export function eventEnd(event: CoachCalendarEvent): Date {
   return event.kind === "session" ? event.classEndAt : event.endsAt;
+}
+
+/**
+ * Teaching sessions assigned to a coach inside `[start, end)` — used by
+ * the iCal feed when `CalendarFeedScope.coach` is selected.
+ */
+export async function getCoachSessionsForFeed(
+  coachPersonId: string,
+  start: Date,
+  end: Date,
+): Promise<CoachCalendarSession[]> {
+  const sessions = await prisma.classSession.findMany({
+    where: {
+      startsAt: { gte: start, lt: end },
+      cancelledAt: null,
+      status: { not: "cancelled" },
+      OR: [
+        {
+          classSeries: {
+            coaches: { some: { coachPersonId } },
+          },
+          coaches: {
+            none: {
+              isSubstitute: true,
+              substitutingForPersonId: coachPersonId,
+            },
+          },
+        },
+        {
+          coaches: { some: { coachPersonId } },
+        },
+      ],
+    },
+    orderBy: { startsAt: "asc" },
+    include: {
+      classSeries: {
+        include: {
+          program: { select: { name: true } },
+          venue: { select: VENUE_SELECT },
+          school: {
+            select: {
+              name: true,
+              coachArriveAtHubMinutes: true,
+            },
+          },
+          coaches: {
+            where: { coachPersonId },
+            select: {
+              role: true,
+              participatesInPickup: true,
+              groupScopes: {
+                select: { group: { select: { endTime: true } } },
+              },
+            },
+            take: 1,
+          },
+        },
+      },
+      coaches: {
+        where: { coachPersonId },
+        select: {
+          role: true,
+          participatesInPickup: true,
+          groupScopes: {
+            select: { group: { select: { endTime: true } } },
+          },
+        },
+        take: 1,
+      },
+    },
+  });
+
+  return sessions.map((s) => mapSessionToCoachCalendarSession(s));
+}
+
+function mapSessionToCoachCalendarSession(
+  s: {
+    id: string;
+    startsAt: Date;
+    endsAt: Date;
+    classSeries: {
+      id: string;
+      name: string;
+      deliveryMode: ClassDeliveryMode;
+      pickupAt: Date | null;
+      program: { name: string };
+      venue: {
+        name: string;
+        slug: string;
+        addressLine1: string | null;
+        postalCode: string | null;
+        city: string | null;
+        mapUrl: string | null;
+        club: { slug: string } | null;
+      };
+      school: {
+        name: string;
+        coachArriveAtHubMinutes: number;
+      } | null;
+      coaches: Array<{
+        role: "lead" | "assistant";
+        participatesInPickup: boolean | null;
+        groupScopes: Array<{ group: { endTime: Date } }>;
+      }>;
+    };
+    coaches: Array<{
+      role: "lead" | "assistant";
+      participatesInPickup: boolean | null;
+      groupScopes: Array<{ group: { endTime: Date } }>;
+    }>;
+  },
+): CoachCalendarSession {
+  const series = s.classSeries;
+  const seriesCoachRow = series.coaches[0];
+  const sessionCoachRow = s.coaches[0];
+
+  const participatesInPickup =
+    sessionCoachRow?.participatesInPickup ??
+    seriesCoachRow?.participatesInPickup ??
+    true;
+
+  const sessionScopes = sessionCoachRow?.groupScopes ?? [];
+  const seriesScopes = seriesCoachRow?.groupScopes ?? [];
+  const scopeRows = sessionScopes.length > 0 ? sessionScopes : seriesScopes;
+  const groupEndTimes =
+    scopeRows.length > 0
+      ? scopeRows.map((sc) =>
+          liftGroupEndOntoSession(s.startsAt, sc.group.endTime),
+        )
+      : undefined;
+
+  const timing = computeClassTiming({
+    session: { startsAt: s.startsAt, endsAt: s.endsAt },
+    series: {
+      deliveryMode: series.deliveryMode,
+      pickupAt: series.pickupAt,
+    },
+    school: series.school
+      ? { coachArriveAtHubMinutes: series.school.coachArriveAtHubMinutes }
+      : null,
+    coach: {
+      participatesInPickup,
+      groupEndTimes,
+    },
+  });
+
+  const blockStart = timing.coachArriveAt ?? timing.classStartAt;
+  const blockMinutes = Math.max(
+    30,
+    Math.round((timing.classEndAt.getTime() - blockStart.getTime()) / 60_000),
+  );
+
+  return {
+    sessionId: s.id,
+    classSeriesId: series.id,
+    seriesName: series.name,
+    programName: series.program.name,
+    role: sessionCoachRow?.role ?? seriesCoachRow?.role ?? "lead",
+    deliveryMode: series.deliveryMode,
+    clubSlug: resolveVenueClubSlug(series.venue),
+    venueName: series.venue.name,
+    venueAddressLine1: series.venue.addressLine1,
+    venuePostalCode: series.venue.postalCode,
+    venueCity: series.venue.city,
+    venueMapUrl: venueMapUrl(series.venue),
+    schoolName: series.school?.name ?? null,
+    leaveAt: timing.coachArriveAt ?? null,
+    pickupAt: timing.pickupAt ?? null,
+    classStartAt: timing.classStartAt,
+    classEndAt: timing.classEndAt,
+    blockMinutes,
+  };
 }

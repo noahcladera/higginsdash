@@ -57,7 +57,7 @@ export function MembershipCancellationCard({
   return (
     <StatusSurface
       tone="warning"
-      className="rounded-[var(--radius-lg)] p-5 shadow-[var(--shadow-sm)]"
+      className="elev-card p-5"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>

@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 export function MedalsFilters({
   seasons,
@@ -15,6 +17,7 @@ export function MedalsFilters({
   selected: { seasonId: string; clubId: string; coachId: string };
 }) {
   const router = useRouter();
+  const hasFilters = !!(selected.seasonId || selected.clubId || selected.coachId);
 
   function apply(field: string, value: string) {
     const params = new URLSearchParams();
@@ -27,7 +30,7 @@ export function MedalsFilters({
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+    <div className="glass-ribbon flex flex-col gap-2.5 p-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
       <FilterSelect
         label="Season"
         value={selected.seasonId}
@@ -55,6 +58,15 @@ export function MedalsFilters({
           ...coaches.map((c) => ({ value: c.id, label: c.name })),
         ]}
       />
+
+      {hasFilters && (
+        <Link
+          href="/admin/medals"
+          className="pb-1.5 text-xs text-[var(--muted-foreground)] underline-offset-4 hover:text-[var(--foreground)] hover:underline sm:ml-auto"
+        >
+          Clear filters
+        </Link>
+      )}
     </div>
   );
 }
@@ -71,12 +83,17 @@ function FilterSelect({
   options: Array<{ value: string; label: string }>;
 }) {
   return (
-    <div className="space-y-1">
-      <Label className="text-xs text-[var(--muted-foreground)]">{label}</Label>
+    <div className="min-w-[9rem] flex-1 space-y-1 sm:max-w-[12rem]">
+      <Label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+        {label}
+      </Label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-9 min-w-[10rem] rounded-md border border-[var(--border)] bg-transparent px-3 text-sm"
+        className={cn(
+          "control-well h-8 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-transparent px-2.5 text-xs",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+        )}
       >
         {options.map((o) => (
           <option key={o.value || "all"} value={o.value}>

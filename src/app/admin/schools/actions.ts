@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { savedRedirectPath } from "@/lib/feedback/saved-flash";
+import type { SimpleActionResult } from "@/lib/feedback/types";
 
 const SlugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -44,26 +46,34 @@ export async function createSchool(formData: FormData) {
   const created = await prisma.school.create({ data });
 
   revalidatePath("/admin/schools");
-  redirect(`/admin/schools/${created.id}`);
+  redirect(savedRedirectPath(`/admin/schools/${created.id}`));
 }
 
 const UpdateSchema = SchoolSchema.extend({ schoolId: z.string().uuid() });
 
-export async function updateSchool(formData: FormData) {
+export async function updateSchool(formData: FormData): Promise<SimpleActionResult> {
   await requireAdmin();
   const parsed = UpdateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input");
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid input",
+    };
   }
   const { schoolId, ...data } = parsed.data;
 
-  await prisma.school.update({
-    where: { id: schoolId },
-    data,
-  });
+  try {
+    await prisma.school.update({
+      where: { id: schoolId },
+      data,
+    });
+  } catch {
+    return { ok: false, error: "Could not save school — try again." };
+  }
 
   revalidatePath("/admin/schools");
   revalidatePath(`/admin/schools/${schoolId}`);
+  return { ok: true, message: "School saved" };
 }
 
 const ArchiveSchema = z.object({

@@ -53,7 +53,7 @@ export function SecurityForm({
             the office if you need to change it.
           </p>
         </header>
-        <div className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] sm:p-6">
+        <div className="elev-card p-5 sm:p-6">
           {primaryEmail ? (
             <p className="font-medium">{primaryEmail}</p>
           ) : (
@@ -76,7 +76,7 @@ export function SecurityForm({
         <form
           id="account-change-password-form"
           action={onPasswordSubmit}
-          className="grid gap-4 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] sm:grid-cols-2 sm:p-6"
+          className="grid gap-4 elev-card p-5 sm:grid-cols-2 sm:p-6"
         >
           <div className="space-y-1.5 sm:col-span-2">
             <Label

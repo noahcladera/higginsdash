@@ -17,9 +17,13 @@ import {
   formatTimingLine,
   deliveryModeLabel,
 } from "@/lib/classes/timing";
+import { badgeToneForVenueSlug } from "@/lib/club-theme";
 import { cn } from "@/lib/utils";
+import { resolveCoverImageFocusY, coverImageObjectPosition } from "@/lib/uploads/cover-image-focus";
 import { WithdrawButton } from "./_withdraw-button";
 import { SkipSessionButton } from "./_skip-session-button";
+import { ScheduleUpdatesBanner } from "@/components/portal/schedule-updates-banner";
+import { StatusSurface } from "@/components/ui/status-surface";
 import { getCurrentOrg } from "@/lib/tenant";
 import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
 
@@ -34,72 +38,9 @@ import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
  *   - The page renders even for parents who are NOT themselves
  *     students (skill chip is hidden in that case).
  */
-/**
- * Loose UUID v1–v5 shape check. Used to defend the post-checkout
- * banner lookups against arbitrary `?series=`/`?payment=` values
- * without paying for a Prisma round-trip on garbage input.
- */
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function firstString(v: string | string[] | undefined): string | null {
-  if (Array.isArray(v)) return v[0] ?? null;
-  return v ?? null;
-}
-
-export default async function PortalClassesPage({
-  searchParams,
-}: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function PortalClassesPage() {
   const org = await getCurrentOrg();
   const t = org.terms;
-  const sp = (await searchParams) ?? {};
-  const enrolledFlag = firstString(sp.enrolled);
-  const enrolledSeriesId = firstString(sp.series);
-  const enrolledStudentRaw = firstString(sp.student);
-  const enrolledPaymentId = firstString(sp.payment);
-  const waitlistFlag = firstString(sp.waitlist);
-
-  // Only fetch the series name when the URL really claims a fresh
-  // enrollment AND the id parses as a uuid. Garbage `?series=foo`
-  // falls through to a silent skip (banner just doesn't render).
-  let enrollmentBanner: {
-    seriesName: string;
-    clubName: string | null;
-    studentName: string;
-    paymentId: string | null;
-    waitlist: boolean;
-  } | null = null;
-  if (
-    enrolledFlag === "1" &&
-    enrolledSeriesId &&
-    UUID_RE.test(enrolledSeriesId)
-  ) {
-    const series = await prisma.classSeries.findUnique({
-      where: { id: enrolledSeriesId },
-      select: {
-        name: true,
-        club: { select: { name: true } },
-      },
-    });
-    if (series) {
-      const studentName =
-        enrolledStudentRaw && enrolledStudentRaw.trim().length > 0
-          ? enrolledStudentRaw.slice(0, 60)
-          : "You";
-      enrollmentBanner = {
-        seriesName: series.name,
-        clubName: series.club?.name ?? null,
-        studentName,
-        paymentId:
-          enrolledPaymentId && UUID_RE.test(enrolledPaymentId)
-            ? enrolledPaymentId
-            : null,
-        waitlist: waitlistFlag === "1",
-      };
-    }
-  }
 
   const { person, householdId } = await requireMember();
   const hasLiveEnrollment = await householdHasLiveEnrollment({
@@ -145,8 +86,19 @@ export default async function PortalClassesPage({
       },
       include: {
         classSeries: {
-          include: {
-            program: { select: { name: true, slug: true } },
+          select: {
+            id: true,
+            name: true,
+            coverImageUrl: true,
+            coverImageFocusY: true,
+            program: {
+              select: {
+                name: true,
+                slug: true,
+                coverImageUrl: true,
+                coverImageFocusY: true,
+              },
+            },
             club: { select: { name: true } },
             venue: { select: { name: true } },
           },
@@ -218,10 +170,10 @@ export default async function PortalClassesPage({
         }
       />
 
-      {enrollmentBanner && <EnrollmentSuccessBanner {...enrollmentBanner} />}
+      <ScheduleUpdatesBanner />
 
       {enrollableSelf && (
-        <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-lg)] bg-[var(--surface)] px-5 py-4 shadow-[var(--shadow-sm)]">
+        <div className="flex flex-wrap items-center gap-3 elev-card px-5 py-4">
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
             Your level
           </span>
@@ -288,11 +240,35 @@ export default async function PortalClassesPage({
               />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {rows.map((e) => (
+                {rows.map((e) => {
+                  const coverImageUrl =
+                    e.classSeries.coverImageUrl ??
+                    e.classSeries.program.coverImageUrl;
+                  const coverImageFocusY = resolveCoverImageFocusY({
+                    seriesCoverUrl: e.classSeries.coverImageUrl,
+                    seriesFocusY: e.classSeries.coverImageFocusY,
+                    programFocusY: e.classSeries.program.coverImageFocusY,
+                  });
+                  return (
                   <article
                     key={e.id}
-                    className="flex flex-col gap-3 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]"
+                    className="elev-card-accent-triaz flex flex-col overflow-hidden"
                   >
+                    {coverImageUrl && (
+                      <div className="relative aspect-[16/9] w-full shrink-0 bg-[var(--triaz)]/10">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={coverImageUrl}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover"
+                          style={{
+                            objectPosition:
+                              coverImageObjectPosition(coverImageFocusY),
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-1 flex-col gap-3 p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1.5">
                         <Badge
@@ -333,7 +309,7 @@ export default async function PortalClassesPage({
                         )}
                       </div>
                     </div>
-                    <div className="mt-auto flex items-center justify-end gap-2 pt-2 border-t border-[var(--border)]">
+                    <div className="mt-auto flex items-center justify-end gap-2 border-t border-[var(--border)] pt-2">
                       {e.status !== "waitlist" && (
                         <Button asChild size="sm" variant="ghost" tone="neutral">
                           <Link href={`/portal/classes/${e.id}/transfer`}>
@@ -346,8 +322,10 @@ export default async function PortalClassesPage({
                         studentName={fallbackName}
                       />
                     </div>
+                    </div>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Section>
@@ -369,7 +347,7 @@ export default async function PortalClassesPage({
             description="They'll appear here once enrollment is confirmed."
           />
         ) : (
-          <ul className="rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)] divide-y divide-[var(--border)]">
+          <ul className="elev-card divide-y divide-[var(--border)]">
             {upcoming.map((s, i) => {
               const timing = computeClassTiming({
                 session: { startsAt: s.startsAt, endsAt: s.endsAt },
@@ -398,10 +376,22 @@ export default async function PortalClassesPage({
                   ? "joint"
                   : s.deliveryMode === "onsite"
                     ? "warning"
-                    : "triaz";
+                    : badgeToneForVenueSlug(s.venueClubSlug) === "neutral"
+                      ? "triaz"
+                      : badgeToneForVenueSlug(s.venueClubSlug);
               return (
-                <li
+                <StatusSurface
                   key={`${s.id}-${i}`}
+                  as="li"
+                  tone={
+                    modeTone === "warning"
+                      ? "warning"
+                      : modeTone === "joint"
+                        ? "joint"
+                        : modeTone === "randwijck"
+                          ? "randwijck"
+                          : "triaz"
+                  }
                   className="flex items-center gap-4 px-5 py-4"
                 >
                   <div className="w-20 shrink-0">
@@ -440,7 +430,7 @@ export default async function PortalClassesPage({
                       alreadySkipping={s.isPlannedAbsence}
                     />
                   </div>
-                </li>
+                </StatusSurface>
               );
             })}
           </ul>
@@ -449,7 +439,7 @@ export default async function PortalClassesPage({
 
       {recentPast.length > 0 && (
         <Section title="Recent attendance" description="Last six sessions.">
-          <ul className="rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)] divide-y divide-[var(--border)]">
+          <ul className="elev-card divide-y divide-[var(--border)]">
             {recentPast.map((a) => (
               <li
                 key={a.id}
@@ -487,68 +477,6 @@ export default async function PortalClassesPage({
   );
 }
 
-/**
- * Post-checkout celebratory banner. Rendered inline at the top of
- * /portal/classes when the enrollment panel (or the demo Mollie
- * landing) hands us `?enrolled=1&series=...&student=...&payment=...`.
- * Two variants:
- *   - Active enrollment ("See you on court", with a View receipt CTA
- *     when we have a paymentId).
- *   - Waitlist ("You are on the list", no receipt button — nothing has
- *     been billed yet).
- *
- * Styling deliberately matches the rest of the portal (no emojis, no
- * confetti). Calm and friendly.
- */
-function EnrollmentSuccessBanner({
-  seriesName,
-  clubName,
-  studentName,
-  paymentId,
-  waitlist,
-}: {
-  seriesName: string;
-  clubName: string | null;
-  studentName: string;
-  paymentId: string | null;
-  waitlist: boolean;
-}) {
-  const headline = waitlist ? "You are on the list" : "See you on court";
-  const atClub = clubName ? ` at ${clubName}` : "";
-  const body = waitlist
-    ? `${studentName} is on the waitlist for ${seriesName}${atClub}. We will message you the moment a spot opens up.`
-    : `${studentName} is enrolled in ${seriesName}${atClub}. We will email you the schedule reminders and any kit notes — see you there.`;
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--triaz)]/40 bg-[var(--triaz-soft)] p-5 shadow-[var(--shadow-sm)]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 space-y-1.5">
-          <Badge tone={waitlist ? "warning" : "success"} variant="solid">
-            {waitlist ? "Waitlisted" : "Enrolled"}
-          </Badge>
-          <h2 className="font-display text-xl font-medium tracking-tight text-[var(--triaz-ink)]">
-            {headline}
-          </h2>
-          <p className="max-w-prose text-sm text-[var(--foreground)]">
-            {body}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {!waitlist && paymentId && (
-            <Button asChild tone="triaz" variant="solid" size="sm">
-              <Link href={`/portal/payments?highlight=${paymentId}`}>
-                View receipt
-              </Link>
-            </Button>
-          )}
-          <Button asChild variant="outline" size="sm">
-            <Link href="/portal/programs">Browse more classes</Link>
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function AttendanceBadge({ status }: { status: string }) {
   const tone =
     status === "present"
@@ -559,7 +487,7 @@ function AttendanceBadge({ status }: { status: string }) {
           ? "warning"
           : "neutral";
   return (
-    <Badge tone={tone} className={cn("capitalize")}>
+    <Badge tone={tone} className="capitalize">
       {status}
     </Badge>
   );

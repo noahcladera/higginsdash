@@ -27,6 +27,14 @@ export function MedalLevelCard({ row }: { row: MedalLevelContent }) {
           fits.
         </p>
       )}
+      {row.howToGraduate?.trim() ? (
+        <div className="mt-4 rounded-lg bg-[var(--muted)]/40 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+            To graduate
+          </p>
+          <p className="mt-1 text-sm leading-relaxed">{row.howToGraduate}</p>
+        </div>
+      ) : null}
     </article>
   );
 }

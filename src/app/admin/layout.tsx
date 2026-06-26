@@ -20,6 +20,8 @@ import {
 } from "@/lib/inbox/queries";
 import { getCurrentOrg, splitBrandForWordmark } from "@/lib/tenant";
 import { TermsProvider } from "@/components/tenant/terms-provider";
+import { SavedFlash } from "@/components/feedback/saved-flash";
+import { Suspense } from "react";
 
 /**
  * Admin nav blueprint.
@@ -213,7 +215,7 @@ export default async function AdminLayout({
   const bookingItems: ShellNavGroup["items"] = [];
   if (f.courtBookings) {
     bookingItems.push({
-      href: "/admin/bookings",
+      href: "/admin?panel=schedule",
       label: "Bookings",
       icon: <CalendarIcon size={16} />,
     });
@@ -299,7 +301,8 @@ export default async function AdminLayout({
         identity={{
           name: displayName,
           subline: user.email ?? "Admin operator",
-          avatarTone: "joint",
+          avatarTone: "neutral",
+          navAccentTone: "triaz",
         }}
         accountMenu={{
           profileHref: "/admin/profile",
@@ -309,6 +312,9 @@ export default async function AdminLayout({
         switchLinks={switchLinks}
         groups={groups}
       >
+        <Suspense fallback={null}>
+          <SavedFlash />
+        </Suspense>
         {children}
       </AppShell>
     </TermsProvider>

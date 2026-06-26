@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatPublicAgeLabel, programTargetToAudience } from "@/lib/classes/age-band";
 import { getCoachClassSeriesList } from "@/lib/coach/class-series-queries";
 import { formatLocalDate } from "@/lib/booking/time";
 import { getTerms } from "@/lib/tenant";
@@ -32,7 +33,15 @@ export default async function CoachClassesPage() {
           />
         ) : (
           <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
-            {rows.map((s) => (
+            {rows.map((s) => {
+              const ageLabel = formatPublicAgeLabel({
+                minAge: s.minAge,
+                maxAge: s.maxAge,
+                audience: programTargetToAudience(
+                  s.targetAudience as "kids" | "adults" | "mixed",
+                ),
+              });
+              return (
               <li key={s.id}>
                 <Link
                   href={`/coach/classes/${s.id}`}
@@ -42,9 +51,7 @@ export default async function CoachClassesPage() {
                     <div className="font-medium">{s.name}</div>
                     <div className="text-sm text-[var(--muted-foreground)]">
                       {s.programName} · {audienceLabel(s.targetAudience)}
-                      {s.minAge != null || s.maxAge != null
-                        ? ` · ages ${s.minAge ?? "—"}–${s.maxAge ?? "—"}`
-                        : ""}
+                      {ageLabel ? ` · ${ageLabel}` : ""}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -58,7 +65,8 @@ export default async function CoachClassesPage() {
                   </div>
                 </Link>
               </li>
-            ))}
+            );
+            })}
           </ul>
         )}
       </Section>

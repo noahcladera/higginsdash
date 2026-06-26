@@ -9,6 +9,10 @@
 
 export const CLUB_TZ = "Europe/Amsterdam";
 
+/** Shared week-calendar time axis (Europe/Amsterdam local hours). */
+export const CALENDAR_AXIS_START_HOUR = 9;
+export const CALENDAR_AXIS_END_HOUR = 22;
+
 /**
  * Returns the UTC offset in minutes for Europe/Amsterdam at the given UTC
  * moment. CET = +60, CEST = +120.

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireMember } from "@/lib/auth/require-member";
 import { isGuardianOf } from "@/lib/portal/queries";
+import { isAllowedPhotoUrl } from "@/lib/uploads/allowed-photo-url";
 
 /**
  * Subset of fields a parent is allowed to edit on their child's profile.
@@ -42,6 +43,12 @@ const ChildPatchSchema = z.object({
     .trim()
     .optional()
     .transform((v) => (v ? v : null)),
+  avatarUrl: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v === "" || v == null ? null : v))
+    .refine((v) => v === null || isAllowedPhotoUrl(v), "Invalid photo URL."),
 })
 .superRefine((val, ctx) => {
   if (
@@ -108,6 +115,7 @@ export async function updateChildProfile(
         emergencyContactName: data.emergencyContactName,
         emergencyContactPhone: data.emergencyContactPhone,
         emergencyContactRelationship: data.emergencyContactRelationship,
+        avatarUrl: data.avatarUrl,
       },
     });
     // Only update the Student row if it exists; child without a Student
@@ -124,6 +132,7 @@ export async function updateChildProfile(
   });
 
   revalidatePath("/portal/family");
+  revalidatePath("/portal");
   return { ok: true };
 }
 

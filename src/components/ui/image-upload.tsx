@@ -5,6 +5,10 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { uploadImage, type ImageUploadKind } from "@/lib/uploads/image-upload";
+import {
+  DEFAULT_COVER_IMAGE_FOCUS_Y,
+  coverImageObjectPosition,
+} from "@/lib/uploads/cover-image-focus";
 import { listStockMedia, type StockMediaItem } from "@/lib/uploads/stock-media";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +50,13 @@ export interface ImageUploadProps {
   /** Fires whenever the URL changes (upload succeeds, or removal). */
   onChange?: (url: string) => void;
   /**
+   * Hidden input name for vertical crop (0–100). When set and an image is
+   * loaded, shows a simple slider below the preview.
+   */
+  focusYName?: string;
+  defaultFocusY?: number;
+  onFocusYChange?: (focusY: number) => void;
+  /**
    * Show the curated stock photo grid below the upload tile.
    * Defaults to true for logo/cover; false for personal profile photos.
    */
@@ -73,10 +84,14 @@ export function ImageUpload({
   label,
   helpText,
   onChange,
+  focusYName,
+  defaultFocusY = DEFAULT_COVER_IMAGE_FOCUS_Y,
+  onFocusYChange,
   showStockPicker,
   className,
 }: ImageUploadProps) {
   const [url, setUrl] = React.useState<string>(defaultUrl ?? "");
+  const [focusY, setFocusY] = React.useState<number>(defaultFocusY);
   const [stockPhotos, setStockPhotos] = React.useState<StockMediaItem[] | null>(
     null,
   );
@@ -109,8 +124,22 @@ export function ImageUpload({
 
   function setValue(nextUrl: string) {
     setUrl(nextUrl);
+    if (!nextUrl) {
+      setFocusY(DEFAULT_COVER_IMAGE_FOCUS_Y);
+      onFocusYChange?.(DEFAULT_COVER_IMAGE_FOCUS_Y);
+    } else if (nextUrl !== url) {
+      setFocusY(DEFAULT_COVER_IMAGE_FOCUS_Y);
+      onFocusYChange?.(DEFAULT_COVER_IMAGE_FOCUS_Y);
+    }
     onChange?.(nextUrl);
   }
+
+  function setFocus(next: number) {
+    setFocusY(next);
+    onFocusYChange?.(next);
+  }
+
+  const previewObjectPosition = coverImageObjectPosition(focusY);
 
   async function handleFile(file: File) {
     setStatus({ kind: "uploading" });
@@ -183,6 +212,7 @@ export function ImageUpload({
               src={url}
               alt={label}
               className="h-full w-full object-cover"
+              style={{ objectPosition: previewObjectPosition }}
             />
           </div>
         ) : (
@@ -204,6 +234,29 @@ export function ImageUpload({
           </button>
         )}
       </div>
+
+      {url && focusYName && resolvedAspect !== "square" && (
+        <div className="max-w-md space-y-1">
+          <Label htmlFor={`${inputId}-focus-y`} className="text-xs">
+            Vertical crop
+          </Label>
+          <input
+            id={`${inputId}-focus-y`}
+            type="range"
+            min={0}
+            max={100}
+            value={focusY}
+            onChange={(e) => setFocus(Number(e.target.value))}
+            disabled={isUploading}
+            className="h-2 w-full cursor-pointer accent-[var(--triaz)]"
+          />
+          <div className="flex justify-between text-[10px] text-[var(--muted-foreground)]">
+            <span>Top</span>
+            <span>Bottom</span>
+          </div>
+          <input type="hidden" name={focusYName} value={focusY} />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -242,7 +295,8 @@ export function ImageUpload({
           <p className="text-xs font-medium text-[var(--muted-foreground)]">
             Or pick a stock photo
           </p>
-          <div className="grid max-h-48 max-w-md grid-cols-4 gap-2 overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-2">
+          <div className="max-h-48 max-w-md overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-2">
+            <div className="grid grid-cols-4 items-start gap-2">
             {stockPhotos.map((photo) => {
               const selected = url === photo.url;
               return (
@@ -253,7 +307,7 @@ export function ImageUpload({
                   onClick={() => setValue(photo.url)}
                   disabled={isUploading}
                   className={cn(
-                    "relative aspect-square overflow-hidden rounded-md border transition-colors",
+                    "relative block w-full aspect-square overflow-hidden rounded-md border transition-colors",
                     selected
                       ? "border-[var(--ring)] ring-2 ring-[var(--ring)]"
                       : "border-[var(--border)] hover:border-[var(--ring)]",
@@ -269,6 +323,7 @@ export function ImageUpload({
                 </button>
               );
             })}
+            </div>
           </div>
         </div>
       )}

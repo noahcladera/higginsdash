@@ -1,0 +1,199 @@
+prisma:error 
+Invalid `prisma.classSeries.findFirst()` invocation in
+/Users/noah/calednar migration/higgins/scripts/_audit-extended-probes.ts:79:43
+
+  76   }
+  77 }
+  78 
+→ 79 const series = await prisma.classSeries.findFirst({
+       where: {
+         enrollmentOpen: true,
+         ~~~~~~~~~~~~~~
+     ?   AND?: ClassSeriesWhereInput | ClassSeriesWhereInput[],
+     ?   OR?: ClassSeriesWhereInput[],
+     ?   NOT?: ClassSeriesWhereInput | ClassSeriesWhereInput[],
+     ?   id?: UuidFilter | String,
+     ?   programId?: UuidFilter | String,
+     ?   seasonId?: UuidNullableFilter | String | Null,
+     ?   name?: StringFilter | String,
+     ?   nameOverride?: StringNullableFilter | String | Null,
+     ?   classType?: EnumClassTypeFilter | ClassType,
+     ?   deliveryMode?: EnumClassDeliveryModeFilter | ClassDeliveryMode,
+     ?   venueId?: UuidFilter | String,
+     ?   schoolId?: UuidNullableFilter | String | Null,
+     ?   clubId?: UuidNullableFilter | String | Null,
+     ?   defaultCourtId?: UuidNullableFilter | String | Null,
+     ?   schoolPartnershipId?: UuidNullableFilter | String | Null,
+     ?   venueText?: StringNullableFilter | String | Null,
+     ?   dayOfWeek?: EnumDayOfWeekNullableFilter | DayOfWeek | Null,
+     ?   startTime?: DateTimeFilter | DateTime,
+     ?   endTime?: DateTimeFilter | DateTime,
+     ?   courtBlockStartTime?: DateTimeNullableFilter | DateTime | Null,
+     ?   courtBlockEndTime?: DateTimeNullableFilter | DateTime | Null,
+     ?   pickupAt?: DateTimeNullableFilter | DateTime | Null,
+     ?   recurrenceRule?: StringNullableFilter | String | Null,
+     ?   startsOn?: DateTimeFilter | DateTime,
+     ?   endsOn?: DateTimeFilter | DateTime,
+     ?   excludedDates?: DateTimeNullableListFilter,
+     ?   maxStudents?: IntFilter | Int,
+     ?   minStudents?: IntNullableFilter | Int | Null,
+     ?   waitlistEnabled?: BoolFilter | Boolean,
+     ?   eligibleSkillLevels?: EnumSkillLevelNullableListFilter,
+     ?   eligibleMedalLevels?: EnumMedalLevelNullableListFilter,
+     ?   minAge?: IntNullableFilter | Int | Null,
+     ?   maxAge?: IntNullableFilter | Int | Null,
+     ?   visibility?: EnumClassSeriesVisibilityFilter | ClassSeriesVisibility,
+     ?   enrollmentOpensAt?: DateTimeNullableFilter | DateTime | Null,
+     ?   enrollmentClosesAt?: DateTimeNullableFilter | DateTime | Null,
+     ?   pricePerSession?: DecimalNullableFilter | Decimal | Null,
+     ?   pricePerSeries?: DecimalNullableFilter | Decimal | Null,
+     ?   pricingTiers?: JsonNullableFilter,
+     ?   campOptions?: JsonNullableFilter,
+     ?   defaultCoachPayRate?: DecimalNullableFilter | Decimal | Null,
+     ?   defaultCourtCostPerSession?: DecimalNullableFilter | Decimal | Null,
+     ?   status?: EnumClassSeriesStatusFilter | ClassSeriesStatus,
+     ?   publicNotes?: StringNullableFilter | String | Null,
+     ?   internalNotes?: StringNullableFilter | String | Null,
+     ?   whatsappUrl?: StringNullableFilter | String | Null,
+     ?   coverImageUrl?: StringNullableFilter | String | Null,
+     ?   publishedAt?: DateTimeNullableFilter | DateTime | Null,
+     ?   archivedAt?: DateTimeNullableFilter | DateTime | Null,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   program?: ProgramScalarRelationFilter | ProgramWhereInput,
+     ?   season?: SeasonNullableScalarRelationFilter | SeasonWhereInput | Null,
+     ?   venue?: VenueScalarRelationFilter | VenueWhereInput,
+     ?   school?: SchoolNullableScalarRelationFilter | SchoolWhereInput | Null,
+     ?   club?: ClubNullableScalarRelationFilter | ClubWhereInput | Null,
+     ?   defaultCourt?: CourtNullableScalarRelationFilter | CourtWhereInput | Null,
+     ?   schoolPartnership?: SchoolPartnershipNullableScalarRelationFilter | SchoolPartnershipWhereInput | Null,
+     ?   sessions?: ClassSessionListRelationFilter,
+     ?   coaches?: ClassSeriesCoachListRelationFilter,
+     ?   enrollments?: EnrollmentListRelationFilter,
+     ?   capacityBlocks?: RecurringBlockListRelationFilter,
+     ?   groups?: ClassSeriesGroupListRelationFilter,
+     ?   transferRequests?: ClassTransferRequestListRelationFilter,
+     ?   updates?: ClassUpdateListRelationFilter,
+     ?   trialInterests?: TrialInterestListRelationFilter
+       },
+       select: {
+         id: true,
+         name: true,
+         whatsappUrl: true,
+         program: {
+           select: {
+             slug: true,
+             name: true
+           }
+         }
+       }
+     })
+
+Unknown argument `enrollmentOpen`. Did you mean `enrollmentOpensAt`? Available options are marked with ?.
+/Users/noah/calednar migration/higgins/node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45
+  throw new PrismaClientValidationError(messageWithContext, { clientVersion })
+        ^
+
+
+PrismaClientValidationError: 
+Invalid `prisma.classSeries.findFirst()` invocation in
+/Users/noah/calednar migration/higgins/scripts/_audit-extended-probes.ts:79:43
+
+  76   }
+  77 }
+  78 
+→ 79 const series = await prisma.classSeries.findFirst({
+       where: {
+         enrollmentOpen: true,
+         ~~~~~~~~~~~~~~
+     ?   AND?: ClassSeriesWhereInput | ClassSeriesWhereInput[],
+     ?   OR?: ClassSeriesWhereInput[],
+     ?   NOT?: ClassSeriesWhereInput | ClassSeriesWhereInput[],
+     ?   id?: UuidFilter | String,
+     ?   programId?: UuidFilter | String,
+     ?   seasonId?: UuidNullableFilter | String | Null,
+     ?   name?: StringFilter | String,
+     ?   nameOverride?: StringNullableFilter | String | Null,
+     ?   classType?: EnumClassTypeFilter | ClassType,
+     ?   deliveryMode?: EnumClassDeliveryModeFilter | ClassDeliveryMode,
+     ?   venueId?: UuidFilter | String,
+     ?   schoolId?: UuidNullableFilter | String | Null,
+     ?   clubId?: UuidNullableFilter | String | Null,
+     ?   defaultCourtId?: UuidNullableFilter | String | Null,
+     ?   schoolPartnershipId?: UuidNullableFilter | String | Null,
+     ?   venueText?: StringNullableFilter | String | Null,
+     ?   dayOfWeek?: EnumDayOfWeekNullableFilter | DayOfWeek | Null,
+     ?   startTime?: DateTimeFilter | DateTime,
+     ?   endTime?: DateTimeFilter | DateTime,
+     ?   courtBlockStartTime?: DateTimeNullableFilter | DateTime | Null,
+     ?   courtBlockEndTime?: DateTimeNullableFilter | DateTime | Null,
+     ?   pickupAt?: DateTimeNullableFilter | DateTime | Null,
+     ?   recurrenceRule?: StringNullableFilter | String | Null,
+     ?   startsOn?: DateTimeFilter | DateTime,
+     ?   endsOn?: DateTimeFilter | DateTime,
+     ?   excludedDates?: DateTimeNullableListFilter,
+     ?   maxStudents?: IntFilter | Int,
+     ?   minStudents?: IntNullableFilter | Int | Null,
+     ?   waitlistEnabled?: BoolFilter | Boolean,
+     ?   eligibleSkillLevels?: EnumSkillLevelNullableListFilter,
+     ?   eligibleMedalLevels?: EnumMedalLevelNullableListFilter,
+     ?   minAge?: IntNullableFilter | Int | Null,
+     ?   maxAge?: IntNullableFilter | Int | Null,
+     ?   visibility?: EnumClassSeriesVisibilityFilter | ClassSeriesVisibility,
+     ?   enrollmentOpensAt?: DateTimeNullableFilter | DateTime | Null,
+     ?   enrollmentClosesAt?: DateTimeNullableFilter | DateTime | Null,
+     ?   pricePerSession?: DecimalNullableFilter | Decimal | Null,
+     ?   pricePerSeries?: DecimalNullableFilter | Decimal | Null,
+     ?   pricingTiers?: JsonNullableFilter,
+     ?   campOptions?: JsonNullableFilter,
+     ?   defaultCoachPayRate?: DecimalNullableFilter | Decimal | Null,
+     ?   defaultCourtCostPerSession?: DecimalNullableFilter | Decimal | Null,
+     ?   status?: EnumClassSeriesStatusFilter | ClassSeriesStatus,
+     ?   publicNotes?: StringNullableFilter | String | Null,
+     ?   internalNotes?: StringNullableFilter | String | Null,
+     ?   whatsappUrl?: StringNullableFilter | String | Null,
+     ?   coverImageUrl?: StringNullableFilter | String | Null,
+     ?   publishedAt?: DateTimeNullableFilter | DateTime | Null,
+     ?   archivedAt?: DateTimeNullableFilter | DateTime | Null,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   program?: ProgramScalarRelationFilter | ProgramWhereInput,
+     ?   season?: SeasonNullableScalarRelationFilter | SeasonWhereInput | Null,
+     ?   venue?: VenueScalarRelationFilter | VenueWhereInput,
+     ?   school?: SchoolNullableScalarRelationFilter | SchoolWhereInput | Null,
+     ?   club?: ClubNullableScalarRelationFilter | ClubWhereInput | Null,
+     ?   defaultCourt?: CourtNullableScalarRelationFilter | CourtWhereInput | Null,
+     ?   schoolPartnership?: SchoolPartnershipNullableScalarRelationFilter | SchoolPartnershipWhereInput | Null,
+     ?   sessions?: ClassSessionListRelationFilter,
+     ?   coaches?: ClassSeriesCoachListRelationFilter,
+     ?   enrollments?: EnrollmentListRelationFilter,
+     ?   capacityBlocks?: RecurringBlockListRelationFilter,
+     ?   groups?: ClassSeriesGroupListRelationFilter,
+     ?   transferRequests?: ClassTransferRequestListRelationFilter,
+     ?   updates?: ClassUpdateListRelationFilter,
+     ?   trialInterests?: TrialInterestListRelationFilter
+       },
+       select: {
+         id: true,
+         name: true,
+         whatsappUrl: true,
+         program: {
+           select: {
+             slug: true,
+             name: true
+           }
+         }
+       }
+     })
+
+Unknown argument `enrollmentOpen`. Did you mean `enrollmentOpensAt`? Available options are marked with ?.
+    at throwValidationException (/Users/noah/calednar migration/higgins/node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+    at ei.handleRequestError (/Users/noah/calednar migration/higgins/node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (/Users/noah/calednar migration/higgins/node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+    at ei.request (/Users/noah/calednar migration/higgins/node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+    at async a (/Users/noah/calednar migration/higgins/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+    at async main (/Users/noah/calednar migration/higgins/scripts/_audit-extended-probes.ts:79:18) {
+  clientVersion: '6.19.3'
+}
+
+Node.js v23.11.0

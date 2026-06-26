@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireMember } from "@/lib/auth/require-member";
 import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
@@ -11,7 +11,10 @@ import {
 } from "@/lib/portal/catalog-queries";
 import { getRecommendationContext } from "@/lib/portal/recommend-queries";
 import { cn } from "@/lib/utils";
+import { isOpenEndedAdultMax } from "@/lib/classes/age-band";
 import { SeriesRow } from "../_components/series-row";
+import { CoverImage } from "@/components/portal/cover-image";
+import { stripStubPrefix } from "@/lib/classes/clean-text";
 
 /**
  * Series list for one program. Filters surface from the URL so a parent
@@ -33,6 +36,11 @@ export default async function ProgramSeriesListPage({
   const { person, householdId } = await requireMember();
   const { programSlug } = await params;
   const sp = await searchParams;
+
+  // Events have a dedicated portal surface with the right layout.
+  if (programSlug === "events" && !sp.day && !sp.age && !sp.school) {
+    redirect("/portal/events");
+  }
 
   const program = await getProgramBySlug(programSlug);
   if (!program || !program.isActive || !program.isPubliclyListed) {
@@ -57,7 +65,13 @@ export default async function ProgramSeriesListPage({
     if (dayFilter && s.dayOfWeek !== dayFilter) return false;
     if (ageFilter != null) {
       if (s.minAge != null && ageFilter < s.minAge) return false;
-      if (s.maxAge != null && ageFilter > s.maxAge) return false;
+      if (
+        s.maxAge != null &&
+        !isOpenEndedAdultMax(s.maxAge) &&
+        ageFilter > s.maxAge
+      ) {
+        return false;
+      }
     }
     if (schoolFilter) {
       // School-tagged series only match exact school; non-tagged series
@@ -93,11 +107,20 @@ export default async function ProgramSeriesListPage({
         </Link>
       </div>
 
+      {program.coverImageUrl && (
+        <CoverImage
+          src={program.coverImageUrl}
+          alt={program.name}
+          focusY={program.coverImageFocusY}
+          className="shadow-[var(--shadow-sm)]"
+        />
+      )}
+
       <PageHeader
         kicker="Lessons"
         title={program.name}
         description={
-          program.descriptionPublic ??
+          stripStubPrefix(program.descriptionPublic) ??
           "Pick the time that fits your week and we'll save you a spot."
         }
       />
@@ -175,7 +198,7 @@ function FilterBar({
   const hasAny = currentDay || currentAge != null || currentSchool;
 
   return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] bg-[var(--surface)] p-4 shadow-[var(--shadow-sm)]">
+    <div className="flex flex-col gap-3 elev-card p-4">
       <FilterRow label="Day">
         {days.map((d) => (
           <Pill
@@ -261,7 +284,7 @@ function Pill({
       className={cn(
         "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
         active
-          ? "border-[var(--triaz)] bg-[var(--triaz)] text-[var(--triaz-foreground)]"
+          ? "border-[var(--triaz)] bg-[var(--triaz)] text-white"
           : "border-[var(--border)] bg-transparent text-[var(--muted-foreground)] hover:border-[var(--triaz)]/40 hover:text-[var(--foreground)]",
       )}
     >

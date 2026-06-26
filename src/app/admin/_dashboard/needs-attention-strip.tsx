@@ -62,7 +62,7 @@ export function NeedsAttentionStrip({ pending }: { pending: AdminPendingCounts }
   ].filter((i) => i.count > 0);
 
   return (
-    <div className="fade-in flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[oklch(0.30_0.10_75)]">
+    <div className="fade-in flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning-ink)]">
       <span className="text-[11px] font-semibold uppercase tracking-[0.16em]">
         Needs you
       </span>

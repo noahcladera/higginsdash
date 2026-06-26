@@ -149,10 +149,10 @@ function ChildCard({
     .filter(Boolean);
 
   return (
-    <article className="fade-in rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 sm:p-6 shadow-[var(--shadow-sm)]">
+    <article className="fade-in elev-card-accent-triaz p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Avatar name={fullName || "Child"} size="lg" />
+          <Avatar name={fullName || "Child"} src={child.avatarUrl} size="lg" />
           <div className="space-y-1.5">
             <h2 className="font-display text-2xl font-medium tracking-tight">
               {fullName || "Unnamed child"}
@@ -195,6 +195,7 @@ function ChildCard({
             emergencyContactName: child.emergencyContactName,
             emergencyContactPhone: child.emergencyContactPhone,
             emergencyContactRelationship: child.emergencyContactRelationship,
+            avatarUrl: child.avatarUrl,
           }}
         />
       </div>
@@ -299,7 +300,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[var(--radius-md)] bg-[var(--card)] p-4">
+    <section className="elev-panel rounded-[var(--radius-md)] p-4">
       <h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
         {label}
       </h3>

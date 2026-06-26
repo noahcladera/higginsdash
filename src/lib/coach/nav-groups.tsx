@@ -4,7 +4,7 @@ import {
   TicketIcon,
   ClockIcon,
   UsersIcon,
-  TennisIcon,
+  MedalIcon,
   InboxIcon,
 } from "@/components/icons";
 import type { ShellNavGroup } from "@/components/portal/app-shell";
@@ -89,13 +89,11 @@ export function getCoachShellNavGroups(opts?: {
       icon: <UsersIcon />,
       hint: `Rosters and ${t.student.singular.toLowerCase()} ${t.level.plural.toLowerCase()}`,
     });
-  }
-  if (f.levels) {
     classes.push({
-      href: "/levels",
-      label: `What's my ${t.level.singular.toLowerCase()}?`,
-      icon: <TennisIcon />,
-      hint: `${t.level.singular} descriptions for ${t.student.plural.toLowerCase()} and ${t.member.plural.toLowerCase()}`,
+      href: "/coach/medals",
+      label: "Medals guide",
+      icon: <MedalIcon />,
+      hint: "Medal ladder, lesson plans, and your assignment totals",
     });
   }
 

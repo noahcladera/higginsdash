@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 
 import { cn, pickActiveHref } from "@/lib/utils";
+import { navAccentClasses } from "@/lib/club-theme";
 import { Wordmark } from "@/components/brand/wordmark";
 import { Avatar } from "@/components/portal/avatar";
 import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
@@ -77,8 +78,12 @@ export interface AppShellProps {
     name: string;
     /** Subline under the name, e.g. "Member · Triaz + Randwijck". */
     subline?: string;
+    /** When set, the subline renders as a link (e.g. non-member buy CTA). */
+    sublineHref?: string;
     /** Tone for the avatar; defaults to derived from name. */
     avatarTone?: "triaz" | "randwijck" | "joint" | "neutral";
+    /** Tone for primary nav emphasis — usually matches membership coverage. */
+    navAccentTone?: "triaz" | "randwijck" | "joint" | "neutral";
   };
   /** Self-serve profile / security / coach professional — avatar dropdown. */
   accountMenu: ShellAccountMenu;
@@ -122,11 +127,11 @@ export function AppShell({
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="min-h-screen">
       {/* Mobile top bar */}
       <header
         data-print-hide
-        className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--border)] bg-[var(--background)]/90 px-4 py-3 backdrop-blur md:hidden"
+        className="glass-panel-strong sticky top-0 z-30 flex items-center justify-between px-4 py-3 md:hidden"
       >
         <Link href="/portal" className="flex items-center gap-2">
           <Wordmark
@@ -144,7 +149,7 @@ export function AppShell({
           type="button"
           aria-label="Open menu"
           onClick={() => setDrawerOpen(true)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-strong)]"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--glass-border-subtle)] bg-[var(--glass-bg)] text-[var(--foreground)] shadow-[var(--highlight-inset-subtle)] hover:bg-[var(--surface-strong)]"
         >
           <MenuIcon />
         </button>
@@ -156,7 +161,8 @@ export function AppShell({
           data-print-hide
           className="sticky top-8 hidden w-[17rem] shrink-0 self-start md:block"
         >
-          <SidebarBody
+          <div className="glass-panel-strong rounded-[var(--radius-xl)] p-4">
+            <SidebarBody
             workspaceLabel={workspaceLabel}
             brandTitle={brandTitle}
             brandSubline={brandSubline}
@@ -167,6 +173,7 @@ export function AppShell({
             switchLinks={switchLinks}
             signOutAction={signOutAction}
           />
+          </div>
         </aside>
 
         {/* Main
@@ -175,7 +182,7 @@ export function AppShell({
          * scroll-snap. Each <Section snap> below becomes a snap target.
          * Proximity (not mandatory) keeps drag-scrolling free; only a
          * flick that lands near a boundary nudges into place. */}
-        <main className="min-w-0 flex-1 snap-y snap-proximity px-4 py-6 sm:px-6 md:px-0 md:py-0">
+        <main className="main-ambient-bleed min-w-0 flex-1 snap-y snap-proximity px-4 py-6 sm:px-6 md:px-0 md:py-0">
           {/*
            * Surfaces denial codes from `requireAccess` redirects, e.g. a
            * member who tried to reach `/admin` lands on `/portal?error=
@@ -198,11 +205,11 @@ export function AppShell({
       {/* Drawer (mobile) */}
       {drawerOpen && (
         <div
-          className="fixed inset-0 z-40 bg-[var(--foreground)]/30 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-[var(--foreground)]/25 backdrop-blur-md md:hidden"
           onClick={() => setDrawerOpen(false)}
         >
           <div
-            className="absolute inset-y-0 left-0 w-[80%] max-w-[18rem] overflow-y-auto bg-[var(--background)] p-4 shadow-[var(--shadow-lg)]"
+            className="glass-panel-strong absolute inset-y-0 left-0 w-[80%] max-w-[18rem] overflow-y-auto p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3">
@@ -216,7 +223,7 @@ export function AppShell({
                 type="button"
                 aria-label="Close menu"
                 onClick={() => setDrawerOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] hover:bg-[var(--surface-strong)]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--glass-border-subtle)] bg-[var(--glass-bg)] shadow-[var(--highlight-inset-subtle)] hover:bg-[var(--surface-strong)]"
               >
                 <CloseIcon />
               </button>
@@ -268,6 +275,9 @@ function SidebarBody({
     pathname,
     groups.flatMap((g) => g.items.map((i) => i.href)),
   );
+  const navAccent = navAccentClasses(
+    identity.navAccentTone ?? identity.avatarTone ?? "triaz",
+  );
   return (
     <div className="flex flex-col gap-6">
       {!compact && (
@@ -291,7 +301,7 @@ function SidebarBody({
       <DropdownMenu>
         <DropdownMenuTrigger
           type="button"
-          className="w-full rounded-[var(--radius-lg)] bg-[var(--surface)] p-4 text-left outline-none ring-offset-[var(--background)] transition-colors hover:bg-[var(--surface-strong)] focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+          className="glass-panel w-full rounded-[var(--radius-lg)] p-4 text-left outline-none ring-offset-[var(--background)] transition-[box-shadow,transform] duration-[var(--duration-base)] hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
         >
           <div className="flex items-center gap-3">
             <Avatar
@@ -305,7 +315,17 @@ function SidebarBody({
               </div>
               {identity.subline && (
                 <div className="truncate text-xs text-[var(--muted-foreground)]">
-                  {identity.subline}
+                  {identity.sublineHref ? (
+                    <Link
+                      href={identity.sublineHref}
+                      onClick={(e) => e.stopPropagation()}
+                      className="underline-offset-4 hover:underline"
+                    >
+                      {identity.subline}
+                    </Link>
+                  ) : (
+                    identity.subline
+                  )}
                 </div>
               )}
             </div>
@@ -392,12 +412,12 @@ function SidebarBody({
                      */
                     className={cn(
                       "group inline-flex items-center gap-3 rounded-full px-3 py-2 text-sm",
-                      "transition-[background-color,color] duration-[var(--duration-base)] ease-[var(--ease-out-soft)]",
+                      "transition-[background-color,color,box-shadow,transform] duration-[var(--duration-base)] ease-[var(--ease-out-soft)]",
                       active
-                        ? "bg-[var(--foreground)] text-[var(--background)] font-medium"
+                        ? "nav-active-glass font-medium"
                         : primary
-                          ? "bg-[var(--triaz-soft)] text-[var(--triaz-ink)] font-medium hover:bg-[var(--triaz)]/15"
-                          : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
+                          ? cn(navAccent.primaryBg, navAccent.primaryText, "font-medium border border-[var(--glass-border-subtle)] shadow-[var(--highlight-inset-subtle)]", navAccent.primaryHover)
+                          : "text-[var(--muted-foreground)] hover:bg-[var(--glass-bg)] hover:text-[var(--foreground)] hover:shadow-[var(--highlight-inset-subtle)]",
                     )}
                   >
                     {item.icon && (
@@ -408,7 +428,7 @@ function SidebarBody({
                           active
                             ? ""
                             : primary
-                              ? "text-[var(--triaz-ink)]"
+                              ? navAccent.primaryText
                               : "text-[var(--muted-foreground)]",
                         )}
                       >
@@ -423,7 +443,7 @@ function SidebarBody({
                           "ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums",
                           active
                             ? "bg-[var(--background)]/40 text-[var(--foreground)]"
-                            : "bg-[var(--triaz)] text-white",
+                            : cn(navAccent.badgeBg, "text-white"),
                         )}
                       >
                         {item.badge > 99 ? "99+" : item.badge}
@@ -431,7 +451,7 @@ function SidebarBody({
                     ) : primary ? (
                       <span
                         aria-hidden
-                        className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--triaz)]"
+                        className={cn("ml-auto h-1.5 w-1.5 rounded-full", navAccent.dot)}
                       />
                     ) : null}
                   </Link>

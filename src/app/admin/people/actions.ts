@@ -11,6 +11,8 @@ import { SYSTEM_PERSON_ID } from "@/lib/system-ids";
 import { isAdultSkillEligible, isMedalEligible } from "@/lib/medal-levels";
 import type { MedalLevel } from "@prisma/client";
 import { recordAudit } from "@/lib/audit";
+import { savedRedirectPath } from "@/lib/feedback/saved-flash";
+import type { SimpleActionResult } from "@/lib/feedback/types";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -218,14 +220,25 @@ export async function createPerson(formData: FormData) {
   });
 
   revalidatePath("/admin/people");
-  redirect(`/admin/people/${newId}`);
+  redirect(savedRedirectPath(`/admin/people/${newId}`));
 }
 
-export async function updatePerson(id: string, formData: FormData) {
+export async function updatePerson(
+  id: string,
+  formData: FormData,
+): Promise<SimpleActionResult> {
   const { person: actor } = await requireAdmin();
   assertNotSystem(id);
 
-  const parsed = PersonInputSchema.parse(Object.fromEntries(formData));
+  let parsed;
+  try {
+    parsed = PersonInputSchema.parse(Object.fromEntries(formData));
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return { ok: false, error: err.issues[0]?.message ?? "Invalid input" };
+    }
+    return { ok: false, error: "Invalid input" };
+  }
 
   // Safety: don't let an admin remove their own admin flag (would lock
   // themselves out). They can ask another admin to do it.
@@ -279,7 +292,7 @@ export async function updatePerson(id: string, formData: FormData) {
 
   revalidatePath("/admin/people");
   revalidatePath(`/admin/people/${id}`);
-  redirect(`/admin/people/${id}`);
+  return { ok: true, message: "Person saved" };
 }
 
 export async function archivePerson(id: string) {
@@ -434,22 +447,38 @@ export async function restoreEmail(personId: string, emailId: string) {
  * a student yet — use `addStudentRole` to create one first (added in a later
  * slice). Skill level is updated separately via `setSkillLevel`.
  */
-export async function updateStudent(personId: string, formData: FormData) {
+export async function updateStudent(
+  personId: string,
+  formData: FormData,
+): Promise<SimpleActionResult> {
   await requireAdmin();
   assertNotSystem(personId);
 
-  const parsed = StudentInputSchema.parse(Object.fromEntries(formData));
+  let parsed;
+  try {
+    parsed = StudentInputSchema.parse(Object.fromEntries(formData));
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return { ok: false, error: err.issues[0]?.message ?? "Invalid input" };
+    }
+    return { ok: false, error: "Invalid input" };
+  }
 
-  await prisma.student.update({
-    where: { personId },
-    data: {
-      enrollmentStatus: parsed.enrollmentStatus,
-      school: parsed.school ?? null,
-      medicalNotes: parsed.medicalNotes ?? null,
-    },
-  });
+  try {
+    await prisma.student.update({
+      where: { personId },
+      data: {
+        enrollmentStatus: parsed.enrollmentStatus,
+        school: parsed.school ?? null,
+        medicalNotes: parsed.medicalNotes ?? null,
+      },
+    });
+  } catch {
+    return { ok: false, error: "Could not save student details — try again." };
+  }
 
   revalidatePath(`/admin/people/${personId}`);
+  return { ok: true, message: "Student details saved" };
 }
 
 /**

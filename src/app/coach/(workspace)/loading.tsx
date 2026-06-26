@@ -10,11 +10,11 @@ export default function CoachLoading() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="h-24 animate-pulse rounded-[var(--radius-lg)] bg-[var(--surface)]"
+            className="h-24 animate-pulse elev-panel"
           />
         ))}
       </div>
-      <div className="h-72 animate-pulse rounded-[var(--radius-lg)] bg-[var(--surface)]" />
+      <div className="h-72 animate-pulse elev-panel" />
     </div>
   );
 }

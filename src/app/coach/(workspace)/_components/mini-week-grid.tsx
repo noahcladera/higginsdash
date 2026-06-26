@@ -1,13 +1,18 @@
 import Link from "next/link";
+import {
+  CALENDAR_AXIS_END_HOUR,
+  CALENDAR_AXIS_START_HOUR,
+} from "@/lib/booking/time";
 import { format } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CoachCalendarSession } from "@/lib/coach/calendar-queries";
+import { coachSessionBlockClasses } from "@/lib/admin/schedule-slot-colors";
 
 /**
  * Compact 7-day glance grid for the coach home page. Stripped-down
  * cousin of the full {@link WeekGrid} used on /coach/calendar:
  *
- *   - Half the vertical density (0.5 px / minute, axis 08:00 → 22:00).
+ *   - Half the vertical density (0.5 px / minute, axis 09:00 → 22:00).
  *   - Sessions only — personal court bookings live on the calendar page.
  *   - Each block is a single Link to the per-session lesson page.
  *   - Pickup classes still render the leave → pickup → class breakdown
@@ -19,8 +24,8 @@ import type { CoachCalendarSession } from "@/lib/coach/calendar-queries";
  * the parent server component.
  */
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const AXIS_START_HOUR = 8;
-const AXIS_END_HOUR = 22;
+const AXIS_START_HOUR = CALENDAR_AXIS_START_HOUR;
+const AXIS_END_HOUR = CALENDAR_AXIS_END_HOUR;
 const PX_PER_MIN = 0.5;
 const GRID_HEIGHT_PX = (AXIS_END_HOUR - AXIS_START_HOUR) * 60 * PX_PER_MIN;
 
@@ -132,11 +137,10 @@ function MiniSessionBlock({ session }: { session: CoachCalendarSession }) {
   const hasPickupSegments =
     isPickup && session.leaveAt != null && session.pickupAt != null;
 
-  const toneBorder = isPickup
-    ? "border-[var(--joint-ink)]/40 bg-[var(--joint-soft)]"
-    : session.deliveryMode === "onsite"
-      ? "border-[var(--warning-soft)] bg-[var(--warning-soft)]"
-      : "border-[var(--triaz-ink)]/30 bg-[var(--triaz-soft)]";
+  const toneBorder = coachSessionBlockClasses({
+    deliveryMode: session.deliveryMode,
+    clubSlug: session.clubSlug,
+  });
 
   return (
     <Link

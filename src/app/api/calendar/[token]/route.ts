@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { computeClassTiming } from "@/lib/classes/timing";
+import { getCoachSessionsForFeed } from "@/lib/coach/calendar-queries";
 import { serializeIcs, type IcsEvent } from "@/lib/calendar/ics";
+import { formatVenueLocation } from "@/lib/maps";
 import { getCurrentBrand } from "@/lib/tenant";
 
 /**
@@ -44,10 +46,100 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
-  // Resolve the set of student person IDs whose sessions we should
-  // emit. Self-scope is just the token owner; household-scope walks
-  // every household member they live with (so a parent gets one feed
-  // for the whole family).
+  const now = new Date();
+  const start = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+  const end = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+
+  const brand = await getCurrentBrand();
+  const firstName = feed.person.firstName ?? brand.shortName;
+
+  let events: IcsEvent[];
+  let calendarName: string;
+
+  if (feed.scope === "coach") {
+    const sessions = await getCoachSessionsForFeed(feed.personId, start, end);
+    events = sessions.map((s) => {
+      const blockStart = s.leaveAt ?? s.classStartAt;
+      const location = formatVenueLocation({
+        name: s.venueName,
+        addressLine1: s.venueAddressLine1,
+        postalCode: s.venuePostalCode,
+        city: s.venueCity,
+      });
+      const description = [
+        s.programName,
+        s.schoolName ? `Pickup at ${s.schoolName}` : null,
+        s.leaveAt ? `Leave ${formatHm(s.leaveAt)}` : null,
+        s.pickupAt ? `Pickup ${formatHm(s.pickupAt)}` : null,
+        `Class ${formatHm(s.classStartAt)}–${formatHm(s.classEndAt)}`,
+        s.venueMapUrl ? `Map: ${s.venueMapUrl}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      return {
+        uid: `coach-session-${s.sessionId}@higgins.tennis`,
+        startsAt: blockStart,
+        endsAt: s.classEndAt,
+        summary: `${s.seriesName} (${s.role})`,
+        description,
+        location,
+      };
+    });
+    calendarName = `${firstName} · Teaching schedule`;
+  } else {
+    events = await buildEnrollmentFeedEvents(
+      {
+        personId: feed.personId,
+        scope: feed.scope as "self" | "household",
+        person: feed.person,
+      },
+      start,
+      end,
+    );
+    calendarName =
+      feed.scope === "household"
+        ? `${firstName} · Household schedule`
+        : `${firstName} · My schedule`;
+  }
+
+  prisma.calendarFeedToken
+    .update({
+      where: { id: feed.id },
+      data: { lastFetchedAt: new Date() },
+    })
+    .catch(() => {
+      // intentionally swallowed: best-effort metadata update
+    });
+
+  const ics = serializeIcs({
+    name: calendarName,
+    prodId: `-//${brand.displayName}//Calendar Feed 1.0//EN`,
+    events,
+  });
+
+  const filename = brand.shortName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return new Response(ics, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/calendar; charset=utf-8",
+      "Cache-Control": "private, max-age=900",
+      "Content-Disposition": `inline; filename=${filename || "calendar"}.ics`,
+    },
+  });
+}
+
+async function buildEnrollmentFeedEvents(
+  feed: {
+    personId: string;
+    scope: "self" | "household";
+    person: {
+      householdMember: { householdId: string } | null;
+    };
+  },
+  start: Date,
+  end: Date,
+): Promise<IcsEvent[]> {
   const studentIds: string[] = [feed.personId];
   if (feed.scope === "household" && feed.person.householdMember?.householdId) {
     const members = await prisma.householdMember.findMany({
@@ -58,12 +150,6 @@ export async function GET(
       if (!studentIds.includes(m.personId)) studentIds.push(m.personId);
     }
   }
-
-  // 60 days back, 6 months forward — keeps the feed light while
-  // covering the past few weeks (for clients that backfill).
-  const now = new Date();
-  const start = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-  const end = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
 
   const enrollments = await prisma.enrollment.findMany({
     where: {
@@ -119,7 +205,9 @@ export async function GET(
                   select: {
                     name: true,
                     addressLine1: true,
+                    postalCode: true,
                     city: true,
+                    mapUrl: true,
                   },
                 },
                 school: {
@@ -152,6 +240,9 @@ export async function GET(
     const owners = seriesToOwners.get(series.id) ?? [];
     for (const owner of owners) {
       const summary = `${owner.ownerFirstName} · ${series.name}`;
+      const mapLink = series.venue.mapUrl
+        ? `Map: ${series.venue.mapUrl}`
+        : null;
       const description = [
         series.program.name,
         series.school ? `Pickup at ${series.school.name}` : null,
@@ -159,6 +250,7 @@ export async function GET(
           ? `Coach picks up at ${formatHm(timing.pickupAt)}`
           : null,
         `Class ${formatHm(timing.classStartAt)}–${formatHm(timing.classEndAt)}`,
+        mapLink,
       ]
         .filter(Boolean)
         .join("\n");
@@ -169,52 +261,48 @@ export async function GET(
         endsAt: blockEnd,
         summary,
         description,
-        location: [
-          series.venue.name,
-          series.venue.addressLine1,
-          series.venue.city,
-        ]
-          .filter(Boolean)
-          .join(", "),
+        location: formatVenueLocation(series.venue),
         lastModified: s.updatedAt ?? undefined,
       });
     }
   }
 
-  // Update last-fetched stamp for the operator dashboard.
-  // Fire-and-forget — failure here must not break the response.
-  prisma.calendarFeedToken
-    .update({
-      where: { id: feed.id },
-      data: { lastFetchedAt: new Date() },
-    })
-    .catch(() => {
-      // intentionally swallowed: best-effort metadata update
-    });
+  const householdId = feed.person.householdMember?.householdId ?? null;
+  const bookingOr: Array<
+    { bookedByPersonId: string } | { bookedByHouseholdId: string }
+  > = [{ bookedByPersonId: feed.personId }];
+  if (feed.scope === "household" && householdId) {
+    bookingOr.push({ bookedByHouseholdId: householdId });
+  }
 
-  // Brand comes from the current-org resolver. In Pass 1 this is always
-  // Higgins for production, but a programs-mode tenant gets its own
-  // display name in the PRODID and calendar title so feeds don't leak
-  // "Higgins" across packagings.
-  const brand = await getCurrentBrand();
-  const firstName = feed.person.firstName ?? brand.shortName;
-  const ics = serializeIcs({
-    name: feed.scope === "household"
-      ? `${firstName} · Household classes`
-      : `${firstName} · My classes`,
-    prodId: `-//${brand.displayName}//Calendar Feed 1.0//EN`,
-    events,
-  });
-
-  const filename = brand.shortName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  return new Response(ics, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/calendar; charset=utf-8",
-      "Cache-Control": "private, max-age=900",
-      "Content-Disposition": `inline; filename=${filename || "calendar"}.ics`,
+  const bookings = await prisma.courtBooking.findMany({
+    where: {
+      startsAt: { gte: start, lt: end },
+      cancelledAt: null,
+      status: { in: ["confirmed", "cancellation_requested"] },
+      OR: bookingOr,
+    },
+    orderBy: { startsAt: "asc" },
+    include: {
+      court: { select: { name: true } },
+      club: { select: { name: true } },
     },
   });
+
+  for (const b of bookings) {
+    events.push({
+      uid: `booking-${b.id}@higgins.tennis`,
+      startsAt: b.startsAt,
+      endsAt: b.endsAt,
+      summary: `Court · ${b.club.name}`,
+      description: `${b.court.name} at ${b.club.name}`,
+      location: b.club.name,
+      lastModified: b.updatedAt ?? undefined,
+    });
+  }
+
+  events.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  return events;
 }
 
 function formatHm(d: Date): string {

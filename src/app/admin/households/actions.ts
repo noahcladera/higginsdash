@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { SYSTEM_HOUSEHOLD_ID } from "@/lib/system-ids";
 import { recordAudit } from "@/lib/audit";
+import { savedRedirectPath } from "@/lib/feedback/saved-flash";
+import type { SimpleActionResult } from "@/lib/feedback/types";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -95,32 +97,47 @@ export async function createHousehold(formData: FormData) {
 
   revalidatePath("/admin/households");
   revalidatePath("/admin/people");
-  redirect(`/admin/households/${created.id}`);
+  redirect(savedRedirectPath(`/admin/households/${created.id}`));
 }
 
-export async function updateHousehold(id: string, formData: FormData) {
+export async function updateHousehold(
+  id: string,
+  formData: FormData,
+): Promise<SimpleActionResult> {
   await requireAdmin();
   assertNotSystem(id);
 
-  const parsed = HouseholdInputSchema.parse(Object.fromEntries(formData));
+  let parsed;
+  try {
+    parsed = HouseholdInputSchema.parse(Object.fromEntries(formData));
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return { ok: false, error: err.issues[0]?.message ?? "Invalid input" };
+    }
+    return { ok: false, error: "Invalid input" };
+  }
 
-  await prisma.household.update({
-    where: { id },
-    data: {
-      displayName: parsed.displayName,
-      primaryContactPersonId: parsed.primaryContactPersonId,
-      addressLine1: parsed.addressLine1 ?? null,
-      addressLine2: parsed.addressLine2 ?? null,
-      postalCode: parsed.postalCode ?? null,
-      city: parsed.city ?? null,
-      country: parsed.country,
-      notes: parsed.notes ?? null,
-    },
-  });
+  try {
+    await prisma.household.update({
+      where: { id },
+      data: {
+        displayName: parsed.displayName,
+        primaryContactPersonId: parsed.primaryContactPersonId,
+        addressLine1: parsed.addressLine1 ?? null,
+        addressLine2: parsed.addressLine2 ?? null,
+        postalCode: parsed.postalCode ?? null,
+        city: parsed.city ?? null,
+        country: parsed.country,
+        notes: parsed.notes ?? null,
+      },
+    });
+  } catch {
+    return { ok: false, error: "Could not save household — try again." };
+  }
 
   revalidatePath("/admin/households");
   revalidatePath(`/admin/households/${id}`);
-  redirect(`/admin/households/${id}`);
+  return { ok: true, message: "Household saved" };
 }
 
 export async function archiveHousehold(id: string) {

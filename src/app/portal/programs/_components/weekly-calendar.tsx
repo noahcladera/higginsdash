@@ -14,16 +14,15 @@
  *     SeriesRow, so parents don't lose that information.
  *
  * Color-coding:
- *   - Kids audience  -> triaz tone
- *   - Adults audience -> randwijck tone
- *   - Mixed/other    -> joint tone
- * That single visual cue is enough to disambiguate "Adult Beginner"
- * from "Kids Group" sitting on the same Tuesday afternoon.
+ *   - Triaz venue   -> triaz tone (green)
+ *   - Randwijck venue -> randwijck tone (terracotta)
+ *   - Other venues  -> joint tone
  */
 
 import Link from "next/link";
 import type { DayOfWeek } from "@prisma/client";
 import type { CatalogSeriesCard } from "@/lib/portal/catalog-queries";
+import { badgeToneForVenueSlug } from "@/lib/club-theme";
 import { cn } from "@/lib/utils";
 
 interface WeeklyCalendarProps {
@@ -63,8 +62,9 @@ function bucketByDay(series: CatalogSeriesCard[]): BucketedSeries[] {
 }
 
 function chipTone(s: CatalogSeriesCard): ChipTone {
-  if (s.programTargetAudience === "kids") return "triaz";
-  if (s.programTargetAudience === "adults") return "randwijck";
+  const tone = badgeToneForVenueSlug(s.venueClubSlug ?? s.venueSlug);
+  if (tone === "triaz") return "triaz";
+  if (tone === "randwijck") return "randwijck";
   return "joint";
 }
 
@@ -80,7 +80,7 @@ const CHIP_TONE_CLASSES: Record<ChipTone, string> = {
 export function WeeklyCalendar({
   series,
   title = "When these run, week by week",
-  hint = "Color shows the audience. Click any chip to open the class.",
+  hint = "Color shows the club. Click any chip to open the class.",
 }: WeeklyCalendarProps) {
   if (series.length === 0) return null;
 
@@ -96,7 +96,7 @@ export function WeeklyCalendar({
       </header>
 
       {/* Desktop / wide tablet: 7 narrow columns */}
-      <div className="hidden lg:grid lg:grid-cols-7 lg:gap-2 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-3 shadow-[var(--shadow-sm)]">
+      <div className="hidden lg:grid lg:grid-cols-7 lg:gap-2 elev-panel p-3">
         {buckets.map((b) => (
           <DayColumn key={b.day} bucket={b} variant="compact" />
         ))}
@@ -148,7 +148,7 @@ function DayColumn({
 
   // Stacked variant for mobile
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-3 shadow-[var(--shadow-sm)]">
+    <div className="elev-panel p-3">
       <div className="mb-2 flex items-baseline justify-between">
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
           {bucket.longLabel}

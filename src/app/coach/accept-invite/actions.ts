@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { markCoachInviteAccepted } from "@/lib/auth/complete-coach-invite";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -60,12 +61,9 @@ export async function acceptCoachInvite(formData: FormData) {
     redirect("/coach/accept-invite?error=not_provisioned");
   }
 
-  await prisma.coachInvite.update({
-    where: { id: invite.id },
-    data: {
-      acceptedAt: new Date(),
-      acceptedById: person.id,
-    },
+  await markCoachInviteAccepted({
+    inviteId: invite.id,
+    personId: person.id,
   });
 
   revalidatePath("/coach");

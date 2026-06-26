@@ -392,13 +392,13 @@ export function BlockOffDialog({
           )}
 
           {error && !conflicts && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded-md bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-ink)]">
               {error}
             </p>
           )}
 
           {conflicts && conflicts.length > 0 && (
-            <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div className="space-y-2 rounded-md border border-[var(--warning)]/50 bg-[var(--warning-soft)] px-3 py-2 text-xs text-[var(--warning-ink)]">
               <div className="font-semibold">
                 {totalClashCount} clash(es) on this block
               </div>

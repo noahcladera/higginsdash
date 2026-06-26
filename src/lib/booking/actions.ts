@@ -283,13 +283,22 @@ export async function createBooking(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const input = parsed.data;
+  const terms = await getTerms();
 
-  // Members never get to set purpose=coaching. Coaches pick for themselves;
-  // admins pick when booking on behalf (coach lesson vs member play).
+  // Coaches book private lessons only; members always personal; admins pick.
   const purpose =
-    actor.role === "coach" || actor.role === "admin"
-      ? input.purpose
-      : "personal";
+    actor.role === "coach"
+      ? "coaching"
+      : actor.role === "admin"
+        ? input.purpose
+        : "personal";
+
+  if (actor.role === "coach" && input.purpose === "personal") {
+    return {
+      ok: false,
+      error: `${terms.coach.plural} can only book ${terms.privateLesson.plural.toLowerCase()} on the court calendar.`,
+    };
+  }
 
   const effective = await resolveEffectiveBooker(actor, {
     bookedForPersonId: input.bookedForPersonId,
@@ -297,8 +306,6 @@ export async function createBooking(
   });
   if (!effective.ok) return { ok: false, error: effective.error };
   const { booker, actorPersonId, bookerEmail } = effective;
-
-  const terms = await getTerms();
 
   // Teaching-purpose bookings cap at 2 invitees: larger groups compete with
   // structured group offerings, so it's blocked at the API level too.
@@ -644,6 +651,7 @@ export async function createBooking(
   }
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/coach");
   revalidatePath("/coach/book");
   revalidatePath("/coach/bookings");
@@ -941,6 +949,7 @@ export async function createRecurringCoachBlock(
   }
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/admin/blocks");
   revalidatePath("/admin/blocks/requests");
   revalidatePath("/admin/private-lessons");
@@ -1159,6 +1168,7 @@ export async function decideRecurringBlockRequest(
   });
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/admin/blocks");
   revalidatePath("/admin/blocks/requests");
   revalidatePath("/admin/inbox");
@@ -1261,6 +1271,7 @@ export async function cancelBooking(
   }
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/coach");
   revalidatePath("/coach/bookings");
   revalidatePath("/portal/bookings");
@@ -1394,6 +1405,7 @@ export async function requestBookingCancellation(
   );
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/admin/bookings/deletions");
   revalidatePath("/admin/inbox");
   revalidatePath("/coach/bookings");
@@ -1567,6 +1579,7 @@ export async function decideBookingCancellation(
   );
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/admin/bookings/deletions");
   revalidatePath("/admin/inbox");
   revalidatePath("/coach/bookings");

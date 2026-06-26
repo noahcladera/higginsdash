@@ -92,7 +92,7 @@ export default async function AdminTransfersPage() {
                   key={r.id}
                   as="li"
                   tone="warning"
-                  className="rounded-[var(--radius-lg)] p-4 shadow-[var(--shadow-sm)]"
+                  className="elev-card p-4"
                 >
                   <Link
                     href={`/admin/transfers/${r.id}`}

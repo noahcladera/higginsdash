@@ -34,11 +34,28 @@ function randwijckSeasonLabel(): string {
 /**
  * Pricing matrix + how memberships map to each club (courts, hours, booking).
  */
-export function CoverageExplainer() {
+export function CoverageExplainer({
+  collapseProration = false,
+  includeClubCards = true,
+  clubCardsOnly = false,
+}: {
+  /** Wrap proration tables + key deposit in a collapsible block. */
+  collapseProration?: boolean;
+  /** When false, omit the per-club detail cards at the bottom. */
+  includeClubCards?: boolean;
+  /** When true, render only the per-club detail cards. */
+  clubCardsOnly?: boolean;
+}) {
   const triaz = clubTheme("triaz");
   const randwijck = clubTheme("randwijck");
   const joint = clubTheme("joint");
   const randwijckSeason = randwijckStatusOn();
+
+  if (clubCardsOnly) {
+    return (
+      <ClubInfoCards randwijckSeason={randwijckSeason} />
+    );
+  }
 
   const rows: { tier: MembershipTier; label: string }[] = [
     { tier: "adult", label: "Adult" },
@@ -48,7 +65,7 @@ export function CoverageExplainer() {
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
+      <div className="elev-card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--border)]">
@@ -160,65 +177,90 @@ export function CoverageExplainer() {
         </li>
       </ul>
 
-      <ProrationTables />
+      {collapseProration ? (
+        <details className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
+          <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-[var(--foreground)]">
+            See full pricing (proration tables & key deposit)
+          </summary>
+          <div className="space-y-4 border-t border-[var(--border)] p-5">
+            <ProrationTables />
+            <KeyDepositCallout />
+          </div>
+        </details>
+      ) : (
+        <>
+          <ProrationTables />
+          <KeyDepositCallout />
+        </>
+      )}
 
-      <KeyDepositCallout />
+      {includeClubCards && (
+        <ClubInfoCards randwijckSeason={randwijckSeason} />
+      )}
+    </div>
+  );
+}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ClubInfoCard
-          slug="triaz"
-          title="Triaz"
-          seasonPill="Year-round"
-          seasonPillTone="triaz"
-          stats={[
-            { label: "Court hours", value: "09:00 – 22:00" },
-            { label: "Bookings / day", value: "1 per person" },
-            { label: "Cancel window", value: "10 minutes before" },
-            { label: "Court fees", value: "Free with membership" },
-          ]}
-          courts={[
-            { name: "Court 1", note: "Multi-use · walk-on only (not reservable)" },
-            { name: "Court 2", note: "Multi-use · practice court" },
-            { name: "Court 3", note: "Grass · KNLTB-certified" },
-            { name: "Court 4", note: "Grass · KNLTB-certified" },
-          ]}
-          unlocks={[
-            "Book courts at no charge (subject to availability and your daily quota).",
-            "Book up to 7 days ahead, on the hour or half-hour, 60-minute slots.",
-            "Join group lessons, camps, and programs at Triaz.",
-            "Year-round play — Triaz never closes for winter.",
-            "Tue & Wed evenings share the venue with the korfball club; some courts may be blocked then.",
-          ]}
-        />
-        <ClubInfoCard
-          slug="randwijck"
-          title="Randwijck"
-          seasonPill={
-            randwijckSeason.isOpen
-              ? `Open now · ${randwijckSeasonLabel()}`
-              : `Reopens ${formatLongDate(randwijckSeason.upcoming.startsOn)}`
-          }
-          seasonPillTone={randwijckSeason.isOpen ? "randwijck" : "neutral"}
-          randwijckSeason={randwijckSeason}
-          stats={[
-            { label: "Court hours", value: "08:00 – 22:00" },
-            { label: "Bookings / day", value: "2 per person" },
-            { label: "Cancel window", value: "48 hours before start" },
-            { label: "Court fees", value: "Paid per booking (Mollie)" },
-          ]}
-          courts={[
-            { name: "B. Borg", note: "Clay · premium · KNLTB-certified · maintained daily" },
-            { name: "J. Mcenroe", note: "Clay · premium · KNLTB-certified · maintained daily" },
-          ]}
-          unlocks={[
-            "Book clay courts as a member (each booking is charged per hour).",
-            "Book up to 7 days ahead, on the hour or half-hour, 60-minute slots.",
-            "Join lessons and camps hosted at Randwijck.",
-            "Request season-long recurring court rentals (office approval + invoice).",
-            "Stricter cancellation: at least two days before your slot.",
-          ]}
-        />
-      </div>
+function ClubInfoCards({
+  randwijckSeason,
+}: {
+  randwijckSeason: ReturnType<typeof randwijckStatusOn>;
+}) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <ClubInfoCard
+        slug="triaz"
+        title="Triaz"
+        seasonPill="Year-round"
+        seasonPillTone="triaz"
+        stats={[
+          { label: "Court hours", value: "09:00 – 22:00" },
+          { label: "Bookings / day", value: "1 per person" },
+          { label: "Cancel window", value: "10 minutes before" },
+          { label: "Court fees", value: "Free with membership" },
+        ]}
+        courts={[
+          { name: "Court 1", note: "Multi-use · walk-on only (not reservable)" },
+          { name: "Court 2", note: "Multi-use · practice court" },
+          { name: "Court 3", note: "Grass · KNLTB-certified" },
+          { name: "Court 4", note: "Grass · KNLTB-certified" },
+        ]}
+        unlocks={[
+          "Book courts at no charge (subject to availability and your daily quota).",
+          "Book up to 7 days ahead, on the hour or half-hour, 60-minute slots.",
+          "Join group lessons, camps, and programs at Triaz.",
+          "Year-round play — Triaz never closes for winter.",
+          "Tue & Wed evenings share the venue with the korfball club; some courts may be blocked then.",
+        ]}
+      />
+      <ClubInfoCard
+        slug="randwijck"
+        title="Randwijck"
+        seasonPill={
+          randwijckSeason.isOpen
+            ? `Open now · ${randwijckSeasonLabel()}`
+            : `Reopens ${formatLongDate(randwijckSeason.upcoming.startsOn)}`
+        }
+        seasonPillTone={randwijckSeason.isOpen ? "randwijck" : "neutral"}
+        randwijckSeason={randwijckSeason}
+        stats={[
+          { label: "Court hours", value: "09:00 – 22:00" },
+          { label: "Bookings / day", value: "2 per person" },
+          { label: "Cancel window", value: "48 hours before start" },
+          { label: "Court fees", value: "Paid per booking (Mollie)" },
+        ]}
+        courts={[
+          { name: "B. Borg", note: "Clay · premium · KNLTB-certified · maintained daily" },
+          { name: "J. Mcenroe", note: "Clay · premium · KNLTB-certified · maintained daily" },
+        ]}
+        unlocks={[
+          "Book clay courts as a member (each booking is charged per hour).",
+          "Book up to 7 days ahead, on the hour or half-hour, 60-minute slots.",
+          "Join lessons and camps hosted at Randwijck.",
+          "Request season-long recurring court rentals (office approval + invoice).",
+          "Stricter cancellation: at least two days before your slot.",
+        ]}
+      />
     </div>
   );
 }
@@ -238,7 +280,7 @@ function ProrationTables() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <div className="overflow-hidden rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
+      <div className="elev-card overflow-hidden">
         <header className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-5 py-3">
           <div>
             <div
@@ -285,7 +327,7 @@ function ProrationTables() {
         </table>
       </div>
 
-      <div className="overflow-hidden rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
+      <div className="elev-card overflow-hidden">
         <header className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-5 py-3">
           <div>
             <div
@@ -393,7 +435,7 @@ function ClubInfoCard({
   return (
     <article
       className={cn(
-        "flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] p-5 shadow-[var(--shadow-sm)]",
+        "glass-ribbon flex flex-col gap-4 p-5",
         theme.bg,
       )}
     >
@@ -414,7 +456,7 @@ function ClubInfoCard({
         {stats.map((s) => (
           <div
             key={s.label}
-            className="rounded-[var(--radius-sm)] bg-[var(--card)] px-3 py-2 shadow-[var(--shadow-sm)]"
+            className="elev-panel rounded-[var(--radius-sm)] px-3 py-2"
           >
             <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
               {s.label}
@@ -432,7 +474,7 @@ function ClubInfoCard({
           {courts.map((c) => (
             <li
               key={c.name}
-              className="flex gap-2 rounded-[var(--radius-sm)] bg-[var(--card)] px-3 py-2 text-sm shadow-[var(--shadow-sm)]"
+              className="elev-panel flex gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-sm"
             >
               <span className={cn("font-semibold tabular", theme.accentText)}>{c.name}</span>
               <span className="text-[var(--muted-foreground)]">{c.note}</span>

@@ -47,6 +47,50 @@ export interface InboxItem {
 }
 
 /**
+ * Admin/coach-only notification templates excluded from the member
+ * portal inbox — parents should not see operational queue items.
+ */
+export const PORTAL_EXCLUDED_TEMPLATE_KEYS = [
+  "booking.cancellation.requested",
+  "membership.cancellation.requested",
+  "coach.sub.requested",
+  "transfer.requested.admin",
+  "enrollment.removed.byOffice",
+  "enrollment.removed.coach",
+  "enrollment.withdrawn.coach",
+  "recurring_block.denied",
+  "recurring_block.approved",
+] as const;
+
+/**
+ * Member-facing inbox — filters admin/coach operational notifications.
+ */
+export const getMemberInbox = cache(_getMemberInbox);
+async function _getMemberInbox(recipientPersonId: string): Promise<InboxItem[]> {
+  const items = await getInbox(recipientPersonId);
+  const excluded = new Set<string>(PORTAL_EXCLUDED_TEMPLATE_KEYS);
+  return items.filter((item) => !excluded.has(item.templateKey));
+}
+
+/**
+ * Unread count for the portal sidebar badge (member-relevant only).
+ */
+export const getMemberUnreadCount = cache(_getMemberUnreadCount);
+async function _getMemberUnreadCount(
+  recipientPersonId: string | null,
+): Promise<number> {
+  if (!recipientPersonId) return 0;
+  return prisma.notification.count({
+    where: {
+      recipientPersonId,
+      channel: "in_app",
+      readAt: null,
+      templateKey: { notIn: [...PORTAL_EXCLUDED_TEMPLATE_KEYS] },
+    },
+  });
+}
+
+/**
  * Latest 50 in-app notifications for one recipient, newest first.
  */
 // `React.cache` deduplicates this fetch within a single request — the
@@ -156,6 +200,8 @@ async function _getInbox(recipientPersonId: string): Promise<InboxItem[]> {
         relatedClassSeriesId = classUpdateSeries.get(r.relatedRowId) ?? null;
         relatedProgramSlug =
           classUpdateProgramSlug.get(r.relatedRowId) ?? null;
+      } else if (r.relatedTable === "class_series") {
+        relatedClassSeriesId = r.relatedRowId;
       }
     }
     return {

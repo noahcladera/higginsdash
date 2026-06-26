@@ -1,7 +1,6 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
-import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 import { SYSTEM_NO_COACH_PERSON_ID } from "@/lib/system-ids";
 import { createClassSeries } from "../../classes/actions";
 import { ClassSeriesForm } from "../../classes/class-series-form";
@@ -38,9 +37,9 @@ export default async function NewCampPage() {
       select: { id: true, name: true },
     }),
     prisma.court.findMany({
-      where: { isActive: true },
+      where: { isActive: true, isBookable: true },
       orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, clubId: true },
+      select: { id: true, name: true, clubId: true, isBookable: true },
     }),
     prisma.coach.findMany({
       where: {
@@ -64,24 +63,33 @@ export default async function NewCampPage() {
   const seasonOptions = seasons
     .filter((s) => s.audience === "youth")
     .map((s) => ({
-    id: s.id,
-    name: s.name,
-    audience: s.audience,
-    startsOn: s.startsOn ? dateToISO(s.startsOn) : "",
-    endsOn: s.endsOn ? dateToISO(s.endsOn) : "",
-    defaultExcludedDates: s.defaultExcludedDates.map((d) => dateToISO(d)),
-  }));
+      id: s.id,
+      name: s.name,
+      audience: s.audience,
+      startsOn: s.startsOn ? dateToISO(s.startsOn) : "",
+      endsOn: s.endsOn ? dateToISO(s.endsOn) : "",
+      defaultExcludedDates: s.defaultExcludedDates.map((d) => dateToISO(d)),
+    }));
 
   return (
-    <div className="space-y-8">
-      <Breadcrumbs
-        items={[{ label: "Camps", href: "/admin/camps" }, { label: "New" }]}
-      />
-      <PageHeader
-        kicker="Admin · Camps"
-        title="New camp"
-        description="One kids camp week at a time — Mon–Fri by default, daily times, optional days off. Parents book the full week or single drop-in days."
-      />
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+            <Link
+              href="/admin/camps"
+              className="hover:text-[var(--foreground)] hover:underline"
+            >
+              Camps
+            </Link>
+            {" · New"}
+          </p>
+          <h1 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">
+            New camp
+          </h1>
+        </div>
+      </div>
+
       <ClassSeriesForm
         action={createClassSeries}
         submitLabel="Create camp"

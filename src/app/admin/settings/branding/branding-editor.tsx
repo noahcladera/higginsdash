@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useActionFeedback } from "@/lib/feedback";
 
 import { saveBranding } from "./actions";
 
@@ -39,33 +40,18 @@ export function BrandingEditor({
   const [brandTitle, setBrandTitle] = React.useState(defaultBrandTitle);
   const [brandSubline, setBrandSubline] = React.useState(defaultBrandSubline);
 
-  const [status, setStatus] = React.useState<
-    | { kind: "idle" }
-    | { kind: "saving" }
-    | { kind: "saved" }
-    | { kind: "error"; message: string }
-  >({ kind: "idle" });
+  const { run, pending, error } = useActionFeedback({
+    success: "Saved",
+    successDescription: "Reload any open tab to see it everywhere.",
+  });
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setStatus({ kind: "saving" });
     const form = new FormData();
     form.set("logoUrl", logoUrl);
     form.set("brandTitle", brandTitle);
     form.set("brandSubline", brandSubline);
-    try {
-      const result = await saveBranding(form);
-      if (result.ok) {
-        setStatus({ kind: "saved" });
-      } else {
-        setStatus({ kind: "error", message: result.error });
-      }
-    } catch {
-      setStatus({
-        kind: "error",
-        message: "Save failed. Check your connection and try again.",
-      });
-    }
+    run(() => saveBranding(form));
   }
 
   const previewTitle = brandTitle.trim() || fallbackDisplayName.split(" ")[0];
@@ -153,18 +139,11 @@ export function BrandingEditor({
       </section>
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={status.kind === "saving"}>
-          {status.kind === "saving" ? "Saving…" : "Save branding"}
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save branding"}
         </Button>
-        {status.kind === "saved" && (
-          <span className="text-sm text-[var(--muted-foreground)]">
-            Saved. Reload any open tab to see it everywhere.
-          </span>
-        )}
-        {status.kind === "error" && (
-          <span className="text-sm text-[var(--destructive)]">
-            {status.message}
-          </span>
+        {error && (
+          <span className="text-sm text-[var(--destructive)]">{error}</span>
         )}
       </div>
     </form>

@@ -132,7 +132,7 @@ export function SendInvoiceCard({
         </div>
       </div>
 
-      {error && <div className="text-sm text-red-700">{error}</div>}
+      {error && <div className="text-sm text-[var(--danger-ink)]">{error}</div>}
       {sentTo && (
         <div className="text-sm text-emerald-700">
           Sent to <span className="font-medium">{sentTo}</span>.

@@ -1,0 +1,222 @@
+{
+  "themes": {
+    "membership": 12473,
+    "invoice": 11120,
+    "register": 10676,
+    "cancel": 8289,
+    "gotimmy": 7219,
+    "makeup": 6610,
+    "rain": 5518,
+    "refund": 4997,
+    "confus": 1755,
+    "duplicate": 55
+  },
+  "nlOffice": {
+    "source": "higginstennisnloffice@gmail.com (Google Takeout, full 71,689-message scan)",
+    "generatedAt": "2026-06-25T16:01:29.633905+00:00",
+    "messagesScanned": 71689,
+    "parentInboundMessages": 24013,
+    "gotimmyAutomatedMessages": 12407,
+    "websiteContactFormAlerts": 820,
+    "themes": {
+      "schedule_holidays": 11731,
+      "rain_cancel_makeup": 8385,
+      "payment_invoice_refund": 8271,
+      "registration_waitlist": 8133,
+      "lesson_availability": 5650,
+      "court_access_ladder": 3705,
+      "medals_progress": 3528,
+      "whatsapp_comms": 1674,
+      "membership_renewal": 1077
+    },
+    "topContactFormSubjects": [
+      "[higginstennis.nl] Website Contact Form - nieuwe inzending (239)",
+      "Re: [higginstennis.nl] Website Contact Form - nieuwe inzending (233)"
+    ],
+    "artifacts": {
+      "themes": "_nl-email-themes.json",
+      "scorecard": "_nl-deflection-scorecard.json",
+      "quotes": "_nl-quote-bank.json",
+      "analyzer": "../../scripts/analyze-nl-email-corpus.py"
+    }
+  },
+  "quotes": [
+    {
+      "date": "2026-06-17",
+      "from": "higginstennisofficeca@gmail.com",
+      "subject": "Re: Following up on this invoice",
+      "quote": "Thank you Sean! *Heather Court* Global Operations Coordinator Higgins Tennis higginstennisofficeca@gmail.com On Wed, Jun 17, 2026 at 12:52 AM Sean Donaldson <Seand@internationalsf.org> wrote: > Hi William, > > Sorry again for the delay, it ",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-17",
+      "from": "higginstennisofficeca@gmail.com",
+      "subject": "Re: Pickleball over the summer",
+      "quote": "Hi David, if you see anyone teaching Pickleball at Lagoon or tennis please take a picture and send it to us, this is not allowed and every now and then it becomes an issue-please note the date and time for me so I can let the Ranch know and",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-17",
+      "from": "higginstennisofficeca@gmail.com",
+      "subject": "Fwd: Your Whole Foods Market Receipt",
+      "quote": "*Heather Court* Global Operations Coordinator Higgins Tennis higginstennisofficeca@gmail.com ---------- Forwarded message --------- From: Ren\u00e9 Monday <renemmonday@gmail.com> Date: Sat, Jun 6, 2026 at 8:29 AM Subject: Fwd: Your Whole Foods M",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-17",
+      "from": "hcorn@thearknewspaper.com",
+      "subject": "Re: Advertising on the Ark",
+      "quote": "Thank you! Have a great week! Let me know the dates if you\u2019d like to run in the next few weeks! All my best, Hen Henriette Corn, Publisher, Director of Business & Advertising The Ark \u2022 thearknewspaper.com 1550 Tiburon Blvd. Suite D, Tiburon",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-17",
+      "from": "higginstennisofficeca@gmail.com",
+      "subject": "Re: Advertising on the Ark",
+      "quote": "Hi, Sorry for the delay. I just moved cities. Bank has issued a check payment. Best, William You scheduled a paymentSuccess You scheduled a payment Amount you'll pay to AMMI Publishing Co, Inc. - Higgins Tennis, Inc. $1,000.00 Deliver by Ju",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-17",
+      "from": "higginstennisofficeca@gmail.com",
+      "subject": "Fwd: Black Pine Circle School Mandated Reporter Training",
+      "quote": "*Heather Court* Global Operations Coordinator Higgins Tennis higginstennisofficeca@gmail.com ---------- Forwarded message --------- From: Sam Cantrell <scantrell@blackpinecircle.org> Date: Mon, Jun 15, 2026 at 7:34 PM Subject: Black Pine Ci",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-17",
+      "from": "officeadmin@theranchtoday.org",
+      "subject": "RE: Correction: Summer Camps are filling up",
+      "quote": "Hi Heather, Noted, thanks for letting me know. Betsy Seage Office Administrator THE RANCH 600 Ned\u2019s Way Tiburon, CA 94920 Theranchtoday.org<http://www.theranchtoday.org/> (415) 435- 4355 Ext. 0 From: Higgins Tennis CA Office <higginstenniso",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-17",
+      "from": "higginstennisofficeca@gmail.com",
+      "subject": "Fwd: Correction: Summer Camps are filling up",
+      "quote": "Hi there see email below from this parent, I advised that they can register for 4 days instead of 5-can you adjust the rate for him when he contacts you? thanks *Heather Court* Global Operations Coordinator Higgins Tennis higginstennisoffic",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-17",
+      "from": "higginstennisofficeca@gmail.com",
+      "subject": "Re: Correction: Summer Camps are filling up",
+      "quote": "Hi there, You can register for that week and pay for 4 days instead of 5. I have forwarded your email to the Ranch office e so they are aware, please reach out to them to register and they will adjust the rate for you We hope he has a great",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-17",
+      "from": "noah@higginstennis.nl",
+      "subject": "Accepted: Spring 2 Triaz Adv. Beg to Inter Ramzi, Noah &\r\n Ivan-exten... @ Wed J",
+      "quote": "Noah Cladera has accepted this invitation. Spring 2 Triaz Adv. Beg to Inter Ramzi, Noah & Ivan-extended 30 min for makeup Wednesday Jun 24, 2026 \u22c5 6:30pm \u2013 8pm Central European Time - Brussels No class dates: n/a Organizer higginstennisnlof",
+      "region": "NL"
+    },
+    {
+      "date": "2026-06-16",
+      "from": "higginstennisofficeca@gmail.com",
+      "subject": "Re: [EXTERNAL] Some edits for Sawyer",
+      "quote": "Hello great!! thank you. Much appreciated *Heather Court* Global Operations Coordinator Higgins Tennis higginstennisofficeca@gmail.com On Mon, Jun 15, 2026 at 4:44 PM Wyatt Mann <wmann@townofrossca.gov> wrote: > Not a problem, I'm gone ahea",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-16",
+      "from": "amynstewart@gmail.com",
+      "subject": "Re: Pickleball inquiry",
+      "quote": "Hi David, Thank you for the reply and I apologize for my slow response. I am very interested in private lessons to start and then possibly would transition to a double or group lesson. Unfortunately, weekday mornings are tough for me as I w",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-16",
+      "from": "higginstennisofficeca@gmail.com",
+      "subject": "Re: Updates for Live Ball Class Tomorrow",
+      "quote": "Hi there, thank you for letting me know, I copied Ren\u00e9 so she is in the loop! Have a great week *Heather Court* Global Operations Coordinator Higgins Tennis higginstennisofficeca@gmail.com On Tue, Jun 16, 2026 at 12:39 AM Office Administrat",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-16",
+      "from": "seand@internationalsf.org",
+      "subject": "Re: Following up on this invoice",
+      "quote": "Hi William, Sorry again for the delay, it looks like there was a delay with the secondary approval. The check should be on its way now. Best, Se\u00e1n Donaldson (He/Him/His) Director of Extended Care 150 Oak Street, San Francisco, CA 94102 +1 4",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-16",
+      "from": "higginstennisrene@gmail.com",
+      "subject": "Re: Laura Lacey Live Ball",
+      "quote": "Jane, Emilia, Jacqueline showed today. Good tennis and good fun! I will remind players to lmk if they cannot attend so I can bring in subs to make 4+. Thanks Betsy! Ren\u00e9 Sent from my iPhone On Jun 16, 2026, at 4:31 PM, Office Administrator ",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-16",
+      "from": "officeadmin@theranchtoday.org",
+      "subject": "Laura Lacey Live Ball",
+      "quote": "Hi y'all, Heads up, Laura Deal Lacey will be joining today's live ball class. Still working on the last person on the waitlist to see if they'll register. Thanks! Betsy Seage Office Administrator THE RANCH 600 Ned's Way Tiburon, CA 94920 Th",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-16",
+      "from": "spasta@gmail.com",
+      "subject": "Re: Pickleball over the summer",
+      "quote": "Why can\u2019t I teach at Lagoon? I see other pickleball and tennis instructors there all the time. Wed or Thur evenings are great if they are open. Thanks, David On Tue, Jun 16, 2026 at 1:33 AM Higgins Tennis CA Office < higginstennisofficeca@g",
+      "region": "CA"
+    },
+    {
+      "date": "2026-06-16",
+      "from": "higginstennisofficeca@gmail.com",
+      "subject": "Re: Pickleball over the summer",
+      "quote": "I believe we are not able to teach Pickleball at Lagoon, only at Del mar-so if you have an evening day for me then I can see about setting up a class for you-the only day not possible is on Tuesdays as we have an adult tennis class and Sund",
+      "region": "CA"
+    }
+  ],
+  "nlQuotes": [
+    {
+      "date": "2026-04-20",
+      "from": "hikmetmrabti@gmail.com",
+      "subject": "Re: Lessons and school holidays",
+      "quote": "All still new for me… Sunday 26th no lesson for Sofia. How about next Sunday? Do I need to register her via portal or is it clear she comes every Sunday?",
+      "theme": "schedule_holidays",
+      "region": "NL"
+    },
+    {
+      "date": "2026-06-02",
+      "from": "brennanixon@gmail.com",
+      "subject": "Re: Tennis on Tuesdays",
+      "quote": "Yes if you could sign me up starting next week with prorated invoice that would be great.",
+      "theme": "registration_waitlist",
+      "region": "NL"
+    },
+    {
+      "date": "2026-06-15",
+      "from": "kevin_reed@LIVE.COM",
+      "subject": "Re: Cancellation rain today urgent",
+      "quote": "My classmates and I didn't receive the message in the group… Could you please double check?",
+      "theme": "whatsapp_comms",
+      "region": "NL"
+    },
+    {
+      "date": "2026-06-19",
+      "from": "santu.manutd@gmail.com",
+      "subject": "Re: Your Class Payment Receipt",
+      "quote": "Can you please send me an invoice for the additional 2 classes… and the remaining Sundays in SPRING 2?",
+      "theme": "payment_invoice_refund",
+      "region": "NL"
+    },
+    {
+      "date": "2026-04-20",
+      "from": "Willem Swart",
+      "subject": "Re: Membership renewals Club S.V. Triaz",
+      "quote": "We heard about renewing the membership because of the renovation. Is that possible for us?",
+      "theme": "membership_renewal",
+      "region": "NL"
+    },
+    {
+      "date": "2026-05-26",
+      "from": "notification@gotimmy.com",
+      "subject": "Registration system error",
+      "quote": "If the system gives you an error, please email me what class you are trying to register for and I will handle it on our end.",
+      "theme": "registration_waitlist",
+      "region": "NL"
+    }
+  ],
+  "total_scanned_matches": 46447
+}

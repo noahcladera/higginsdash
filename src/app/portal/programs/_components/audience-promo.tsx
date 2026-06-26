@@ -14,9 +14,13 @@
 
 import Link from "next/link";
 import { FamilyIcon, TrophyIcon, MapPinIcon } from "@/components/icons";
+import {
+  MaterialTile,
+  type MaterialTileTone,
+} from "@/components/ui/material-tile";
 import { cn } from "@/lib/utils";
 
-export type PromoTone = "triaz" | "randwijck" | "joint";
+export type PromoTone = "triaz" | "randwijck" | "joint" | "neutral";
 
 export interface AudiencePromoPrices {
   youth: number | null;
@@ -40,9 +44,11 @@ const noChildrenNote = (
 export function AudiencePromoStrip({
   prices,
   hasChildren,
+  marketingImages = {},
 }: {
   prices: AudiencePromoPrices;
   hasChildren: boolean;
+  marketingImages?: Record<string, string>;
 }) {
   const youthLocked = !hasChildren;
 
@@ -55,16 +61,18 @@ export function AudiencePromoStrip({
         title="Youth"
         description="Group lessons for kids — at our courts or with school pickup."
         priceLabel={priceLabel(prices.youth)}
+        imageSrc={marketingImages["audience:youth"]}
         locked={youthLocked}
         lockedNote={noChildrenNote}
       />
       <PromoTile
-        tone="randwijck"
+        tone="neutral"
         href="/portal/programs?audience=adults#browse"
         icon={<TrophyIcon size={22} />}
         title="Adults"
         description="Weekly group lessons at the club for every level."
         priceLabel={priceLabel(prices.adults)}
+        imageSrc={marketingImages["audience:adults"]}
       />
       <PromoTile
         tone="joint"
@@ -73,6 +81,7 @@ export function AudiencePromoStrip({
         title="School pickup"
         description="We collect your kid at school and bring them door to court."
         priceLabel={priceLabel(prices.pickup)}
+        imageSrc={marketingImages["audience:pickup"]}
         locked={youthLocked}
         lockedNote={noChildrenNote}
       />
@@ -86,36 +95,40 @@ function priceLabel(eur: number | null): string | null {
   return `From €${Math.round(eur)} / season`;
 }
 
+const TONE_MAP: Record<PromoTone, MaterialTileTone> = {
+  triaz: "triaz",
+  randwijck: "randwijck",
+  joint: "joint",
+  neutral: "neutral",
+};
+
 const TONE_STYLES: Record<
   PromoTone,
   {
-    surface: string;
     icon: string;
     iconText: string;
     cta: string;
-    border: string;
   }
 > = {
   triaz: {
-    surface: "bg-[var(--triaz-soft)]",
     icon: "bg-[var(--triaz)]/15",
     iconText: "text-[var(--triaz-ink)]",
     cta: "text-[var(--triaz-ink)]",
-    border: "hover:border-[var(--triaz)]/50",
   },
   randwijck: {
-    surface: "bg-[var(--randwijck-soft)]",
     icon: "bg-[var(--randwijck)]/15",
     iconText: "text-[var(--randwijck-ink)]",
     cta: "text-[var(--randwijck-ink)]",
-    border: "hover:border-[var(--randwijck)]/50",
   },
   joint: {
-    surface: "bg-[var(--joint-soft)]",
-    icon: "bg-[var(--surface-strong)]",
+    icon: "bg-[var(--joint)]/15",
+    iconText: "text-[var(--joint-ink)]",
+    cta: "text-[var(--joint-ink)]",
+  },
+  neutral: {
+    icon: "bg-[var(--surface-strong)]/80",
     iconText: "text-[var(--foreground)]",
     cta: "text-[var(--foreground)]",
-    border: "hover:border-[var(--foreground)]/30",
   },
 };
 
@@ -126,6 +139,7 @@ function PromoTile({
   title,
   description,
   priceLabel,
+  imageSrc,
   locked = false,
   lockedNote,
 }: {
@@ -135,81 +149,79 @@ function PromoTile({
   title: string;
   description: string;
   priceLabel: string | null;
+  imageSrc?: string;
   locked?: boolean;
   lockedNote?: React.ReactNode;
 }) {
   const t = TONE_STYLES[tone];
-  const shell = cn(
-    "flex flex-col gap-3 rounded-[var(--radius-lg)] border border-transparent p-5 shadow-[var(--shadow-sm)]",
-    t.surface,
-    locked
-      ? "cursor-not-allowed select-none opacity-60"
-      : cn("group transition-all hover:shadow-[var(--shadow-md)]", t.border),
-  );
-
-  const inner = (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            aria-hidden
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-              t.icon,
-              t.iconText,
-            )}
-          >
-            {icon}
-          </div>
-          <h3 className="font-display text-xl font-medium tracking-tight">
-            {title}
-          </h3>
-        </div>
-        {locked ? (
-          <LockGlyph className="shrink-0 text-[var(--muted-foreground)]" />
-        ) : (
-          <ArrowGlyph className="shrink-0 text-[var(--muted-foreground)] transition-transform group-hover:translate-x-0.5" />
-        )}
-      </div>
-      <p className="text-sm text-[var(--muted-foreground)]">{description}</p>
-      <div className="mt-auto flex flex-wrap items-end justify-between gap-2 text-xs">
-        {locked && lockedNote ? (
-          <div className="text-xs leading-relaxed text-[var(--foreground)]">
-            {lockedNote}
-          </div>
-        ) : priceLabel ? (
-          <span className="font-display text-base font-medium tabular tracking-tight text-[var(--foreground)]">
-            {priceLabel}
-          </span>
-        ) : (
-          <span />
-        )}
-        {!locked && (
-          <span
-            className={cn(
-              "ml-auto font-semibold transition-transform group-hover:translate-x-0.5",
-              t.cta,
-            )}
-          >
-            Browse →
-          </span>
-        )}
-      </div>
-    </>
-  );
-
-  if (locked) {
-    return (
-      <div className={shell} aria-disabled data-state="locked">
-        {inner}
-      </div>
-    );
-  }
+  const imageNode = imageSrc ? (
+    <div className="relative aspect-[16/9] w-full overflow-hidden">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imageSrc}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    </div>
+  ) : undefined;
 
   return (
-    <Link href={href} className={shell}>
-      {inner}
-    </Link>
+    <MaterialTile
+      tone={TONE_MAP[tone]}
+      href={href}
+      locked={locked}
+      image={imageNode}
+      className={cn(!imageSrc && "p-0")}
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div
+              aria-hidden
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--glass-border-subtle)] shadow-[var(--highlight-inset-subtle)]",
+                t.icon,
+                t.iconText,
+              )}
+            >
+              {icon}
+            </div>
+            <h3 className="font-display text-xl font-medium tracking-tight">
+              {title}
+            </h3>
+          </div>
+          {locked ? (
+            <LockGlyph className="shrink-0 text-[var(--muted-foreground)]" />
+          ) : (
+            <ArrowGlyph className="shrink-0 text-[var(--muted-foreground)] transition-transform group-hover:translate-x-0.5" />
+          )}
+        </div>
+        <p className="text-sm text-[var(--muted-foreground)]">{description}</p>
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-2 text-xs">
+          {locked && lockedNote ? (
+            <div className="text-xs leading-relaxed text-[var(--foreground)]">
+              {lockedNote}
+            </div>
+          ) : priceLabel ? (
+            <span className="font-display text-base font-medium tabular tracking-tight text-[var(--foreground)]">
+              {priceLabel}
+            </span>
+          ) : (
+            <span />
+          )}
+          {!locked && (
+            <span
+              className={cn(
+                "ml-auto font-semibold transition-transform group-hover:translate-x-0.5",
+                t.cta,
+              )}
+            >
+              Browse →
+            </span>
+          )}
+        </div>
+      </div>
+    </MaterialTile>
   );
 }
 

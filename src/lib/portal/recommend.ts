@@ -37,6 +37,7 @@ export interface ProgramLike {
   /** Optional description so the home page can show a one-liner. */
   descriptionPublic: string | null;
   coverImageUrl: string | null;
+  coverImageFocusY: number;
   /**
    * Schools (slugs / labels) this program serves. Empty array = open to
    * any school. Matters for school-pickup programs only — a kids-group

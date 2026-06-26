@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 /*
- * Button — refined for the Quiet Confidence system.
+ * Button — Liquid Paper material controls.
  *
  * `variant` controls structure (filled / outline / ghost / link).
  * `tone` swaps the color family (neutral default, brand greens/terracotta,
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium",
-    "transition-all duration-150 ease-out",
+    "transition-all duration-[var(--duration-fast)] ease-[var(--ease-out-soft)]",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]",
     "disabled:pointer-events-none disabled:opacity-50",
     "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
@@ -23,9 +23,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        solid: "shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]",
-        // Aliases kept for backward-compat with existing admin pages.
-        default: "shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]",
+        solid:
+          "shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] [box-shadow:var(--shadow-sm),var(--highlight-inset)] hover:[box-shadow:var(--shadow-md),var(--highlight-inset)]",
+        default:
+          "shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] [box-shadow:var(--shadow-sm),var(--highlight-inset)] hover:[box-shadow:var(--shadow-md),var(--highlight-inset)]",
         secondary:
           "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-80",
         destructive:
@@ -67,17 +68,20 @@ const buttonVariants = cva(
       {
         variant: "solid",
         tone: "triaz",
-        class: "bg-[var(--triaz)] text-white hover:brightness-110",
+        class:
+          "bg-gradient-to-b from-[oklch(0.48_0.13_155)] to-[var(--triaz)] text-white hover:brightness-110 shadow-[var(--shadow-triaz)]",
       },
       {
         variant: "solid",
         tone: "randwijck",
-        class: "bg-[var(--randwijck)] text-white hover:brightness-110",
+        class:
+          "bg-gradient-to-b from-[oklch(0.58_0.16_40)] to-[var(--randwijck)] text-white hover:brightness-110 shadow-[var(--shadow-randwijck)]",
       },
       {
         variant: "solid",
         tone: "joint",
-        class: "bg-[var(--joint)] text-white hover:brightness-110",
+        class:
+          "bg-gradient-to-b from-[oklch(0.46_0.13_260)] to-[var(--joint)] text-white hover:brightness-110 shadow-[var(--shadow-joint)]",
       },
       {
         variant: "solid",

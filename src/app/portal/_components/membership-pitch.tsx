@@ -30,6 +30,9 @@ const CLUB_INFO: Record<
     surface: "Clay" | "Grass";
     surfaceNote: string;
     city: string;
+    addressLine1: string;
+    postalCode: string;
+    mapUrl: string;
     blurb: string;
     imageSrc?: string;
   }
@@ -37,7 +40,11 @@ const CLUB_INFO: Record<
   triaz: {
     surface: "Grass",
     surfaceNote: "Drains in the rain, so play never really stops.",
-    city: "Amsterdam-Oost",
+    city: "Amsterdam",
+    addressLine1: "Van Heenvlietlaan 6",
+    postalCode: "1083 CL",
+    mapUrl:
+      "https://maps.google.com/?q=S.V.+Triaz+Van+Heenvlietlaan+6+Amsterdam",
     blurb:
       "Four outdoor grass courts. Open all year — the turf soaks up the wet so we keep playing through the Dutch winter.",
     imageSrc: undefined,
@@ -46,6 +53,10 @@ const CLUB_INFO: Record<
     surface: "Clay",
     surfaceNote: "Soft on the knees, slow on the bounce.",
     city: "Amstelveen",
+    addressLine1: "Barend van Dorenweerdelaan 16",
+    postalCode: "1181 BK",
+    mapUrl:
+      "https://maps.google.com/?q=Tennispark+Randwijck+Barend+van+Dorenweerdelaan+16+Amstelveen",
     blurb:
       "Classic Dutch clay. Open from spring through autumn — the courts close once the rain takes over.",
     imageSrc: undefined,
@@ -73,9 +84,9 @@ export function MembershipPitchHeader({
   description?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] sm:p-6">
+    <div className="elev-card p-5 sm:p-6">
       <div className="space-y-1">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+        <div className="text-sm font-medium text-[var(--muted-foreground)]">
           {kicker}
         </div>
         <h2 className="font-display text-2xl font-medium tracking-tight">
@@ -98,8 +109,10 @@ export function MembershipPitchHeader({
  */
 export function ClubTilesGrid({
   clubs,
+  marketingImages = {},
 }: {
   clubs: MembershipPitchClub[];
+  marketingImages?: Record<string, string>;
 }) {
   const known = clubs
     .map((c) => ({ ...c, slug: c.slug as ClubSlug }))
@@ -112,6 +125,7 @@ export function ClubTilesGrid({
           key={club.id}
           club={club}
           theme={themeForClubs([club.slug])}
+          imageSrc={marketingImages[`club:${club.slug}`]}
         />
       ))}
     </div>
@@ -132,7 +146,7 @@ export function JointCrossSell({
   return (
     <article
       className={cn(
-        "fade-in flex flex-col items-start gap-4 rounded-[var(--radius-lg)] bg-[var(--card)] p-5 shadow-[var(--shadow-sm)] sm:flex-row sm:items-center sm:justify-between sm:p-6",
+        "fade-in elev-card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6",
       )}
     >
       <div className="flex items-center gap-4">
@@ -147,7 +161,7 @@ export function JointCrossSell({
           <TennisIcon />
         </div>
         <div className="space-y-1">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+          <div className="text-sm font-medium text-[var(--muted-foreground)]">
             Best value
           </div>
           <h3 className="font-display text-xl font-medium tracking-tight">
@@ -176,12 +190,15 @@ export function JointCrossSell({
 function ClubTile({
   club,
   theme,
+  imageSrc,
 }: {
   club: { id: string; name: string; slug: ClubSlug };
   theme: ClubTheme;
+  imageSrc?: string;
 }) {
   const styles = clubTheme(theme);
   const info = CLUB_INFO[club.slug];
+  const heroSrc = imageSrc ?? info.imageSrc;
 
   // Cheapest entry: pick the lowest single-club rate visible across
   // both clubs at full-year (returning-member) pricing.
@@ -226,18 +243,18 @@ function ClubTile({
   return (
     <article
       className={cn(
-        "fade-in group flex flex-col overflow-hidden rounded-[var(--radius-lg)] bg-[var(--card)] shadow-[var(--shadow-sm)] transition-shadow hover:shadow-[var(--shadow-md)]",
+        "fade-in group elev-card flex flex-col overflow-hidden transition-shadow hover:shadow-[var(--shadow-floating)]",
       )}
     >
       <CourtHero
         slug={club.slug}
         themeColor={styles.rawColor}
-        imageSrc={info.imageSrc}
+        imageSrc={heroSrc}
       />
 
       <div className="flex flex-1 flex-col gap-5 p-5 sm:p-6">
         <header className="space-y-2">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em]">
+          <div className="flex items-center gap-2 text-sm font-medium text-[var(--muted-foreground)]">
             <span style={{ color: styles.rawColor }}>{styles.label}</span>
             <span aria-hidden className="text-[var(--muted-foreground)]">
               ·
@@ -250,7 +267,15 @@ function ClubTile({
             {club.name}
           </h3>
           <div className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
-            <MapPinIcon size={14} /> {info.city}
+            <MapPinIcon size={14} />
+            <a
+              href={info.mapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline-offset-4 hover:underline"
+            >
+              {info.addressLine1}, {info.postalCode} {info.city}
+            </a>
           </div>
         </header>
 
@@ -276,9 +301,10 @@ function ClubTile({
 
         <div className="mt-auto flex items-end justify-between gap-4 pt-2">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+            <div className="text-sm font-medium text-[var(--muted-foreground)]">
               Memberships from
             </div>
+            <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--control)] px-4 py-3">
             <div className="tabular font-display text-3xl font-medium tracking-tight">
               {formatMembershipPrice(fromPrice)}
               <span className="ml-1 text-sm font-normal text-[var(--muted-foreground)]">
@@ -294,6 +320,7 @@ function ClubTile({
                   · Family {formatMembershipPrice(familyFullYear)}
                 </>
               )}
+            </div>
             </div>
           </div>
           <Link
@@ -323,7 +350,7 @@ function Fact({
 }) {
   return (
     <div className="flex items-baseline gap-3">
-      <div className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+      <div className="w-20 shrink-0 text-sm font-medium text-[var(--foreground)]/70">
         {label}
       </div>
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-sm">

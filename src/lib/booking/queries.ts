@@ -18,6 +18,7 @@ import {
 } from "./time";
 import { recurringBlockHits } from "./rules";
 import type {
+  ClassType,
   Court,
   BookingSettings,
   ClassSession,
@@ -54,7 +55,16 @@ export type CalendarSlotState =
       cancellationReason?: string | null;
       cancellationRequestedAtIso?: string | null;
     }
-  | { kind: "class"; classSessionId: string; label: string }
+  | {
+      kind: "class";
+      classSessionId: string;
+      label: string;
+      deliveryMode: "at_club" | "onsite" | "pickup";
+      classType: ClassType;
+      /** Full session window — used to render one merged block per class. */
+      sessionStartsAtUtc: Date;
+      sessionEndsAtUtc: Date;
+    }
   | {
       kind: "recurring_block";
       recurringBlockId: string;
@@ -147,10 +157,18 @@ export async function getCalendarWeek(args: {
       }),
       prisma.classSession.findMany({
         where: {
-          courtId: { not: null },
-          court: { clubId: args.clubId },
           startsAt: { gte: startUtc, lt: endUtc },
           status: { not: "cancelled" },
+          OR: [
+            { court: { clubId: args.clubId } },
+            {
+              courtId: null,
+              classSeries: {
+                defaultCourtId: { not: null },
+                venue: { clubId: args.clubId },
+              },
+            },
+          ],
         },
         select: {
           id: true,
@@ -162,6 +180,8 @@ export async function getCalendarWeek(args: {
             select: {
               name: true,
               deliveryMode: true,
+              classType: true,
+              defaultCourtId: true,
               program: { select: { name: true } },
             },
           },
@@ -202,6 +222,16 @@ export async function getCalendarWeek(args: {
 
   const viewerRole = args.viewerRole ?? "member";
 
+  const normalizedClasses = classes
+    .map((session) => ({
+      ...session,
+      courtId: session.courtId ?? session.classSeries.defaultCourtId,
+    }))
+    .filter(
+      (session): session is typeof session & { courtId: string } =>
+        session.courtId != null,
+    );
+
   const calendarCourts: CalendarCourt[] = courts.map((court) =>
     buildCourtSlots({
       court,
@@ -209,7 +239,7 @@ export async function getCalendarWeek(args: {
       timeSlots,
       settings,
       bookings,
-      classes,
+      classes: normalizedClasses,
       // Heather feedback v1: keep `members_only` blocks visible for
       // coaches as informational; the rule engine still lets them
       // book on top. Members continue to see them as opaque blocks.
@@ -250,6 +280,7 @@ function buildCourtSlots(args: {
     classSeries: {
       name: string;
       deliveryMode: "at_club" | "onsite" | "pickup";
+      classType: ClassType;
       program: { name: string };
     };
   }[];
@@ -323,6 +354,7 @@ function computeSlotState(args: {
     classSeries: {
       name: string;
       deliveryMode: "at_club" | "onsite" | "pickup";
+      classType: ClassType;
       program: { name: string };
     };
   }[];
@@ -367,6 +399,10 @@ function computeSlotState(args: {
       kind: "class",
       classSessionId: klass.id,
       label,
+      deliveryMode: klass.classSeries.deliveryMode,
+      classType: klass.classSeries.classType,
+      sessionStartsAtUtc: klass.startsAt,
+      sessionEndsAtUtc: klass.endsAt,
     };
   }
 

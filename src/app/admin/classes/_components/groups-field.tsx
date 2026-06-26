@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusIcon } from "@/components/icons";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { ADULT_MIN_AGE } from "@/lib/classes/age-band";
 import { KIDS_LEVELS, ADULT_LEVELS, type SkillLevelValue } from "@/lib/skill-levels";
 
 /**
@@ -157,14 +158,14 @@ export function GroupsField({
           endTime: r.endTime,
           maxStudents: Number(r.maxStudents),
           minStudents: r.minStudents,
-          minAge: r.minAge,
-          maxAge: r.maxAge,
+          minAge: audience === "adults" ? ADULT_MIN_AGE : r.minAge,
+          maxAge: audience === "adults" ? null : r.maxAge,
           eligibleSkillLevels: r.eligibleSkillLevels,
           internalNotes: r.internalNotes,
           coachPersonId: r.coachPersonId || null,
         })),
       ),
-    [rows],
+    [rows, audience],
   );
 
   const requireCoach = rows.length >= 2;
@@ -271,30 +272,34 @@ export function GroupsField({
                   placeholder="—"
                 />
               </Field>
-              <Field label="Min age" optional>
-                <Input
-                  type="number"
-                  min={0}
-                  max={120}
-                  value={r.minAge}
-                  onChange={(e) =>
-                    updateRow(idx, { minAge: e.target.value })
-                  }
-                  placeholder="—"
-                />
-              </Field>
-              <Field label="Max age" optional>
-                <Input
-                  type="number"
-                  min={0}
-                  max={120}
-                  value={r.maxAge}
-                  onChange={(e) =>
-                    updateRow(idx, { maxAge: e.target.value })
-                  }
-                  placeholder="—"
-                />
-              </Field>
+              {audience !== "adults" ? (
+                <>
+                  <Field label="Min age" optional>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={120}
+                      value={r.minAge}
+                      onChange={(e) =>
+                        updateRow(idx, { minAge: e.target.value })
+                      }
+                      placeholder="—"
+                    />
+                  </Field>
+                  <Field label="Max age" optional>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={120}
+                      value={r.maxAge}
+                      onChange={(e) =>
+                        updateRow(idx, { maxAge: e.target.value })
+                      }
+                      placeholder="—"
+                    />
+                  </Field>
+                </>
+              ) : null}
             </div>
             <LevelPills
               audience={audience}

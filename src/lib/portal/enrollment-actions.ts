@@ -7,14 +7,15 @@ import { prisma } from "@/lib/prisma";
 import { requireMember } from "@/lib/auth/require-member";
 import { isGuardianOf } from "@/lib/portal/queries";
 import {
-  eventHasMemberPricingTier,
-  parsePricingTiers,
-  resolveEventCheckoutPrice,
-} from "@/lib/classes/pricing-tiers";
-import {
   parseCampOptions,
   resolveCampCheckoutPrice,
 } from "@/lib/classes/camp-options";
+import { getNextEventOccurrence } from "@/lib/classes/event-occurrence";
+import {
+  ageIncludesYears,
+  formatPublicAgeLabel,
+  isOpenEndedAdultMax,
+} from "@/lib/classes/age-band";
 import {
   ageBracketFromAge,
   computeEnrollmentPricing,
@@ -192,7 +193,9 @@ export async function createEnrollment(
       eligibleSkillLevels: true,
       pricePerSeries: true,
       classType: true,
-      pricingTiers: true,
+      name: true,
+      whatsappUrl: true,
+      program: { select: { slug: true } },
       campOptions: true,
       venue: {
         select: { club: { select: { id: true, slug: true } } },
@@ -279,38 +282,63 @@ export async function createEnrollment(
   const age = ageFromDob(target?.dateOfBirth ?? null);
   let ageOverrideReason: string | null = null;
   if (age != null) {
-    const groupBand = formatAgeBand(chosenGroup.minAge, chosenGroup.maxAge);
-    const seriesBand = formatAgeBand(series.minAge, series.maxAge);
-    const outsideGroup =
-      (chosenGroup.minAge != null && age < chosenGroup.minAge) ||
-      (chosenGroup.maxAge != null && age > chosenGroup.maxAge);
-    const outsideSeries =
-      (series.minAge != null && age < series.minAge) ||
-      (series.maxAge != null && age > series.maxAge);
+    const groupBand =
+      formatPublicAgeLabel({
+        minAge: chosenGroup.minAge,
+        maxAge: chosenGroup.maxAge,
+        withAgesPrefix: true,
+      }) ?? "all ages";
+    const seriesBand =
+      formatPublicAgeLabel({
+        minAge: series.minAge,
+        maxAge: series.maxAge,
+        withAgesPrefix: true,
+      }) ?? "all ages";
+    const outsideGroup = !ageIncludesYears({
+      minAge: chosenGroup.minAge,
+      maxAge: chosenGroup.maxAge,
+      age,
+    });
+    const outsideSeries = !ageIncludesYears({
+      minAge: series.minAge,
+      maxAge: series.maxAge,
+      age,
+    });
 
     if ((outsideGroup || outsideSeries) && !ageOverrideAck) {
-      if (chosenGroup.minAge != null && age < chosenGroup.minAge) {
+      if (
+        chosenGroup.minAge != null &&
+        age < chosenGroup.minAge
+      ) {
         return {
           ok: false,
-          error: `${chosenGroup.name} is for ages ${chosenGroup.minAge}+ — too young for this student.`,
+          error: `${chosenGroup.name} is for ${groupBand} — too young for this student.`,
         };
       }
-      if (chosenGroup.maxAge != null && age > chosenGroup.maxAge) {
+      if (
+        chosenGroup.maxAge != null &&
+        age > chosenGroup.maxAge &&
+        !isOpenEndedAdultMax(chosenGroup.maxAge)
+      ) {
         return {
           ok: false,
-          error: `${chosenGroup.name} is for up to age ${chosenGroup.maxAge} — too old for this student.`,
+          error: `${chosenGroup.name} is for ${groupBand} — too old for this student.`,
         };
       }
       if (series.minAge != null && age < series.minAge) {
         return {
           ok: false,
-          error: `That class is for ages ${series.minAge}+ — too young for this student.`,
+          error: `That class is for ${seriesBand} — too young for this student.`,
         };
       }
-      if (series.maxAge != null && age > series.maxAge) {
+      if (
+        series.maxAge != null &&
+        age > series.maxAge &&
+        !isOpenEndedAdultMax(series.maxAge)
+      ) {
         return {
           ok: false,
-          error: `That class is for up to age ${series.maxAge} — too old for this student.`,
+          error: `That class is for ${seriesBand} — too old for this student.`,
         };
       }
     }
@@ -379,7 +407,6 @@ export async function createEnrollment(
     venueClubSlug != null && coverage.has(studentPersonId, venueClubSlug);
   const isReturningHousehold = await isReturningHouseholdHelper(targetHouseholdId);
 
-  const pricingTiers = parsePricingTiers(series.pricingTiers);
   const isEvent = series.classType === "event";
   const isCamp = series.classType === "camp";
   const campOptions = parseCampOptions(series.campOptions);
@@ -400,15 +427,24 @@ export async function createEnrollment(
   const campSkipsMembershipRequirement =
     isCamp &&
     (campSelectedOption?.attendanceKind.startsWith("daily_drop_in_") ?? false);
+
+  const nextEventOccurrence = isEvent
+    ? getNextEventOccurrence(series.sessions, now)
+    : null;
+  if (isEvent && !nextEventOccurrence) {
+    return {
+      ok: false,
+      error: "This event has no upcoming dates open for enrollment.",
+    };
+  }
+
+  const eventOccurrencePrice =
+    isEvent && series.pricePerSeries != null
+      ? Number(series.pricePerSeries)
+      : null;
+
   const checkoutPrice = isEvent
-    ? resolveEventCheckoutPrice({
-        pricePerSeries:
-          series.pricePerSeries != null
-            ? Number(series.pricePerSeries)
-            : null,
-        pricingTiers,
-        hasActiveMembership,
-      }).amountEur
+    ? eventOccurrencePrice
     : isCamp
       ? resolveCampCheckoutPrice({
           campOptions,
@@ -424,16 +460,19 @@ export async function createEnrollment(
       ? Number(series.pricePerSeries)
       : null;
 
+  const sessionsForPricing = isEvent
+    ? [{ startsAt: nextEventOccurrence!.startsAt }]
+    : series.sessions;
+
   const breakdown = computeEnrollmentPricing({
-    pricePerSeries: checkoutPrice,
-    sessions: series.sessions,
+    pricePerSeries: isEvent ? null : checkoutPrice,
+    sessions: sessionsForPricing,
     now,
     venueClubSlug,
     hasActiveMembership,
     candidateAgeBracket,
     isReturningHousehold,
-    suppressMembershipAddOn:
-      isEvent && eventHasMemberPricingTier(pricingTiers),
+    eventOccurrencePrice: isEvent ? eventOccurrencePrice : null,
     campSelectionPrice: isCamp ? checkoutPrice : null,
     campSelectionKind: isCamp
       ? campSelectedOption?.attendanceKind.startsWith("daily_drop_in_")
@@ -451,7 +490,42 @@ export async function createEnrollment(
         studentPersonId,
       },
     },
+    select: {
+      id: true,
+      status: true,
+      eventOccurrenceDate: true,
+    },
   });
+
+  if (
+    isEvent &&
+    existing &&
+    (existing.status === "active" || existing.status === "pending_payment") &&
+    existing.eventOccurrenceDate != null &&
+    existing.eventOccurrenceDate.getTime() <
+      new Date(now.toISOString().slice(0, 10) + "T00:00:00.000Z").getTime()
+  ) {
+    await prisma.enrollment.update({
+      where: { id: existing.id },
+      data: { status: "completed" },
+    });
+    existing.status = "completed";
+  }
+
+  const eventOccurrenceDate = nextEventOccurrence?.occurrenceDate ?? null;
+  const liveEnrollmentWhere: Prisma.EnrollmentWhereInput = {
+    classSeriesId,
+    status: { in: ["active", "pending_payment"] },
+    ...(isEvent && eventOccurrenceDate
+      ? { eventOccurrenceDate }
+      : {}),
+  };
+
+  const eventReenrollEligible =
+    isEvent &&
+    existing != null &&
+    (existing.status === "withdrawn" ||
+      existing.status === "completed");
 
   // Scratch flag — set when the existing row is `withdrawn` and we're
   // re-enrolling. Lets the post-existing-branch logic still grant a
@@ -460,7 +534,7 @@ export async function createEnrollment(
   let reenrolledStatus: "pending_payment" | "waitlist" | null = null;
 
   if (existing) {
-    if (existing.status === "withdrawn") {
+    if (existing.status === "withdrawn" || eventReenrollEligible) {
       // Re-enroll: flip the row back rather than insert a fresh one
       // (keeps history and the unique constraint happy). Capacity
       // recount + update happens inside a Serializable txn (with
@@ -469,10 +543,7 @@ export async function createEnrollment(
       // `maxStudents`.
       const allocation = await withSerializableRetry(async (tx) => {
         const liveCount = await tx.enrollment.count({
-          where: {
-            classSeriesId,
-            status: { in: ["active", "pending_payment"] },
-          },
+          where: liveEnrollmentWhere,
         });
         const goesToWaitlist = liveCount >= series.maxStudents;
         const next = goesToWaitlist
@@ -495,6 +566,9 @@ export async function createEnrollment(
             enrolledOn: new Date(),
             requiresReview: ageOverrideReason != null,
             reviewReason: ageOverrideReason,
+            ...(isEvent && eventOccurrenceDate
+              ? { eventOccurrenceDate }
+              : {}),
             ...persistFields,
           },
         });
@@ -530,6 +604,16 @@ export async function createEnrollment(
           seriesPricePerSeries: series.pricePerSeries,
         });
         if (!finalizeRes.ok) return finalizeRes;
+        if (finalizeRes.status === "active") {
+          await notifyEnrollmentWhatsApp({
+            payerPersonId: person.id,
+            seriesName: series.name,
+            whatsappUrl: series.whatsappUrl,
+            programSlug: series.program.slug,
+            classSeriesId,
+            enrollmentId: existing.id,
+          });
+        }
         revalidateAfterEnrollmentChange();
         return {
           ok: true,
@@ -573,10 +657,7 @@ export async function createEnrollment(
     // re-evaluate it after the txn returns the chosen status.
     const allocation = await withSerializableRetry(async (tx) => {
       const liveCount = await tx.enrollment.count({
-        where: {
-          classSeriesId,
-          status: { in: ["active", "pending_payment"] },
-        },
+        where: liveEnrollmentWhere,
       });
       const goesToWaitlist = liveCount >= series.maxStudents;
       if (goesToWaitlist && !series.waitlistEnabled) {
@@ -621,6 +702,9 @@ export async function createEnrollment(
           enrolledByPersonId: person.id,
           requiresReview: ageOverrideReason != null,
           reviewReason: ageOverrideReason,
+          ...(isEvent && eventOccurrenceDate
+            ? { eventOccurrenceDate }
+            : {}),
           ...breakdownForPersist(breakdown, initialStatus),
         },
         select: { id: true, status: true },
@@ -672,6 +756,17 @@ export async function createEnrollment(
     if (!finalizeRes.ok) return finalizeRes;
     createdStatus = finalizeRes.status;
     createdPaymentId = finalizeRes.paymentId;
+  }
+
+  if (createdStatus === "active") {
+    await notifyEnrollmentWhatsApp({
+      payerPersonId: person.id,
+      seriesName: series.name,
+      whatsappUrl: series.whatsappUrl,
+      programSlug: series.program.slug,
+      classSeriesId,
+      enrollmentId: createdEnrollmentId,
+    });
   }
 
   revalidateAfterEnrollmentChange();
@@ -1180,6 +1275,44 @@ async function countLiveEnrollments(classSeriesId: string): Promise<number> {
   });
 }
 
+async function notifyEnrollmentWhatsApp(args: {
+  payerPersonId: string;
+  seriesName: string;
+  whatsappUrl: string | null;
+  programSlug: string;
+  classSeriesId: string;
+  enrollmentId: string;
+}): Promise<void> {
+  if (!args.whatsappUrl) return;
+
+  const payer = await prisma.person.findUnique({
+    where: { id: args.payerPersonId },
+    select: {
+      emails: {
+        where: { isPrimary: true, archivedAt: null },
+        select: { address: true },
+        take: 1,
+      },
+    },
+  });
+  const email = payer?.emails[0]?.address ?? null;
+  const seriesPath = `/portal/programs/${args.programSlug}/${args.classSeriesId}`;
+
+  await notify({
+    recipientPersonId: args.payerPersonId,
+    recipientEmail: email,
+    channels: email ? ["in_app", "email"] : ["in_app"],
+    templateKey: "enrollment.confirmed",
+    subject: `You're enrolled in ${args.seriesName}`,
+    body:
+      `You're all set for ${args.seriesName}.\n\n` +
+      `Join the class WhatsApp group: ${args.whatsappUrl}\n\n` +
+      `Class details: ${seriesPath}`,
+    relatedTable: "enrollments",
+    relatedRowId: args.enrollmentId,
+  });
+}
+
 function revalidateAfterEnrollmentChange() {
   revalidatePath("/portal");
   revalidatePath("/portal/classes");
@@ -1230,4 +1363,22 @@ function formatAgeBand(
   if (min != null) return `${min}+`;
   if (max != null) return `<=${max}`;
   return "any";
+}
+
+/** Exported for portal detail pages — auto-complete past event tickets. */
+export async function autoCompleteStaleEventEnrollment(
+  enrollmentId: string,
+  eventOccurrenceDate: Date | null,
+  status: string,
+  now: Date,
+): Promise<string> {
+  if (status !== "active" && status !== "pending_payment") return status;
+  if (eventOccurrenceDate == null) return status;
+  const today = new Date(now.toISOString().slice(0, 10) + "T00:00:00.000Z");
+  if (eventOccurrenceDate.getTime() >= today.getTime()) return status;
+  await prisma.enrollment.update({
+    where: { id: enrollmentId },
+    data: { status: "completed" },
+  });
+  return "completed";
 }

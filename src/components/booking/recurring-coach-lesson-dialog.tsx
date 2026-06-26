@@ -222,7 +222,7 @@ export function RecurringCoachLessonDialog({
 
         {view === "form" && (
           <div className="space-y-3">
-            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+            <div className="rounded-md border border-[var(--warning)]/50 bg-[var(--warning-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--warning-ink)]">
               <strong className="font-semibold">Goes through admin first.</strong>{" "}
               Recurring lessons are submitted as requests. Admin reviews each
               one (in case the club is planning a class on that day) and may
@@ -280,7 +280,7 @@ export function RecurringCoachLessonDialog({
             />
 
             {error && (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="rounded-md bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-ink)]">
                 {error}
               </p>
             )}
@@ -289,7 +289,7 @@ export function RecurringCoachLessonDialog({
 
         {view === "clashes" && (
           <div className="space-y-3">
-            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+            <div className="rounded-md border border-[var(--warning)]/50 bg-[var(--warning-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--warning-ink)]">
               {clashes.length} of {occurrenceCount} date(s) already have
               something else on this court at {slotLocalStart}. You can submit
               the request anyway — those dates will be skipped — or go back
@@ -325,7 +325,7 @@ export function RecurringCoachLessonDialog({
             </p>
 
             {error && (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="rounded-md bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-ink)]">
                 {error}
               </p>
             )}

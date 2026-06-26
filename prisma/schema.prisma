@@ -577,6 +577,9 @@ model Person {
   emergencyContactPhone        String?   @map("emergency_contact_phone")
   emergencyContactRelationship String?   @map("emergency_contact_relationship")
   passwordHash                 String?   @map("password_hash")
+  /// Optional profile photo (member, child, etc.). Stored as a public
+  /// URL in the `org-media` bucket via ImageUpload kind="photo".
+  avatarUrl                    String?   @map("avatar_url")
   lastLoginAt                  DateTime? @map("last_login_at") @db.Timestamptz(6)
   isAdmin                      Boolean   @default(false) @map("is_admin")
   notes                        String?
@@ -1182,6 +1185,12 @@ model Venue {
   postalCode   String?   @map("postal_code")
   city         String?
   country      String    @default("NL")
+  /// Optional Google Maps (or other) link for one-click directions.
+  mapUrl       String?   @map("map_url")
+  /// Hero photo for this venue (club tiles, location cards). Landscape works best.
+  coverImageUrl    String? @map("cover_image_url")
+  /// Vertical crop anchor for `coverImageUrl` (0 = top, 50 = center, 100 = bottom).
+  coverImageFocusY   Int     @default(50) @map("cover_image_focus_y")
   clubId       String?   @map("club_id") @db.Uuid
   notes        String?
   isActive     Boolean   @default(true) @map("is_active")
@@ -1253,6 +1262,8 @@ model Program {
   descriptionPublic   String?               @map("description_public")
   descriptionInternal String?               @map("description_internal")
   coverImageUrl       String?               @map("cover_image_url")
+  /// Vertical crop anchor for `coverImageUrl` (0 = top, 50 = center, 100 = bottom).
+  coverImageFocusY    Int                   @default(50) @map("cover_image_focus_y")
   isPubliclyListed    Boolean               @default(true) @map("is_publicly_listed")
   isActive            Boolean               @default(true) @map("is_active")
   displayOrder        Int                   @default(0) @map("display_order")
@@ -1320,6 +1331,9 @@ model ClassSeries {
   schoolId                   String?               @map("school_id") @db.Uuid
   clubId                     String?               @map("club_id") @db.Uuid
   defaultCourtId             String?               @map("default_court_id") @db.Uuid
+  /// All courts reserved for this series (events may use multiple).
+  /// `defaultCourtId` mirrors the first entry for backward compat.
+  assignedCourtIds           String[]              @default([]) @map("assigned_court_ids") @db.Uuid
   schoolPartnershipId        String?               @map("school_partnership_id") @db.Uuid
   venueText                  String?               @map("venue_text")
   dayOfWeek                  DayOfWeek?            @map("day_of_week")
@@ -1372,6 +1386,8 @@ model ClassSeries {
   /// class-series form; stored as a public URL in the `org-media`
   /// bucket. NULL means "fall back to the program's cover image".
   coverImageUrl              String?               @map("cover_image_url")
+  /// Vertical crop anchor for `coverImageUrl` (0 = top, 50 = center, 100 = bottom).
+  coverImageFocusY           Int                   @default(50) @map("cover_image_focus_y")
   publishedAt                DateTime?             @map("published_at") @db.Timestamptz(6)
   archivedAt                 DateTime?             @map("archived_at") @db.Timestamptz(6)
   createdAt                  DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1609,6 +1625,9 @@ model Enrollment {
   // forever (sessionsRemaining / totalSessions * fullPrice). Null on
   // waitlist rows for the same reason as above.
   sessionsRemainingAtEnrollment Int?             @map("sessions_remaining_at_enrollment")
+  /// For event series: the calendar date of the occurrence this row
+  /// covers (one ticket per date). Null for classes/camps.
+  eventOccurrenceDate           DateTime?        @map("event_occurrence_date") @db.Date
   paymentId                     String?          @map("payment_id") @db.Uuid
   internalNotes                 String?          @map("internal_notes")
   /// When a parent withdraws after paying (and before the series starts),
@@ -2186,6 +2205,8 @@ enum CalendarFeedScope {
   self
   /// This person + every household member they can see.
   household
+  /// Coach's assigned teaching sessions (leave/pickup/class blocks).
+  coach
 
   @@map("calendar_feed_scope")
 }
@@ -2304,7 +2325,8 @@ model Organization {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  stockMedia StockMedia[]
+  stockMedia      StockMedia[]
+  marketingImages MarketingImage[]
 
   @@map("organizations")
 }
@@ -2329,6 +2351,25 @@ model StockMedia {
 
   @@index([orgSlug, displayOrder])
   @@map("stock_media")
+}
+
+/// Org-scoped keyed marketing images for surfaces without their own model
+/// (club tiles, audience promo tiles, membership tier cards). Keys like
+/// `club:triaz`, `audience:youth`, `tier:adult`. Managed via admin
+/// Settings → Photos.
+model MarketingImage {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgSlug   String   @map("org_slug")
+  key       String
+  url       String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgSlug], references: [slug])
+
+  @@unique([orgSlug, key])
+  @@index([orgSlug])
+  @@map("marketing_images")
 }
 
 /// Read-only "Customer 360" history precomputed by the Higgins brain from

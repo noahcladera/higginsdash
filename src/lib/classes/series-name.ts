@@ -1,4 +1,8 @@
 import { ADULT_LEVELS, type SkillLevelValue } from "@/lib/skill-levels";
+import {
+  ADULT_MIN_AGE,
+  isOpenEndedAdultMax,
+} from "@/lib/classes/age-band";
 
 /**
  * Derive a `class_series.name` from its parameters.
@@ -158,6 +162,7 @@ function buildSeasonLabel(
  *   (null,null)→ ""
  */
 function formatAgeBand(min: number | null, max: number | null): string {
+  if (min === ADULT_MIN_AGE && isOpenEndedAdultMax(max)) return "18+";
   if (min != null && max != null) return `${min}-${max}`;
   if (min != null) return `${min}+`;
   if (max != null) return `up to ${max}`;

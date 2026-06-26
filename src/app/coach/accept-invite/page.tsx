@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { acceptCoachInvite } from "./actions";
 import { getCurrentBrand, getTerms } from "@/lib/tenant";
 import { ensurePersonForAuthUser } from "@/lib/auth/ensure-person";
+import { markCoachInviteAccepted } from "@/lib/auth/complete-coach-invite";
 
 function buildErrorMessages(
   brandShortName: string,
@@ -111,8 +112,13 @@ export default async function CoachAcceptInvitePage({
   if (
     user &&
     user.email?.trim().toLowerCase() === invite.email.trim().toLowerCase() &&
-    hasCoachAccess
+    hasCoachAccess &&
+    person
   ) {
+    await markCoachInviteAccepted({
+      inviteId: invite.id,
+      personId: person.id,
+    });
     redirect("/coach");
   }
 
@@ -179,14 +185,15 @@ export default async function CoachAcceptInvitePage({
           This invite expired. Ask an admin for a new login link.
         </p>
       ) : hasCoachAccess ? (
-        <div className="space-y-3">
+        <form action={acceptCoachInvite} className="space-y-3">
+          <input type="hidden" name="token" value={token} />
           <p className="text-sm text-[var(--muted-foreground)]">
             Your coach access is already active. Continue to the coach portal.
           </p>
-          <Button asChild className="w-full">
-            <Link href="/coach">Go to coach portal</Link>
+          <Button type="submit" className="w-full">
+            Go to coach portal
           </Button>
-        </div>
+        </form>
       ) : (
         <form action={acceptCoachInvite} className="space-y-4">
           <input type="hidden" name="token" value={token} />

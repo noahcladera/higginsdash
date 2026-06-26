@@ -40,7 +40,17 @@ const coachSessionInclude = {
   classSeries: {
     include: {
       program: { select: { name: true, targetAudience: true } },
-      venue: { select: { id: true, name: true, kind: true } },
+      venue: {
+        select: {
+          id: true,
+          name: true,
+          kind: true,
+          addressLine1: true,
+          postalCode: true,
+          city: true,
+          mapUrl: true,
+        },
+      },
       school: {
         select: {
           id: true,

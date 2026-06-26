@@ -27,7 +27,7 @@ export default async function EditPersonPage({
 
   async function action(formData: FormData) {
     "use server";
-    await updatePerson(id, formData);
+    return updatePerson(id, formData);
   }
 
   return (
@@ -43,6 +43,7 @@ export default async function EditPersonPage({
       <PersonForm
         submitLabel="Save changes"
         action={action}
+        returnTo={`/admin/people/${person.id}`}
         lockIsAdmin={isSelf}
         defaults={{
           firstName: person.firstName,

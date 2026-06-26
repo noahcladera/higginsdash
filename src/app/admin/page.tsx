@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRightIcon, InboxIcon } from "@/components/icons";
 import { getCurrentOrg } from "@/lib/tenant";
+import { parseAdminScheduleFilters } from "@/lib/admin/schedule-filters";
 import { getAdminDashboardData } from "./_dashboard/queries";
 import { formatLongDate } from "./_dashboard/format";
 import { NeedsAttentionStrip } from "./_dashboard/needs-attention-strip";
@@ -14,6 +15,8 @@ import { TodaysClasses } from "./_dashboard/todays-classes";
 import { TodaysBookings } from "./_dashboard/todays-bookings";
 import { UnreadInbox } from "./_dashboard/unread-inbox";
 import { RecentSignups } from "./_dashboard/recent-signups";
+import { DashboardPanelToggle } from "./_dashboard/dashboard-panel-toggle";
+import { SchedulePanel } from "./_dashboard/schedule-panel";
 
 /**
  * Admin home — focused on TODAY.
@@ -25,11 +28,17 @@ import { RecentSignups } from "./_dashboard/recent-signups";
  * footer for context. Empty queues and quiet days collapse out so the
  * page reflects what's actually happening.
  */
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { user, person } = await requireAdmin();
   const org = await getCurrentOrg();
   const t = org.terms;
   const f = org.features;
+  const sp = await searchParams;
+  const scheduleFilters = parseAdminScheduleFilters(sp);
   const data = await getAdminDashboardData(person.id);
 
   const lessonsToday = data.todaysBookings.filter(
@@ -65,6 +74,12 @@ export default async function AdminDashboardPage() {
         }
       />
 
+      <DashboardPanelToggle filters={scheduleFilters} />
+
+      {scheduleFilters.panel === "schedule" ? (
+        <SchedulePanel filters={scheduleFilters} />
+      ) : (
+        <>
       <NeedsAttentionStrip pending={data.pending} />
 
       <MetricStrip>
@@ -142,7 +157,7 @@ export default async function AdminDashboardPage() {
         }
         action={
           <Button asChild variant="ghost" size="sm" tone="neutral">
-            <Link href={`/admin/bookings?date=${data.todayLocal}`}>
+            <Link href={`/admin?panel=schedule&date=${data.todayLocal}`}>
               Booking calendar <ArrowRightIcon size={14} />
             </Link>
           </Button>
@@ -227,6 +242,8 @@ export default async function AdminDashboardPage() {
           )}
         </div>
       </Section>
+        </>
+      )}
     </div>
   );
 }

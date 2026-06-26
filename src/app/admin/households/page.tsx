@@ -3,20 +3,11 @@ import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
-import { SearchInput } from "@/components/admin/search-input";
-import { ArchivedToggle } from "@/components/admin/archived-toggle";
-import { Pagination } from "@/components/admin/pagination";
+import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { Button } from "@/components/ui/button";
 import { getTerms } from "@/lib/tenant";
 import { parseListParams } from "@/lib/admin/list-params";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { HouseholdDirectory } from "./_components/household-directory";
 
 export default async function HouseholdsPage({
   searchParams,
@@ -57,11 +48,7 @@ export default async function HouseholdsPage({
     AND: [archivedFilter, searchFilter],
   };
 
-  // `Promise.all` not `$transaction` — see admin/page.tsx for the full
-  // explanation. With pgbouncer in transaction mode, $transaction
-  // serializes both queries on one connection; Promise.all lets them
-  // run in parallel against the pool.
-  const [total, rows] = await Promise.all([
+  const [total, rows, archivedCount] = await Promise.all([
     prisma.household.count({ where }),
     prisma.household.findMany({
       where,
@@ -79,12 +66,29 @@ export default async function HouseholdsPage({
         _count: { select: { members: true } },
       },
     }),
+    prisma.household.count({ where: { archivedAt: { not: null } } }),
   ]);
 
   const flatSearchParams: Record<string, string | undefined> = {
     q: sp.q as string | undefined,
     archived: sp.archived as string | undefined,
   };
+
+  const directoryRows = rows.map((h) => ({
+    id: h.id,
+    displayName: h.displayName,
+    city: h.city,
+    archivedAt: h.archivedAt,
+    primaryContactName:
+      [h.primaryContact.firstName, h.primaryContact.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || "—",
+    memberCount: h._count.members,
+  }));
+
+  const emptyCount = directoryRows.filter((h) => h.memberCount === 0).length;
+  const totalMembers = directoryRows.reduce((sum, h) => sum + h.memberCount, 0);
 
   return (
     <div className="space-y-6">
@@ -94,79 +98,32 @@ export default async function HouseholdsPage({
         description={`${t.household.plural} that ${t.membership.plural.toLowerCase()} and ${t.enrollment.plural.toLowerCase()} are sold to.`}
         actions={
           <Button asChild tone="triaz">
-            <Link href="/admin/households/new">+ New {t.household.singular.toLowerCase()}</Link>
+            <Link href="/admin/households/new">
+              + New {t.household.singular.toLowerCase()}
+            </Link>
           </Button>
         }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <SearchInput placeholder="Search by name, contact, or email…" />
-        <ArchivedToggle
-          showArchived={showArchived}
-          searchParams={flatSearchParams}
-        />
-      </div>
+      <AdminListToolbar
+        searchPlaceholder="Search by name, contact, or email…"
+        showArchived={showArchived}
+        searchParams={flatSearchParams}
+      />
 
-      <div className="rounded-md border border-[var(--border)]">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t.household.singular}</TableHead>
-              <TableHead>Primary contact</TableHead>
-              <TableHead>City</TableHead>
-              <TableHead className="text-right">Members</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="py-8 text-center text-sm text-[var(--muted-foreground)]"
-                >
-                  {q
-                    ? `No ${t.household.plural.toLowerCase()} match "${q}".`
-                    : showArchived
-                      ? `No archived ${t.household.plural.toLowerCase()}.`
-                      : `No ${t.household.plural.toLowerCase()} yet.`}
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((h) => {
-                const contact =
-                  [h.primaryContact.firstName, h.primaryContact.lastName]
-                    .filter(Boolean)
-                    .join(" ")
-                    .trim() || "—";
-                return (
-                  <TableRow key={h.id}>
-                    <TableCell>
-                      <Link
-                        href={`/admin/households/${h.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {h.displayName}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-sm">{contact}</TableCell>
-                    <TableCell className="text-sm text-[var(--muted-foreground)]">
-                      {h.city ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {h._count.members}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <Pagination
+      <HouseholdDirectory
+        rows={directoryRows}
+        stats={{
+          total,
+          totalMembers,
+          emptyCount,
+          archived: archivedCount,
+        }}
+        showArchived={showArchived}
+        query={q}
+        householdLabel={t.household.plural}
         page={page}
         pageSize={pageSize}
-        total={total}
         searchParams={flatSearchParams}
       />
     </div>

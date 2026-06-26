@@ -103,7 +103,10 @@ function CallbackHashInner() {
         return;
       }
 
-      const target = safeRelativePath(explicitNext);
+      const target =
+        explicitNext === "/reset-password"
+          ? "/reset-password?from=recovery"
+          : safeRelativePath(explicitNext);
       // Full document navigation so the destination page picks up auth via
       // cookies + middleware. Avoids server-action / cookie-sync timing bugs.
       window.location.assign(target);

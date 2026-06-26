@@ -72,7 +72,7 @@ function BookingColumn({
   const more = rows.length - visible.length;
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-md)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
+    <div className="elev-card overflow-hidden rounded-[var(--radius-md)]">
       <header className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-2.5">
         <div className="flex items-center gap-2">
           <Badge tone={tone} variant="soft" className="px-2 py-0">
@@ -113,7 +113,7 @@ function BookingColumn({
                     )}
                   </div>
                   {b.cancellationRequestedAt && (
-                    <div className="mt-1 text-[11px] text-[oklch(0.42_0.13_75)]">
+                    <div className="mt-1 text-[11px] text-[var(--warning-ink)]">
                       Deletion pending
                     </div>
                   )}
@@ -125,7 +125,7 @@ function BookingColumn({
       )}
       {(more > 0 || rows.length > 0) && (
         <Link
-          href={`/admin/bookings?date=${todayLocal}`}
+          href={`/admin?panel=schedule&date=${todayLocal}`}
           className="flex items-center justify-between gap-1 border-t border-[var(--border)] px-4 py-2.5 text-xs text-[var(--muted-foreground)] transition-colors hover:bg-[var(--surface-strong)]"
         >
           <span>{more > 0 ? `+${more} more` : "Open booking calendar"}</span>

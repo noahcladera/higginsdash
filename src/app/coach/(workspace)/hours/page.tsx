@@ -111,7 +111,7 @@ export default async function CoachHoursPage({ searchParams }: PageProps) {
             className={cn(
               "rounded-full px-3.5 py-1.5 text-sm transition-colors",
               activePreset?.label === p.label
-                ? "bg-[var(--card)] text-[var(--foreground)] shadow-[var(--shadow-sm)] font-medium"
+                ? "control-well text-[var(--foreground)] font-medium shadow-[var(--shadow-elevated)]"
                 : "bg-[var(--surface)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
             )}
           >
@@ -123,7 +123,7 @@ export default async function CoachHoursPage({ searchParams }: PageProps) {
       </div>
 
       {work?.hasMissingRates && (
-        <div className="fade-in rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[oklch(0.30_0.10_75)]">
+        <div className="fade-in rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning-ink)]">
           Some class sessions don’t have a pay rate on file yet — estimated pay
           may be low until an admin sets your default or per-series rate.
         </div>
@@ -352,7 +352,7 @@ export default async function CoachHoursPage({ searchParams }: PageProps) {
       </Section>
 
       {showNetSummary && work && (
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] px-5 py-4 shadow-[var(--shadow-sm)]">
+        <div className="elev-card px-5 py-4">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
             Net this period (estimates)
           </div>

@@ -49,9 +49,9 @@ export function StaffCommercialsEditor({
   const [okFlash, setOkFlash] = useState(false);
 
   return (
-    <div className="mt-3 rounded-[var(--radius-sm)] border border-dashed border-[var(--border)] bg-[var(--surface)] p-3 text-sm">
+    <div className="elev-panel mt-2 p-2.5 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--muted-foreground)]">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--muted-foreground)]">
           <span>
             Hourly:{" "}
             <span className="text-[var(--foreground)] font-medium">
@@ -73,7 +73,11 @@ export function StaffCommercialsEditor({
           <span className="capitalize">
             {initial.employmentType === "employee" ? "Employee" : "Freelance"}
           </span>
-          {!initial.isActive && <Badge tone="warning">Inactive</Badge>}
+          {!initial.isActive && (
+            <Badge tone="warning" className="px-1.5 py-px text-[10px] leading-4 shadow-none">
+              Inactive
+            </Badge>
+          )}
         </div>
         <Button
           size="sm"
@@ -209,16 +213,20 @@ export function ZzpCommercialsEditor({
   const [okFlash, setOkFlash] = useState(false);
 
   return (
-    <div className="mt-3 rounded-[var(--radius-sm)] border border-dashed border-[var(--border)] bg-[var(--surface)] p-3 text-sm">
+    <div className="elev-panel mt-2 p-2.5 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--muted-foreground)]">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--muted-foreground)]">
           <span>
             Court rental:{" "}
             <span className="text-[var(--foreground)] font-medium">
               {formatEuro(initial.defaultCourtRentalRate)}
             </span>
           </span>
-          {!initial.isActive && <Badge tone="warning">Inactive</Badge>}
+          {!initial.isActive && (
+            <Badge tone="warning" className="px-1.5 py-px text-[10px] leading-4 shadow-none">
+              Inactive
+            </Badge>
+          )}
         </div>
         <Button
           size="sm"

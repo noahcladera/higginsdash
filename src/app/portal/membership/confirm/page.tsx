@@ -488,7 +488,7 @@ function PriceTable({
 }) {
   return (
     <div className="space-y-3">
-      <div className="overflow-hidden rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
+      <div className="elev-card overflow-hidden">
         <table className="w-full text-sm">
           <tbody>
             {breakdown.lines.map((line, i) => (

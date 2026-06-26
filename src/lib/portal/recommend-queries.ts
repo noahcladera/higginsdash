@@ -162,6 +162,7 @@ export async function getCatalogForRecommendation(): Promise<ProgramLike[]> {
       classTypeKey: p.defaultClassType,
       descriptionPublic: p.descriptionPublic,
       coverImageUrl: p.coverImageUrl,
+      coverImageFocusY: p.coverImageFocusY,
       schoolMatches,
       minAge,
       maxAge,

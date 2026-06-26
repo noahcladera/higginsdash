@@ -1,9 +1,13 @@
+import {
+  CALENDAR_AXIS_END_HOUR,
+  CALENDAR_AXIS_START_HOUR,
+} from "@/lib/booking/time";
 import { format } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { MemberCalendarEvent } from "@/lib/portal/calendar-queries";
 
 /**
- * Member-portal week grid — one column per day, 08:00→22:00 time axis,
+ * Member-portal week grid — one column per day, 09:00→22:00 time axis,
  * 1px per minute for simple positioning math.
  *
  * Sessions are painted from a 4-tone palette keyed by `colorIndex` so
@@ -19,8 +23,8 @@ import type { MemberCalendarEvent } from "@/lib/portal/calendar-queries";
  * just the class hours. Booking blocks are always single strips.
  */
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const AXIS_START_HOUR = 8;
-const AXIS_END_HOUR = 22;
+const AXIS_START_HOUR = CALENDAR_AXIS_START_HOUR;
+const AXIS_END_HOUR = CALENDAR_AXIS_END_HOUR;
 const PX_PER_MIN = 1;
 const GRID_HEIGHT_PX = (AXIS_END_HOUR - AXIS_START_HOUR) * 60 * PX_PER_MIN;
 
@@ -39,8 +43,8 @@ const PALETTE: PaletteEntry[] = [
   },
   {
     bg: "var(--warning-soft)",
-    ink: "oklch(0.42 0.13 75)",
-    border: "color-mix(in oklab, oklch(0.42 0.13 75) 40%, transparent)",
+    ink: "var(--warning-ink)",
+    border: "color-mix(in oklab, var(--warning-ink) 40%, transparent)",
   },
   {
     bg: "var(--randwijck-soft)",
@@ -114,9 +118,9 @@ export function MemberWeekGrid({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)]">
+      <div className="elev-panel overflow-hidden">
         {/* Day header row */}
-        <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[var(--border)] bg-[var(--surface)]">
+        <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[var(--glass-border-subtle)] bg-[var(--surface)]/90">
           <div />
           {days.map((d, i) => {
             const isToday = amsterdamDayKey(d) === todayKey;
@@ -215,7 +219,7 @@ function SessionBlock({ event }: { event: SessionEvent }) {
 
   return (
     <div
-      className="absolute inset-x-1 overflow-hidden rounded-md border text-[11px] shadow-[var(--shadow-sm)]"
+      className="absolute inset-x-1 overflow-hidden rounded-md border text-[11px] shadow-[var(--shadow-elevated)]"
       style={{
         top,
         height,
@@ -305,7 +309,7 @@ function BookingBlock({ event }: { event: BookingEvent }) {
 
   return (
     <div
-      className="absolute inset-x-1 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)] text-[11px] shadow-[var(--shadow-sm)]"
+      className="absolute inset-x-1 overflow-hidden rounded-md border border-[var(--glass-border-subtle)] control-well text-[11px]"
       style={{ top, height }}
       title={`Court booking · ${event.courtName} @ ${event.clubName}\n${format.time(event.startsAt)}–${format.time(event.endsAt)}\nBooked by ${event.ownerFirstName}`}
     >

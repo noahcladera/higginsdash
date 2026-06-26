@@ -7,8 +7,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { SYSTEM_NO_COACH_PERSON_ID } from "@/lib/system-ids";
-import { notify } from "@/lib/notifications";
+import {
+  notify,
+  getSeriesEnrollmentStakeholders,
+} from "@/lib/notifications";
 import { recordAudit } from "@/lib/audit";
+import { savedRedirectPath } from "@/lib/feedback/saved-flash";
 import {
   generateSessionsForSeries,
   toDateKey,
@@ -24,6 +28,13 @@ import {
   type GroupInput,
 } from "@/lib/classes/group-payload";
 import { deriveSeriesName } from "@/lib/classes/series-name";
+import {
+  ADULT_MIN_AGE,
+  inferCatalogAudience,
+  normalizeStoredAgeBand,
+  programTargetToAudience,
+  type CatalogAudience,
+} from "@/lib/classes/age-band";
 import {
   PricingTiersJsonSchema,
   type PricingTier,
@@ -115,6 +126,42 @@ const UuidCsvSchema = z
     return tokens;
   });
 
+/** JSON array of court UUIDs — used by multi-court events. */
+const AssignedCourtIdsJsonSchema = z
+  .string()
+  .optional()
+  .transform((raw, ctx) => {
+    if (!raw || raw.trim() === "") return [] as string[];
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "assignedCourtIdsJson must be a JSON array",
+        });
+        return z.NEVER;
+      }
+      const out: string[] = [];
+      for (const item of parsed) {
+        if (typeof item !== "string" || !/^[0-9a-f-]{36}$/i.test(item)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "assignedCourtIdsJson contains invalid court ids",
+          });
+          return z.NEVER;
+        }
+        out.push(item);
+      }
+      return Array.from(new Set(out));
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "assignedCourtIdsJson must be valid JSON",
+      });
+      return z.NEVER;
+    }
+  });
+
 /**
  * Parse the hidden `excludedDates` form field: a CSV string of
  * `YYYY-MM-DD` tokens (empty string = no exclusions). Each becomes
@@ -201,6 +248,14 @@ const CoverImageUrlSchema = z
   .refine((v) => v === null || /^https?:\/\//i.test(v), {
     message: "Cover image URL must be a full https:// link.",
   });
+
+/** Vertical crop anchor for cover images (0 = top, 50 = center, 100 = bottom). */
+const CoverImageFocusYSchema = z.coerce
+  .number()
+  .int()
+  .min(0)
+  .max(100)
+  .default(50);
 
 /** Default per-session catalog price applied when the admin leaves
  *  the price field blank during create. Matches the value we
@@ -315,6 +370,7 @@ const SeriesSchema = z
       .transform((v) => (v && v.trim() !== "" ? v.trim() : null)),
     whatsappUrl: WhatsappUrlSchema,
     coverImageUrl: CoverImageUrlSchema,
+    coverImageFocusY: CoverImageFocusYSchema,
     /**
      * Per-session catalog price in EUR. Blank on the form → server
      * uses DEFAULT_PRICE_PER_SESSION_EUR so newly created series are
@@ -352,9 +408,15 @@ const SeriesSchema = z
     pricingTiersJson: PricingTiersJsonSchema,
     campOptionsJson: CampOptionsJsonSchema,
     defaultCourtId: OptionalUuidSchema,
+    assignedCourtIdsJson: AssignedCourtIdsJsonSchema,
     courtBlockStartTime: OptionalTimeSchema,
     courtBlockEndTime: OptionalTimeSchema,
     acknowledgeCourtConflicts: OptionalBoolSchema,
+    /** Youth/adult choice from the create cascade — needed for mixed programs (events). */
+    formAudience: z
+      .union([z.literal("youth"), z.literal("adult"), z.literal("")])
+      .optional()
+      .transform((v) => (v === "youth" || v === "adult" ? v : null)),
   })
   .refine((s) => s.endsOn >= s.startsOn, {
     message: "endsOn must be after startsOn",
@@ -534,18 +596,23 @@ async function validateLocationInvariants(data: {
 
 async function validateDefaultCourtForVenue(args: {
   defaultCourtId: string | null;
-  deliveryMode: "at_club" | "onsite" | "pickup";
   venueClubId: string | null;
 }): Promise<string | null> {
-  if (!args.defaultCourtId) return null;
-  if (args.deliveryMode === "onsite" || !args.venueClubId) {
-    throw new Error("A court can only be selected for club venues");
+  if (!args.venueClubId) {
+    if (args.defaultCourtId) {
+      throw new Error("A court can only be selected for club venues");
+    }
+    return null;
+  }
+  if (!args.defaultCourtId) {
+    throw new Error("A court is required for classes at a club venue");
   }
   const row = await prisma.court.findFirst({
     where: {
       id: args.defaultCourtId,
       clubId: args.venueClubId,
       isActive: true,
+      isBookable: true,
     },
     select: { id: true },
   });
@@ -553,6 +620,72 @@ async function validateDefaultCourtForVenue(args: {
     throw new Error("Selected court is not available at this club");
   }
   return row.id;
+}
+
+async function validateCourtsForVenue(args: {
+  assignedCourtIds: string[];
+  defaultCourtId: string | null;
+  venueClubId: string | null;
+  isEvent: boolean;
+}): Promise<{ defaultCourtId: string | null; assignedCourtIds: string[] }> {
+  const courtIds =
+    args.isEvent && args.assignedCourtIds.length > 0
+      ? args.assignedCourtIds
+      : args.defaultCourtId
+        ? [args.defaultCourtId]
+        : [];
+
+  if (!args.venueClubId) {
+    if (courtIds.length > 0) {
+      throw new Error("A court can only be selected for club venues");
+    }
+    return { defaultCourtId: null, assignedCourtIds: [] };
+  }
+
+  if (courtIds.length === 0) {
+    throw new Error(
+      args.isEvent
+        ? "At least one court is required for events at a club venue"
+        : "A court is required for classes at a club venue",
+    );
+  }
+
+  const unique = [...new Set(courtIds)];
+  for (const courtId of unique) {
+    const row = await prisma.court.findFirst({
+      where: {
+        id: courtId,
+        clubId: args.venueClubId,
+        isActive: true,
+        isBookable: true,
+      },
+      select: { id: true },
+    });
+    if (!row) {
+      throw new Error("One or more selected courts are not available at this club");
+    }
+  }
+
+  return {
+    defaultCourtId: unique[0] ?? null,
+    assignedCourtIds: args.isEvent ? unique : [],
+  };
+}
+
+function expandSessionsForCourts(
+  sessions: { startsAt: Date; endsAt: Date }[],
+  courtIds: string[],
+): { startsAt: Date; endsAt: Date; courtId: string | null }[] {
+  if (courtIds.length === 0) {
+    return sessions.map((s) => ({ ...s, courtId: null }));
+  }
+  return sessions.flatMap((s) =>
+    courtIds.map((courtId) => ({
+      startsAt: s.startsAt,
+      endsAt: s.endsAt,
+      courtId,
+    })),
+  );
 }
 
 function minutesBetweenTimes(start: Date, end: Date): number {
@@ -568,7 +701,7 @@ function formatConflictDates(dates: string[]): string {
 }
 
 async function scanCourtConflicts(args: {
-  defaultCourtId: string | null;
+  courtIds: string[];
   dayOfWeek: z.infer<typeof DayOfWeek>;
   blockStartTime: Date | null;
   blockEndTime: Date | null;
@@ -577,11 +710,7 @@ async function scanCourtConflicts(args: {
   excludedDates: Date[];
   acknowledge: boolean;
 }) {
-  if (
-    !args.defaultCourtId ||
-    !args.blockStartTime ||
-    !args.blockEndTime
-  ) {
+  if (args.courtIds.length === 0 || !args.blockStartTime || !args.blockEndTime) {
     return new Set<string>();
   }
   const durationMinutes = minutesBetweenTimes(
@@ -591,22 +720,29 @@ async function scanCourtConflicts(args: {
   if (durationMinutes <= 0) {
     throw new Error("Court block end time must be after start time");
   }
-  const clashes = await findRecurringSlotConflicts({
-    courtId: args.defaultCourtId,
-    dayOfWeek: args.dayOfWeek,
-    startTimeLocal: dateToHHMM(args.blockStartTime),
-    durationMinutes,
-    startsOn: toDateKey(args.startsOn),
-    endsOn: toDateKey(args.endsOn),
-    excludedDates: args.excludedDates.map((d) => toDateKey(d)),
-  });
-  const conflictDates = clashes.map((c) => c.date);
+  const excludedIso = args.excludedDates.map((d) => toDateKey(d));
+  const allConflictDates = new Set<string>();
+  for (const courtId of args.courtIds) {
+    const clashes = await findRecurringSlotConflicts({
+      courtId,
+      dayOfWeek: args.dayOfWeek,
+      startTimeLocal: dateToHHMM(args.blockStartTime),
+      durationMinutes,
+      startsOn: toDateKey(args.startsOn),
+      endsOn: toDateKey(args.endsOn),
+      excludedDates: excludedIso,
+    });
+    for (const clash of clashes) {
+      allConflictDates.add(clash.date);
+    }
+  }
+  const conflictDates = [...allConflictDates].sort();
   if (conflictDates.length > 0 && !args.acknowledge) {
     throw new Error(
       `Court conflicts found on ${formatConflictDates(conflictDates)}. Tick the override checkbox to save and skip only those dates.`,
     );
   }
-  return new Set(conflictDates);
+  return allConflictDates;
 }
 
 /**
@@ -810,6 +946,51 @@ function toUTCHHMM(d: Date): string {
 function hhmmToTimeDate(hhmm: string): Date {
   const [hh, mm] = hhmm.split(":").map(Number);
   return new Date(Date.UTC(1970, 0, 1, hh, mm, 0));
+}
+
+async function resolveCatalogAudienceForProgram(args: {
+  programId: string;
+  formAudience?: "youth" | "adult" | null;
+}): Promise<CatalogAudience> {
+  const program = await prisma.program.findUniqueOrThrow({
+    where: { id: args.programId },
+    select: { targetAudience: true },
+  });
+  return inferCatalogAudience({
+    programTargetAudience: program.targetAudience,
+    formAudience: args.formAudience,
+  });
+}
+
+function normalizeAgePayloadForAudience(
+  audience: CatalogAudience,
+  payload: {
+    minAge: number | null;
+    maxAge: number | null;
+    groups: GroupInput[];
+  },
+): typeof payload {
+  const seriesBand = normalizeStoredAgeBand({
+    audience,
+    minAge: payload.minAge,
+    maxAge: payload.maxAge,
+  });
+  return {
+    minAge: seriesBand.minAge,
+    maxAge: seriesBand.maxAge,
+    groups: payload.groups.map((g) => {
+      const groupBand = normalizeStoredAgeBand({
+        audience,
+        minAge: g.minAge ?? null,
+        maxAge: g.maxAge ?? null,
+      });
+      return {
+        ...g,
+        minAge: groupBand.minAge,
+        maxAge: groupBand.maxAge,
+      };
+    }),
+  };
 }
 
 /**
@@ -1018,11 +1199,28 @@ export async function createClassSeries(formData: FormData) {
   const isEvent = data.classType === "event";
   const isCamp = data.classType === "camp";
 
+  const programId = await resolveProgramId({
+    deliveryMode: data.deliveryMode,
+    programId: data.programId,
+    classType: data.classType,
+  });
+  const catalogAudience = await resolveCatalogAudienceForProgram({
+    programId,
+    formAudience: data.formAudience,
+  });
+  const normalizedAges = normalizeAgePayloadForAudience(catalogAudience, {
+    minAge: data.minAge,
+    maxAge: data.maxAge,
+    groups: data.groupsJson,
+  });
+  data.minAge = normalizedAges.minAge;
+  data.maxAge = normalizedAges.maxAge;
+
   // Build the canonical groups list. Empty submission → server-side
   // synthesizes a single default group mirroring the series-level
   // limits/age band so every series has ≥1 group on disk.
   const groups = ensureAtLeastOneGroup({
-    groups: data.groupsJson,
+    groups: normalizedAges.groups,
     fallback: {
       name: "Default group",
       endTimeHHMM: toUTCHHMM(data.endTime),
@@ -1081,29 +1279,34 @@ export async function createClassSeries(formData: FormData) {
     if (coachValidation) throw new Error(coachValidation);
   }
 
-  const [{ venueClubId }, programId] = await Promise.all([
+  const [{ venueClubId }] = await Promise.all([
     validateLocationInvariants({
       deliveryMode: data.deliveryMode,
       venueId: data.venueId,
       schoolId: data.schoolId,
     }),
-    resolveProgramId({
-      deliveryMode: data.deliveryMode,
-      programId: data.programId,
-      classType: data.classType,
-    }),
     validateAssignmentCoaches(assignments),
   ]);
 
-  const defaultCourtId = await validateDefaultCourtForVenue({
-    defaultCourtId: data.defaultCourtId,
-    deliveryMode: data.deliveryMode,
-    venueClubId,
-  });
-  const courtBlockStartTime = defaultCourtId
+  const { defaultCourtId: resolvedDefaultCourtId, assignedCourtIds } =
+    isEvent
+      ? await validateCourtsForVenue({
+          assignedCourtIds: data.assignedCourtIdsJson,
+          defaultCourtId: data.defaultCourtId,
+          venueClubId,
+          isEvent: true,
+        })
+      : {
+          defaultCourtId: await validateDefaultCourtForVenue({
+            defaultCourtId: data.defaultCourtId,
+            venueClubId,
+          }),
+          assignedCourtIds: [] as string[],
+        };
+  const courtBlockStartTime = resolvedDefaultCourtId
     ? (data.courtBlockStartTime ?? data.startTime)
     : null;
-  const courtBlockEndTime = defaultCourtId
+  const courtBlockEndTime = resolvedDefaultCourtId
     ? (data.courtBlockEndTime ?? seriesEndTime)
     : null;
 
@@ -1154,7 +1357,12 @@ export async function createClassSeries(formData: FormData) {
     data.deliveryMode === "onsite" ? null : (venueClubId ?? null);
 
   const conflictExcluded = await scanCourtConflicts({
-    defaultCourtId,
+    courtIds:
+      assignedCourtIds.length > 0
+        ? assignedCourtIds
+        : resolvedDefaultCourtId
+          ? [resolvedDefaultCourtId]
+          : [],
     dayOfWeek: data.dayOfWeek,
     blockStartTime: courtBlockStartTime,
     blockEndTime: courtBlockEndTime,
@@ -1165,13 +1373,13 @@ export async function createClassSeries(formData: FormData) {
   });
   const excluded = new Set(data.excludedDates.map((d) => toDateKey(d)));
   for (const key of conflictExcluded) excluded.add(key);
-  const sessionStartTime = defaultCourtId
+  const sessionStartTime = resolvedDefaultCourtId
     ? (courtBlockStartTime ?? data.startTime)
     : data.startTime;
-  const sessionEndTime = defaultCourtId
+  const sessionEndTime = resolvedDefaultCourtId
     ? (courtBlockEndTime ?? seriesEndTime)
     : seriesEndTime;
-  const sessions = generateSessionsForSeries(data.classType, {
+  const baseSessions = generateSessionsForSeries(data.classType, {
     startsOn: data.startsOn,
     endsOn: data.endsOn,
     dayOfWeek: data.dayOfWeek,
@@ -1179,6 +1387,14 @@ export async function createClassSeries(formData: FormData) {
     endTime: sessionEndTime,
     excluded,
   });
+  const courtIdsForSessions =
+    assignedCourtIds.length > 0
+      ? assignedCourtIds
+      : resolvedDefaultCourtId
+        ? [resolvedDefaultCourtId]
+        : [];
+  const sessions = expandSessionsForCourts(baseSessions, courtIdsForSessions);
+  const occurrenceCount = baseSessions.length;
 
   const leadCoachPersonId = leadIdFromAssignments(assignments);
   // Make sure NO COACH YET exists when we fall back to it.
@@ -1194,21 +1410,20 @@ export async function createClassSeries(formData: FormData) {
   let campOptions: CampOptionsConfig | null = null;
 
   if (isEvent) {
-    const tiers = data.pricingTiersJson;
-    pricingTiers = tiers;
-    const primary =
-      tiers.find((t) => !t.forMembers) ?? tiers[0] ?? null;
+    const tiers = data.pricingTiersJson.filter((t) => !t.forMembers);
+    const primary = tiers[0] ?? null;
+    pricingTiers =
+      primary != null
+        ? [{ ...primary, label: primary.label || "Standard", forMembers: false }]
+        : [];
     pricePerSeries = primary?.amountEur ?? null;
-    pricePerSession =
-      pricePerSeries != null && sessions.length > 0
-        ? Math.round((pricePerSeries / sessions.length) * 100) / 100
-        : pricePerSeries;
+    pricePerSession = pricePerSeries;
   } else if (isCamp) {
     campOptions = data.campOptionsJson;
     if (campOptions) {
       campOptions = syncCampDropInDates(
         campOptions,
-        sessions.map((s) => toDateKey(s.startsAt)),
+        baseSessions.map((s) => toDateKey(s.startsAt)),
       );
     }
     pricePerSeries = resolveCampCheckoutPrice({
@@ -1219,14 +1434,14 @@ export async function createClassSeries(formData: FormData) {
       hasActiveMembership: false,
     });
     pricePerSession =
-      pricePerSeries != null && sessions.length > 0
-        ? Math.round((pricePerSeries / sessions.length) * 100) / 100
+      pricePerSeries != null && baseSessions.length > 0
+        ? Math.round((pricePerSeries / baseSessions.length) * 100) / 100
         : pricePerSeries;
   } else {
     pricePerSession =
       data.pricePerSessionEur ?? DEFAULT_PRICE_PER_SESSION_EUR;
     pricePerSeries =
-      sessions.length > 0 ? pricePerSession * sessions.length : null;
+      baseSessions.length > 0 ? pricePerSession * baseSessions.length : null;
   }
 
   const created = await prisma.$transaction(async (tx) => {
@@ -1244,7 +1459,10 @@ export async function createClassSeries(formData: FormData) {
             : undefined,
         club: clubId ? { connect: { id: clubId } } : undefined,
         defaultCourt:
-          defaultCourtId != null ? { connect: { id: defaultCourtId } } : undefined,
+          resolvedDefaultCourtId != null
+            ? { connect: { id: resolvedDefaultCourtId } }
+            : undefined,
+        assignedCourtIds,
         name: derivedName,
         nameOverride: overrideName,
         classType: data.classType,
@@ -1271,6 +1489,7 @@ export async function createClassSeries(formData: FormData) {
         publicNotes: isEvent ? data.publicNotes : undefined,
         whatsappUrl: data.whatsappUrl,
         coverImageUrl: data.coverImageUrl,
+        coverImageFocusY: data.coverImageFocusY,
         pricePerSession,
         pricePerSeries,
         pricingTiers:
@@ -1286,7 +1505,7 @@ export async function createClassSeries(formData: FormData) {
           create: sessions.map((s) => ({
             startsAt: s.startsAt,
             endsAt: s.endsAt,
-            courtId: defaultCourtId,
+            courtId: s.courtId,
             status: "scheduled",
           })),
         },
@@ -1416,7 +1635,9 @@ export async function createClassSeries(formData: FormData) {
   revalidatePath("/portal/book");
   revalidatePath("/portal/events");
   redirect(
-    isEvent ? `/admin/events/${created.id}` : `/admin/classes/${created.id}`,
+    savedRedirectPath(
+      isEvent ? `/admin/events/${created.id}` : `/admin/classes/${created.id}`,
+    ),
   );
 }
 
@@ -1648,7 +1869,6 @@ export async function updateLocation(formData: FormData) {
   });
   const nextDefaultCourtId = await validateDefaultCourtForVenue({
     defaultCourtId: existing.defaultCourtId,
-    deliveryMode: data.deliveryMode,
     venueClubId,
   });
 
@@ -1794,6 +2014,7 @@ const ScheduleSchema = z
      */
     seasonId: OptionalUuidSchema,
     defaultCourtId: OptionalUuidSchema,
+    assignedCourtIdsJson: AssignedCourtIdsJsonSchema,
     courtBlockStartTime: OptionalTimeSchema,
     courtBlockEndTime: OptionalTimeSchema,
     acknowledgeCourtConflicts: OptionalBoolSchema,
@@ -1813,13 +2034,14 @@ const ScheduleSchema = z
     (s) =>
       (s.defaultCourtId == null &&
         s.courtBlockStartTime == null &&
-        s.courtBlockEndTime == null) ||
-      (s.defaultCourtId != null &&
+        s.courtBlockEndTime == null &&
+        s.assignedCourtIdsJson.length === 0) ||
+      ((s.defaultCourtId != null || s.assignedCourtIdsJson.length > 0) &&
         s.courtBlockStartTime != null &&
         s.courtBlockEndTime != null),
     {
       message:
-        "defaultCourtId, courtBlockStartTime and courtBlockEndTime must be set together",
+        "Court selection and court block times must be set together",
       path: ["defaultCourtId"],
     },
   )
@@ -1833,6 +2055,105 @@ const ScheduleSchema = z
       path: ["courtBlockEndTime"],
     },
   );
+
+function sameCourtIdSets(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((id, i) => id === sortedB[i]);
+}
+
+export async function previewEventScheduleConflicts(input: {
+  assignedCourtIdsJson: string;
+  dayOfWeek: z.infer<typeof DayOfWeek>;
+  startsOn: string;
+  endsOn: string;
+  courtBlockStartTime: string;
+  courtBlockEndTime: string;
+  excludedDates?: string;
+}): Promise<
+  | { ok: true; clashes: Awaited<ReturnType<typeof findRecurringSlotConflicts>> }
+  | { ok: false; error: string }
+> {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+
+  const parsedIds = AssignedCourtIdsJsonSchema.safeParse(
+    input.assignedCourtIdsJson,
+  );
+  if (!parsedIds.success) {
+    return { ok: false, error: "Invalid court selection" };
+  }
+  const courtIds = parsedIds.data;
+  if (courtIds.length === 0) {
+    return { ok: true, clashes: [] };
+  }
+
+  const dayParsed = DayOfWeek.safeParse(input.dayOfWeek);
+  if (!dayParsed.success) {
+    return { ok: false, error: "Invalid day of week" };
+  }
+
+  const startsOn = DateSchema.safeParse(input.startsOn);
+  const endsOn = DateSchema.safeParse(input.endsOn);
+  const blockStart = OptionalTimeSchema.safeParse(input.courtBlockStartTime);
+  const blockEnd = OptionalTimeSchema.safeParse(input.courtBlockEndTime);
+  if (
+    !startsOn.success ||
+    !endsOn.success ||
+    !blockStart.success ||
+    !blockEnd.success ||
+    !blockStart.data ||
+    !blockEnd.data
+  ) {
+    return { ok: true, clashes: [] };
+  }
+
+  const excludedParsed = ExcludedDatesSchema.safeParse(input.excludedDates ?? "");
+  const excludedIso = excludedParsed.success
+    ? excludedParsed.data.map((d) => toDateKey(d))
+    : [];
+
+  const durationMinutes = minutesBetweenTimes(blockStart.data, blockEnd.data);
+  if (durationMinutes <= 0) {
+    return { ok: false, error: "Court block end time must be after start time" };
+  }
+
+  const clashByDate = new Map<
+    string,
+    Awaited<ReturnType<typeof findRecurringSlotConflicts>>[number]
+  >();
+  for (const courtId of courtIds) {
+    const clashes = await findRecurringSlotConflicts({
+      courtId,
+      dayOfWeek: dayParsed.data,
+      startTimeLocal: dateToHHMM(blockStart.data),
+      durationMinutes,
+      startsOn: toDateKey(startsOn.data),
+      endsOn: toDateKey(endsOn.data),
+      excludedDates: excludedIso,
+    });
+    for (const clash of clashes) {
+      const existing = clashByDate.get(clash.date);
+      if (existing) {
+        existing.conflicts.push(...clash.conflicts);
+      } else {
+        clashByDate.set(clash.date, {
+          date: clash.date,
+          conflicts: [...clash.conflicts],
+        });
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    clashes: [...clashByDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
 
 export async function updateSchedule(formData: FormData) {
   await requireAdmin();
@@ -1858,6 +2179,7 @@ export async function updateSchedule(formData: FormData) {
       deliveryMode: true,
       pricePerSession: true,
       defaultCourtId: true,
+      assignedCourtIds: true,
       courtBlockStartTime: true,
       courtBlockEndTime: true,
       minAge: true,
@@ -1880,19 +2202,36 @@ export async function updateSchedule(formData: FormData) {
       },
     },
   });
+  const isEvent = existing.classType === "event";
   const venueClubId =
     existing.venue.kind === "club" ? (existing.venue.clubId ?? null) : null;
-  const nextDefaultCourtId = await validateDefaultCourtForVenue({
-    defaultCourtId: data.defaultCourtId,
-    deliveryMode: existing.deliveryMode,
-    venueClubId,
-  });
+  const { defaultCourtId: nextDefaultCourtId, assignedCourtIds: nextAssignedCourtIds } =
+    isEvent
+      ? await validateCourtsForVenue({
+          assignedCourtIds: data.assignedCourtIdsJson,
+          defaultCourtId: data.defaultCourtId,
+          venueClubId,
+          isEvent: true,
+        })
+      : {
+          defaultCourtId: await validateDefaultCourtForVenue({
+            defaultCourtId: data.defaultCourtId,
+            venueClubId,
+          }),
+          assignedCourtIds: [] as string[],
+        };
   const nextCourtBlockStartTime = nextDefaultCourtId
     ? (data.courtBlockStartTime ?? data.startTime)
     : null;
   const nextCourtBlockEndTime = nextDefaultCourtId
     ? (data.courtBlockEndTime ?? data.endTime)
     : null;
+  const courtIdsForSessions =
+    nextAssignedCourtIds.length > 0
+      ? nextAssignedCourtIds
+      : nextDefaultCourtId
+        ? [nextDefaultCourtId]
+        : [];
 
   // Cross-table check: a youth program can't pin to an adult season
   // (and vice versa). Free-form seasons (audience === null) skip this.
@@ -1929,6 +2268,8 @@ export async function updateSchedule(formData: FormData) {
     !sameTime(existing.startTime, data.startTime) ||
     !sameTime(existing.endTime, data.endTime) ||
     (existing.defaultCourtId ?? null) !== (nextDefaultCourtId ?? null) ||
+    (isEvent &&
+      !sameCourtIdSets(existing.assignedCourtIds, nextAssignedCourtIds)) ||
     !sameOptionalTime(existing.courtBlockStartTime, nextCourtBlockStartTime) ||
     !sameOptionalTime(existing.courtBlockEndTime, nextCourtBlockEndTime) ||
     excludedChanged;
@@ -1944,12 +2285,16 @@ export async function updateSchedule(formData: FormData) {
       seasonName: nextSeason?.name ?? null,
     },
   });
+  const courtsChanged =
+    (existing.defaultCourtId ?? null) !== (nextDefaultCourtId ?? null) ||
+    (isEvent &&
+      !sameCourtIdSets(existing.assignedCourtIds, nextAssignedCourtIds));
   const shouldScanConflicts =
-    nextDefaultCourtId != null &&
-    (existing.defaultCourtId ?? null) !== (nextDefaultCourtId ?? null);
+    courtIdsForSessions.length > 0 &&
+    (scheduleChanged || courtsChanged);
   const conflictExcluded = shouldScanConflicts
     ? await scanCourtConflicts({
-        defaultCourtId: nextDefaultCourtId,
+        courtIds: courtIdsForSessions,
         dayOfWeek: data.dayOfWeek,
         blockStartTime: nextCourtBlockStartTime,
         blockEndTime: nextCourtBlockEndTime,
@@ -1976,6 +2321,7 @@ export async function updateSchedule(formData: FormData) {
         startTime: data.startTime,
         endTime: data.endTime,
         defaultCourtId: nextDefaultCourtId,
+        assignedCourtIds: nextAssignedCourtIds,
         courtBlockStartTime: nextCourtBlockStartTime,
         courtBlockEndTime: nextCourtBlockEndTime,
         startsOn: data.startsOn,
@@ -2000,7 +2346,7 @@ export async function updateSchedule(formData: FormData) {
         },
       });
 
-      const dates = generateSessionsForSeries(existing.classType, {
+      const baseDates = generateSessionsForSeries(existing.classType, {
         startsOn: data.startsOn,
         endsOn: data.endsOn,
         dayOfWeek: data.dayOfWeek,
@@ -2009,22 +2355,26 @@ export async function updateSchedule(formData: FormData) {
         excluded: mergedExcluded,
       }).filter((s) => s.startsAt >= new Date());
 
+      const dates = expandSessionsForCourts(baseDates, courtIdsForSessions);
+
       if (dates.length > 0) {
         await tx.classSession.createMany({
           data: dates.map((s) => ({
             classSeriesId: data.classSeriesId,
             startsAt: s.startsAt,
             endsAt: s.endsAt,
-            courtId: nextDefaultCourtId,
+            courtId: s.courtId,
             status: "scheduled",
           })),
         });
       }
 
       // Camps use flat week/drop-in prices — do not rescale catalog
-      // pricePerSeries when the session count changes.
+      // pricePerSeries when the session count changes. Events also use
+      // flat pricing tiers, not per-session multiplication.
       if (
         existing.classType !== "camp" &&
+        existing.classType !== "event" &&
         existing.pricePerSession != null
       ) {
         const liveCount = await tx.classSession.count({
@@ -2411,12 +2761,10 @@ export async function updateAgeAndLevel(formData: FormData) {
   }
   const data = parsed.data;
 
-  // Pull the rest of the rename context up-front so we can re-derive
-  // the series name in the same write — series-level age changes
-  // ripple into the auto-name (e.g. "kids age 5-12" suffix).
   const existing = await prisma.classSeries.findUniqueOrThrow({
     where: { id: data.classSeriesId },
     select: {
+      classType: true,
       name: true,
       nameOverride: true,
       deliveryMode: true,
@@ -2441,7 +2789,20 @@ export async function updateAgeAndLevel(formData: FormData) {
       },
     },
   });
+  const catalogAudience = programTargetToAudience(
+    existing.program.targetAudience,
+  );
+  const normalizedBand = normalizeStoredAgeBand({
+    audience: catalogAudience,
+    minAge: data.minAge,
+    maxAge: data.maxAge,
+  });
+  data.minAge = normalizedBand.minAge;
+  data.maxAge = normalizedBand.maxAge;
 
+  // Pull the rest of the rename context up-front so we can re-derive
+  // the series name in the same write — series-level age changes
+  // ripple into the auto-name (e.g. "kids age 5-12" suffix).
   const nextName = rederiveSeriesName({
     existing,
     override: {
@@ -2704,6 +3065,7 @@ const RosterLimitsSchema = z.object({
     .transform((v) => (v && v.trim() !== "" ? v.trim() : null)),
   whatsappUrl: WhatsappUrlSchema,
   coverImageUrl: CoverImageUrlSchema,
+  coverImageFocusY: CoverImageFocusYSchema,
 });
 
 export async function updateRosterLimits(formData: FormData) {
@@ -2734,6 +3096,7 @@ export async function updateRosterLimits(formData: FormData) {
       internalNotes: data.internalNotes,
       whatsappUrl: data.whatsappUrl,
       coverImageUrl: data.coverImageUrl,
+      coverImageFocusY: data.coverImageFocusY,
     },
   });
 
@@ -2744,7 +3107,10 @@ export async function updateRosterLimits(formData: FormData) {
 
 const PricingSchema = z.object({
   classSeriesId: z.string().uuid(),
-  pricePerSessionEur: OptionalEurSchema,
+  pricePerSessionEur: z.preprocess(
+    (v) => (v == null ? "" : v),
+    OptionalEurSchema,
+  ),
   pricingTiersJson: PricingTiersJsonSchema,
   campOptionsJson: CampOptionsJsonSchema,
 });
@@ -2799,14 +3165,14 @@ export async function updatePricing(formData: FormData) {
     if (data.pricingTiersJson.length === 0) {
       throw new Error("At least one price is required");
     }
-    const tiers = data.pricingTiersJson;
-    pricingTiers = tiers;
-    const primary = tiers.find((t) => !t.forMembers) ?? tiers[0] ?? null;
+    const tiers = data.pricingTiersJson.filter((t) => !t.forMembers);
+    const primary = tiers[0] ?? null;
+    pricingTiers =
+      primary != null
+        ? [{ ...primary, label: primary.label || "Standard", forMembers: false }]
+        : [];
     pricePerSeries = primary?.amountEur ?? null;
-    pricePerSession =
-      pricePerSeries != null && sessionCount > 0
-        ? Math.round((pricePerSeries / sessionCount) * 100) / 100
-        : pricePerSeries;
+    pricePerSession = pricePerSeries;
   } else if (before.classType === "camp") {
     if (!data.campOptionsJson) {
       throw new Error("Camp options are required");
@@ -2921,8 +3287,10 @@ export async function cancelSession(formData: FormData) {
       endsAt: true,
       cancelledAt: true,
       cancellationReason: true,
+      classSeries: { select: { name: true } },
     },
   });
+  const stakeholders = await getSeriesEnrollmentStakeholders(before.classSeriesId);
   const now = new Date();
   const s = await prisma.$transaction(async (tx) => {
     const updated = await tx.classSession.update({
@@ -2952,8 +3320,42 @@ export async function cancelSession(formData: FormData) {
     });
     return updated;
   });
+
+  const dateLabel = new Intl.DateTimeFormat("en-NL", {
+    timeZone: "Europe/Amsterdam",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(before.startsAt);
+  const seriesName = before.classSeries.name;
+  const reasonSuffix = parsed.data.reason
+    ? `\n\nReason: ${parsed.data.reason}`
+    : "";
+
+  await Promise.all(
+    stakeholders.map((recipient) =>
+      notify({
+        recipientPersonId: recipient.id,
+        recipientEmail: recipient.primaryEmail,
+        channels: recipient.primaryEmail ? ["in_app", "email"] : ["in_app"],
+        templateKey: "class.session.cancelled",
+        subject: `${seriesName} cancelled on ${dateLabel}`,
+        body:
+          `${seriesName} on ${dateLabel} has been cancelled.` +
+          `${reasonSuffix}\n\nCheck your portal inbox and My Classes for updates.`,
+        relatedTable: "class_sessions",
+        relatedRowId: parsed.data.sessionId,
+      }),
+    ),
+  );
+
   revalidatePath(`/admin/classes/${s.classSeriesId}`);
   revalidatePath(`/admin/events/${s.classSeriesId}`);
+  revalidatePath("/portal/classes");
+  revalidatePath("/portal/inbox");
+  revalidatePath("/portal");
 }
 
 const EnrollmentSchema = z.object({
@@ -3696,7 +4098,7 @@ export async function duplicateClassSeries(formData: FormData) {
   });
 
   revalidatePath("/admin/classes");
-  redirect(`/admin/classes/${created.id}`);
+  redirect(savedRedirectPath(`/admin/classes/${created.id}`));
 }
 
 // -------- DELETE -----------------------------------------------------------

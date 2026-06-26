@@ -53,11 +53,12 @@ export default async function AdminEventDetailPage({
   const { id } = await params;
   const terms = await getTerms();
 
-  const [series, venues, coachRows, sessions, enrollments] = await Promise.all([
+  const [series, venues, courts, coachRows, sessions, enrollments] = await Promise.all([
     prisma.classSeries.findUnique({
       where: { id },
       include: {
-        venue: { select: { id: true, name: true } },
+        venue: { select: { id: true, name: true, kind: true, clubId: true } },
+        defaultCourt: { select: { id: true, name: true } },
         coaches: {
           select: {
             id: true,
@@ -76,6 +77,11 @@ export default async function AdminEventDetailPage({
       where: { isActive: true, kind: "club" },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    }),
+    prisma.court.findMany({
+      where: { isActive: true, isBookable: true },
+      orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, clubId: true, isBookable: true },
     }),
     prisma.coach.findMany({
       where: {
@@ -161,8 +167,26 @@ export default async function AdminEventDetailPage({
       : []);
 
   const eventDateIso = toIso(series.startsOn);
+  const eventEndDateIso = toIso(series.endsOn);
   const startTime = toHHMM(series.startTime);
   const endTime = toHHMM(series.endTime);
+  const courtBlockStartTime = series.courtBlockStartTime
+    ? toHHMM(series.courtBlockStartTime)
+    : null;
+  const courtBlockEndTime = series.courtBlockEndTime
+    ? toHHMM(series.courtBlockEndTime)
+    : null;
+  const assignedCourtIds =
+    series.assignedCourtIds.length > 0
+      ? series.assignedCourtIds
+      : series.defaultCourtId
+        ? [series.defaultCourtId]
+        : [];
+  const assignedCourtNames = courts
+    .filter((court) => assignedCourtIds.includes(court.id))
+    .map((court) => court.name);
+  const excludedDateIsos = series.excludedDates.map((d) => toIso(d));
+  const repeatsWeekly = eventEndDateIso !== eventDateIso;
 
   return (
     <div className="space-y-6">
@@ -220,16 +244,37 @@ export default async function AdminEventDetailPage({
         description="Single-date event timing."
         action={updateSchedule}
         read={
-          <div className="text-sm text-[var(--muted-foreground)]">
-            {formatDateTimeRange(eventDateIso, startTime, endTime)}
+          <div className="space-y-1 text-sm text-[var(--muted-foreground)]">
+            <p>
+              {formatDateTimeRange(eventDateIso, startTime, endTime)}
+              {repeatsWeekly
+                ? ` · weekly until ${formatShortDate(eventEndDateIso)}`
+                : ""}
+            </p>
+            {assignedCourtNames.length > 0 ? (
+              <p>
+                {terms.court.plural}: {assignedCourtNames.join(", ")}
+                {courtBlockStartTime && courtBlockEndTime
+                  ? ` · ${courtBlockStartTime}–${courtBlockEndTime}`
+                  : ""}
+              </p>
+            ) : null}
           </div>
         }
         edit={
           <EventScheduleSectionEditor
             classSeriesId={series.id}
             defaultDate={eventDateIso}
+            defaultEndDate={eventEndDateIso}
             defaultStartTime={startTime}
             defaultEndTime={endTime}
+            defaultAssignedCourtIds={assignedCourtIds}
+            defaultCourtBlockStartTime={courtBlockStartTime}
+            defaultCourtBlockEndTime={courtBlockEndTime}
+            defaultExcludedDates={excludedDateIsos}
+            venueKind={series.venue.kind}
+            venueClubId={series.venue.clubId}
+            courts={courts}
           />
         }
       />
@@ -309,6 +354,7 @@ export default async function AdminEventDetailPage({
             defaultNotes={series.internalNotes}
             defaultWhatsappUrl={series.whatsappUrl}
             defaultCoverImageUrl={series.coverImageUrl}
+            defaultCoverImageFocusY={series.coverImageFocusY}
           />
         }
       />
@@ -321,8 +367,7 @@ export default async function AdminEventDetailPage({
           <div className="space-y-1 text-sm">
             {pricingTiers.map((tier) => (
               <p key={tier.id}>
-                {tier.label}: EUR {tier.amountEur.toFixed(2)}
-                {tier.forMembers ? " (members)" : ""}
+                {tier.label}:                 EUR {tier.amountEur.toFixed(2)}
               </p>
             ))}
           </div>
@@ -516,6 +561,16 @@ function formatDateTimeRange(dateIso: string, startTime: string, endTime: string
     day: "numeric",
   });
   return `${dateLabel} · ${startTime} - ${endTime}`;
+}
+
+function formatShortDate(dateIso: string): string {
+  const [year, month, day] = dateIso.split("-").map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  return utc.toLocaleDateString("en-NL", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function formatTime(date: Date): string {

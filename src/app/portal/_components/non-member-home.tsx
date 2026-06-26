@@ -63,6 +63,7 @@ export function NonMemberHome({
   recs,
   brandName,
   showTrialEntry = true,
+  marketingImages = {},
 }: {
   firstName: string | null;
   isParent: boolean;
@@ -70,6 +71,7 @@ export function NonMemberHome({
   hasAnyChild: boolean;
   clubs: MembershipPitchClub[];
   recs: { hero: ProgramRec[]; more: ProgramRec[] };
+  marketingImages?: Record<string, string>;
   /** Active tenant brand name, used in the welcome kicker. Defaults to a
    *  generic label so callers that haven't been updated still render. */
   brandName?: string;
@@ -90,7 +92,7 @@ export function NonMemberHome({
   );
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-10">
       {/* 1 — Sales hero (lessons-first; "skip to membership" stays one click away) */}
       <PageHeader
         kicker={`Welcome to ${brandName ?? "us"}`}
@@ -104,9 +106,7 @@ export function NonMemberHome({
               </Link>
             </Button>
             <Button asChild variant="outline" tone="neutral" size="lg">
-              <Link href="/portal/membership#buy">
-                Skip — I just want a membership
-              </Link>
+              <Link href="/portal/membership#buy">Membership only</Link>
             </Button>
           </div>
         }
@@ -120,8 +120,15 @@ export function NonMemberHome({
         showTrialEntry={showTrialEntry}
       />
 
-      {/* 3 — Headline price strip */}
-      <PriceAnchorStrip />
+      {/* 3 — Headline price strip (includes season urgency footer) */}
+      <PriceAnchorStrip
+        randwijckOpen={randwijck.isOpen}
+        randwijckEvent={
+          randwijck.isOpen
+            ? `closes ${formatLongDate(addDaysVisual(randwijck.upcoming.endsOn, -1))}`
+            : `reopens ${formatLongDate(randwijck.upcoming.startsOn)}`
+        }
+      />
 
       {/* 4 — Two-club tile grid + joint upsell */}
       <Section
@@ -129,8 +136,8 @@ export function NonMemberHome({
         description="One membership unlocks bookings at that club. Cover both for a joint discount."
       >
         <div className="space-y-5">
-          <ClubTilesGrid clubs={clubs} />
           {known.length === 2 && <JointCrossSell saving={adultJointSaving} />}
+          <ClubTilesGrid clubs={clubs} marketingImages={marketingImages} />
         </div>
       </Section>
 
@@ -146,17 +153,7 @@ export function NonMemberHome({
       <FamilyPitch hasAnyChild={hasAnyChild} />
 
       {/* 7 — Ladder teaser */}
-      {/* 8 — Season urgency */}
-      <SeasonUrgency
-        randwijckOpen={randwijck.isOpen}
-        randwijckEvent={
-          randwijck.isOpen
-            ? `closes ${formatLongDate(addDaysVisual(randwijck.upcoming.endsOn, -1))}`
-            : `reopens ${formatLongDate(randwijck.upcoming.startsOn)}`
-        }
-      />
-
-      {/* 9 — FAQ */}
+      {/* 8 — FAQ (collapsed by default) */}
       <FaqBlock />
     </div>
   );
@@ -166,7 +163,13 @@ export function NonMemberHome({
 // 2 — Price anchor strip
 // ---------------------------------------------------------------------------
 
-function PriceAnchorStrip() {
+function PriceAnchorStrip({
+  randwijckOpen,
+  randwijckEvent,
+}: {
+  randwijckOpen: boolean;
+  randwijckEvent: string;
+}) {
   const items: {
     href: string;
     kicker: string;
@@ -199,49 +202,69 @@ function PriceAnchorStrip() {
     },
   ];
   return (
-    <div className="grid gap-3 md:grid-cols-3">
-      {items.map((it) => (
-        <Link
-          key={it.href}
-          href={it.href}
-          className={cn(
-            "group relative flex flex-col gap-2 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] transition-shadow hover:shadow-[var(--shadow-md)]",
-            it.highlight && "ring-1 ring-[var(--joint)]/40",
-          )}
-        >
-          {it.highlight && (
-            <span className="absolute right-4 top-4">
-              <Badge tone="joint" variant="soft">
-                Best value
-              </Badge>
-            </span>
-          )}
+    <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-3">
+        {items.map((it) => (
           <div
+            key={it.href}
             className={cn(
-              "text-[10px] font-semibold uppercase tracking-[0.18em]",
-              it.tone === "triaz" && "text-[var(--triaz-ink)]",
-              it.tone === "randwijck" && "text-[var(--randwijck-ink)]",
-              it.tone === "joint" && "text-[var(--joint-ink)]",
+              "group relative flex flex-col gap-2 elev-card p-5 transition-shadow hover:shadow-[var(--shadow-floating)]",
+              it.highlight && "ring-1 ring-[var(--joint)]/40",
             )}
           >
-            {it.kicker}
+            {it.highlight && (
+              <span className="absolute right-4 top-4">
+                <Badge tone="joint" variant="soft">
+                  Best value
+                </Badge>
+              </span>
+            )}
+            <div
+              className={cn(
+                "text-sm font-medium",
+                it.tone === "triaz" && "text-[var(--triaz-ink)]",
+                it.tone === "randwijck" && "text-[var(--randwijck-ink)]",
+                it.tone === "joint" && "text-[var(--joint-ink)]",
+              )}
+            >
+              {it.kicker}
+            </div>
+            <div className="tabular font-display text-3xl font-medium leading-none tracking-tight sm:text-4xl">
+              From {formatMembershipPrice(it.price)}
+              <span className="ml-1 text-sm font-normal text-[var(--muted-foreground)]">
+                / year
+              </span>
+            </div>
+            <div className="text-xs text-[var(--muted-foreground)]">{it.sub}</div>
+            <Button
+              asChild
+              variant="outline"
+              tone={it.tone === "joint" ? "neutral" : it.tone}
+              size="sm"
+              className="mt-2 w-fit"
+            >
+              <Link href={it.href}>
+                See pricing <ArrowRightIcon size={14} />
+              </Link>
+            </Button>
           </div>
-          <div className="tabular font-display text-3xl font-medium leading-none tracking-tight sm:text-4xl">
-            From {formatMembershipPrice(it.price)}
-            <span className="ml-1 text-sm font-normal text-[var(--muted-foreground)]">
-              / year
-            </span>
-          </div>
-          <div className="text-xs text-[var(--muted-foreground)]">{it.sub}</div>
-          <div className="mt-2 flex items-center gap-1 text-xs font-semibold text-[var(--foreground)]">
-            See it{" "}
-            <ArrowRightIcon
-              size={12}
-              className="transition-transform group-hover:translate-x-0.5"
-            />
-          </div>
+        ))}
+      </div>
+      <div className="flex flex-col gap-2 rounded-[var(--radius-md)] bg-[var(--triaz-soft)] px-4 py-3 text-xs text-[var(--triaz-ink)] sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          <span className="font-medium">Triaz plays year-round.</span>{" "}
+          <span className="text-[var(--triaz-ink)]/80">
+            Randwijck {randwijckOpen ? "is open now and " : ""}
+            {randwijckEvent}.
+          </span>
+        </p>
+        <Link
+          href="/portal/membership#buy"
+          className="inline-flex shrink-0 items-center gap-1 font-semibold underline-offset-4 hover:underline"
+        >
+          Lock yours in <ArrowRightIcon size={12} />
         </Link>
-      ))}
+      </div>
     </div>
   );
 }
@@ -392,10 +415,10 @@ function FamilyPitch({ hasAnyChild }: { hasAnyChild: boolean }) {
       }
     >
       <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
-        <div className="rounded-[var(--radius-lg)] bg-[var(--randwijck-soft)] p-5 sm:p-6">
+        <div className="elev-card border border-[var(--randwijck)]/20 bg-[var(--randwijck-soft)] p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--randwijck-ink)]">
+              <div className="text-sm font-medium text-[var(--randwijck-ink)]">
                 Family membership
               </div>
               <h3 className="font-display text-2xl font-medium tracking-tight">
@@ -417,7 +440,7 @@ function FamilyPitch({ hasAnyChild }: { hasAnyChild: boolean }) {
             </Button>
             {!hasAnyChild && (
               <Button asChild variant="outline" tone="neutral">
-                <Link href="/portal/profile">
+                <Link href="/portal/family?addChild=1">
                   <FamilyIcon size={14} /> Add a child
                 </Link>
               </Button>
@@ -447,7 +470,7 @@ function KidProgramTile({ title, body }: { title: string; body: string }) {
   return (
     <Link
       href="/portal/programs"
-      className="group flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-4 transition-shadow hover:shadow-[var(--shadow-sm)]"
+      className="group elev-card flex items-start gap-3 p-4 transition-shadow hover:shadow-[var(--shadow-floating)]"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--triaz-soft)] text-[var(--triaz-ink)]">
         <ClassIcon size={14} />
@@ -466,43 +489,6 @@ function KidProgramTile({ title, body }: { title: string; body: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// 7 — Season urgency
-// ---------------------------------------------------------------------------
-
-function SeasonUrgency({
-  randwijckOpen,
-  randwijckEvent,
-}: {
-  randwijckOpen: boolean;
-  randwijckEvent: string;
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-md)] bg-[var(--triaz-soft)] px-5 py-4 text-sm text-[var(--triaz-ink)] sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-start gap-3 sm:items-center">
-        <CalendarIcon className="mt-0.5 shrink-0 sm:mt-0" />
-        <p>
-          <span className="font-medium">Triaz plays year-round.</span>{" "}
-          <span className="text-[var(--triaz-ink)]/80">
-            Randwijck {randwijckOpen ? "is open now and " : ""}
-            {randwijckEvent}.
-          </span>
-        </p>
-      </div>
-      <Link
-        href="/portal/membership#buy"
-        className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold underline-offset-4 hover:underline"
-      >
-        Lock yours in <ArrowRightIcon size={12} />
-      </Link>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 9 — FAQ
-// ---------------------------------------------------------------------------
-
 function FaqBlock() {
   const faqs: { q: string; a: React.ReactNode }[] = [
     {
@@ -515,10 +501,10 @@ function FaqBlock() {
         <>
           Anytime. Add them on{" "}
           <Link
-            href="/portal/profile"
+            href="/portal/family?addChild=1"
             className="underline-offset-4 hover:underline"
           >
-            your profile
+            your family page
           </Link>{" "}
           and bump up to a family membership when you're ready.
         </>
@@ -526,7 +512,32 @@ function FaqBlock() {
     },
     {
       q: "Refunds or cancellations?",
-      a: "Talk to the office — we handle changes case by case. Self-serve renewals via Mollie are on the way.",
+      a: (
+        <>
+          Renew or buy coverage on{" "}
+          <Link
+            href="/portal/membership#buy"
+            className="underline-offset-4 hover:underline"
+          >
+            My membership
+          </Link>
+          . Receipts and credits sit under{" "}
+          <Link
+            href="/portal/payments"
+            className="underline-offset-4 hover:underline"
+          >
+            Payments
+          </Link>
+          . Rain or holiday changes show in{" "}
+          <Link
+            href="/portal/inbox"
+            className="underline-offset-4 hover:underline"
+          >
+            your inbox
+          </Link>
+          .
+        </>
+      ),
     },
     {
       q: "What about lessons?",
@@ -539,43 +550,70 @@ function FaqBlock() {
           >
             what we run
           </Link>{" "}
-          before you commit.
+          before you commit — or browse{" "}
+          <Link
+            href="/get-started"
+            className="underline-offset-4 hover:underline"
+          >
+            start here
+          </Link>{" "}
+          if you are not signed in yet.
         </>
       ),
     },
   ];
   return (
-    <Section title="Quick answers" description="The questions we hear most.">
-      <div className="grid gap-4 sm:grid-cols-2">
-        {faqs.map((f) => (
-          <div
-            key={f.q}
-            className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-4"
-          >
-            <div className="mb-1 flex items-start gap-2">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--surface-strong)] text-[var(--muted-foreground)]">
-                <CheckIcon size={12} />
-              </span>
-              <div className="text-sm font-semibold">{f.q}</div>
-            </div>
-            <div className="pl-7 text-sm text-[var(--muted-foreground)]">
-              {f.a}
+    <details className="group rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)]">
+      <summary className="cursor-pointer list-none px-5 py-4 [&::-webkit-details-marker]:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold">Quick answers</div>
+            <div className="text-xs text-[var(--muted-foreground)]">
+              The questions we hear most — tap to expand
             </div>
           </div>
-        ))}
+          <ArrowRightIcon
+            size={16}
+            className="shrink-0 text-[var(--muted-foreground)] transition-transform group-open:rotate-90"
+          />
+        </div>
+      </summary>
+      <div className="space-y-4 border-t border-[var(--border)] px-5 pb-5 pt-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {faqs.map((f) => (
+            <div
+              key={f.q}
+              className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-4"
+            >
+              <div className="mb-1 flex items-start gap-2">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--surface-strong)] text-[var(--muted-foreground)]">
+                  <CheckIcon size={12} />
+                </span>
+                <div className="text-sm font-semibold">{f.q}</div>
+              </div>
+              <div className="pl-7 text-sm text-[var(--muted-foreground)]">
+                {f.a}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] bg-[var(--surface)] px-4 py-3 text-sm">
+          <CardIcon className="text-[var(--muted-foreground)]" />
+          <span className="text-[var(--muted-foreground)]">
+            Browsing before you sign in? See{" "}
+            <Link href="/get-started" className="underline-offset-4 hover:underline">
+              start here
+            </Link>
+            .
+          </span>
+          <Button asChild tone="triaz" size="sm" className="ml-auto">
+            <Link href="/portal/membership#buy">
+              Get a membership <ArrowRightIcon size={14} />
+            </Link>
+          </Button>
+        </div>
       </div>
-      <div className="mt-5 flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] bg-[var(--surface)] px-5 py-4 text-sm">
-        <CardIcon className="text-[var(--muted-foreground)]" />
-        <span className="text-[var(--muted-foreground)]">
-          Got a question we didn't cover? Talk to the office.
-        </span>
-        <Button asChild tone="triaz" size="sm" className="ml-auto">
-          <Link href="/portal/membership#buy">
-            Get a membership <ArrowRightIcon size={14} />
-          </Link>
-        </Button>
-      </div>
-    </Section>
+    </details>
   );
 }
 

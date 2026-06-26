@@ -88,7 +88,7 @@ export default async function PortalTransferRequestPage({
         title="Current enrollment"
         description="What we'll move out of."
       >
-        <div className="flex flex-wrap items-start justify-between gap-3 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 elev-card p-5">
           <div className="space-y-1">
             <Badge tone="success" variant="soft" className="capitalize">
               {enrollment.status.replace("_", " ")}

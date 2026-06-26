@@ -103,7 +103,7 @@ export function RecurringRequestCard({ request }: RequestProps) {
   return (
     <StatusSurface
       tone="warning"
-      className="rounded-[var(--radius-lg)] p-5 shadow-[var(--shadow-sm)]"
+      className="elev-card p-5"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
@@ -156,7 +156,7 @@ export function RecurringRequestCard({ request }: RequestProps) {
       )}
 
       {hasLiveClashes && (
-        <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="mt-3 rounded-md border border-[var(--warning)]/50 bg-[var(--warning-soft)] px-3 py-2 text-xs text-[var(--warning-ink)]">
           <div className="font-semibold">
             {liveClashes.length} live clash(es) on this series
           </div>

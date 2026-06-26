@@ -19,7 +19,7 @@
  */
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -50,6 +50,7 @@ import {
 import type { CalendarWeek, CalendarSlot } from "@/lib/booking/queries";
 import { bookingGridStepMinutes } from "@/lib/booking/time";
 import { startCheckout as beginCheckout } from "@/lib/payments/start-checkout";
+import { portalPurchaseSuccessUrl } from "@/lib/portal/purchase-success-url";
 import { useActionFeedback } from "@/lib/feedback";
 import { PartyInput, type PartyEntry } from "./party-input";
 import { searchClubMembers } from "@/lib/booking/partner-lookup";
@@ -61,8 +62,25 @@ import {
 import { RecurringCoachLessonDialog } from "./recurring-coach-lesson-dialog";
 import { AdminCreateBookingDialog } from "./admin-create-booking-dialog";
 import type { CoachOption } from "./admin-create-booking-dialog";
-import { getCourtVisual } from "./court-visuals";
+import {
+  contentMinWidthClass,
+  getCourtVisual,
+  mergeCourtWidthClasses,
+  shortenAdminClassLabel,
+} from "./court-visuals";
 import { useTerms } from "@/components/tenant/terms-provider";
+import {
+  bookingSlotColorClasses,
+  classSlotColorClasses,
+  classSlotMergeBorderClasses,
+  adminCompactClassSlotClasses,
+  adminCompactClassMergeBorderClasses,
+  adminCompactBookingSlotClasses,
+  adminCompactLegendAccent,
+  memberReservedSlotClasses,
+  scheduleClassCategoryLabel,
+} from "@/lib/admin/schedule-slot-colors";
+import { themeBySlug } from "@/lib/club-theme";
 import {
   formatLocalDate,
   formatLocalHour,
@@ -70,6 +88,10 @@ import {
 } from "@/lib/booking/time";
 
 export type ViewerRole = "admin" | "coach" | "member";
+
+const PAST_CELL = "bg-[var(--muted)]/20";
+/** Unified fade for any occupied or interactive slot in the past. */
+const PAST_SLOT_MUTED = "opacity-50 saturate-[0.82]";
 
 export interface CourtCalendarGridProps {
   data: CalendarWeek;
@@ -94,6 +116,12 @@ export interface CourtCalendarGridProps {
   viewerPersonId: string;
   /** Active coaches for admin on-behalf lesson bookings. */
   coachOptions?: CoachOption[];
+  /** Hide page header / block-off tip (multi-club schedule sections after the first). */
+  compact?: boolean;
+  /** Admin schedule embed: no duplicate date header/tips; keep block-off toolbar. */
+  embedded?: boolean;
+  /** Week view: scroll this local date column into view on mount. */
+  scrollToDate?: string;
 }
 
 type SelectedSlot =
@@ -115,7 +143,22 @@ export function CourtCalendarGrid({
   viewerRole,
   viewerPersonId,
   coachOptions = [],
+  compact = false,
+  embedded = false,
+  scrollToDate,
 }: CourtCalendarGridProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!scrollToDate || view !== "week") return;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const target = scroller.querySelector(
+      `[data-schedule-day="${scrollToDate}"]`,
+    );
+    target?.scrollIntoView({ inline: "start", block: "nearest" });
+  }, [scrollToDate, view]);
+
   // Normalise inputs into a single source of truth: an array of day-rows.
   // Day view always renders a single row; week view normally has two rows
   // (Mon–Thu / Fri–Sun) but works for any partitioning.
@@ -224,6 +267,52 @@ export function CourtCalendarGrid({
     return m;
   }, [data.courts]);
 
+  const isWeek = view === "week";
+  const useAdminWeekColumnWidths =
+    compact && viewerRole === "admin" && isWeek;
+
+  /** Stronger day separators in admin week view. */
+  const adminDaySeparator =
+    "border-l-[4px] border-l-[var(--border-strong)] pl-1";
+
+  /** Per day×court column min-width when labels are long (admin week grid). */
+  const columnContentMinWidth = useMemo(() => {
+    if (!useAdminWeekColumnWidths) return new Map<string, string>();
+    const maxLen = new Map<string, number>();
+    const visible = new Set(visibleDates);
+    for (const court of data.courts) {
+      for (const slot of court.slots) {
+        const dateKey = slot.startsAtLocal.slice(0, 10);
+        if (!visible.has(dateKey)) continue;
+        const colKey = `${dateKey}|${court.id}`;
+        let len = 0;
+        if (slot.state.kind === "class") {
+          len = shortenAdminClassLabel(slot.state.label).length;
+        } else if (slot.state.kind === "booked") {
+          len = slot.state.bookedByName.length;
+        }
+        if (len > 0) {
+          maxLen.set(colKey, Math.max(maxLen.get(colKey) ?? 0, len));
+        }
+      }
+    }
+    const widths = new Map<string, string>();
+    for (const [key, len] of maxLen) {
+      widths.set(key, contentMinWidthClass(len));
+    }
+    return widths;
+  }, [data.courts, useAdminWeekColumnWidths, visibleDates]);
+
+  const widthClassForColumn = (
+    court: (typeof data.courts)[number],
+    date: string,
+  ) => {
+    const base = visualByCourtId.get(court.id)?.widthClass ?? getCourtVisual(court).widthClass;
+    if (!useAdminWeekColumnWidths) return base;
+    const extra = columnContentMinWidth.get(`${date}|${court.id}`) ?? "";
+    return mergeCourtWidthClasses(base, extra);
+  };
+
   // Compact header label per visible day, grouped per row.
   const rowHeaders = useMemo(
     () =>
@@ -239,12 +328,15 @@ export function CourtCalendarGrid({
     [rowDays, todayLocalDate],
   );
 
-  const isWeek = view === "week";
   /** Narrow vertical walk-on columns in admin + week view. */
   const showSlimWalkonColumn = isWeek || viewerRole === "admin";
   // Whole-week range label spans the first day of the first row to the
   // last day of the last row.
   const flatHeaders = useMemo(() => rowHeaders.flat(), [rowHeaders]);
+  const clubTheme = useMemo(
+    () => themeBySlug(data.club.slug),
+    [data.club.slug],
+  );
   const headerLabel = isWeek
     ? `${flatHeaders[0]?.short ?? ""} – ${flatHeaders[flatHeaders.length - 1]?.short ?? ""}`
     : day
@@ -253,61 +345,94 @@ export function CourtCalendarGrid({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          {headerLabel}
-        </h2>
-        <div className="flex items-center gap-3">
-          <div className="text-xs text-[var(--muted-foreground)]">
-            {data.club.name} · open{" "}
-            {data.hours[0]}–{data.hours[data.hours.length - 1]}
-          </div>
-          {viewerRole === "admin" && (
-            <div className="flex flex-wrap items-center gap-2">
-              {!blockMode ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setBlockMode(true)}
-                >
-                  Block off
-                </Button>
-              ) : (
-                <>
-                  <span className="text-sm text-[var(--muted-foreground)]">
-                    Selecting… ({selectedKeys.size})
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={exitBlockMode}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleDoneBlockSelection}
-                    disabled={selectedKeys.size === 0}
-                  >
-                    Done
-                  </Button>
-                </>
+      {!embedded && !compact && (
+        <>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              {headerLabel}
+            </h2>
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-[var(--muted-foreground)]">
+                {data.club.name} · open{" "}
+                {data.hours[0]}–{data.hours[data.hours.length - 1]}
+              </div>
+              {viewerRole === "admin" && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {!blockMode ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setBlockMode(true)}
+                    >
+                      Block off
+                    </Button>
+                  ) : (
+                    <>
+                      <span className="text-sm text-[var(--muted-foreground)]">
+                        Selecting… ({selectedKeys.size})
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={exitBlockMode}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleDoneBlockSelection}
+                        disabled={selectedKeys.size === 0}
+                      >
+                        Done
+                      </Button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
+          </div>
+          {viewerRole === "admin" && !blockMode && (
+            <p className="text-[11px] text-[var(--muted-foreground)]">
+              Tip: choose Block off, then tap free cells to block them weekly until
+              an end date (with optional skip dates).
+            </p>
+          )}
+          {viewerRole === "admin" && blockMode && (
+            <p className="text-[11px] text-[var(--muted-foreground)]">
+              Tap free cells across any day or court, then click Done to set repeat
+              until and exceptions.
+            </p>
+          )}
+        </>
+      )}
+      {embedded && viewerRole === "admin" && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {!blockMode ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setBlockMode(true)}
+            >
+              Block off
+            </Button>
+          ) : (
+            <>
+              <span className="text-xs text-[var(--muted-foreground)]">
+                Selecting… ({selectedKeys.size})
+              </span>
+              <Button size="sm" variant="ghost" onClick={exitBlockMode}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleDoneBlockSelection}
+                disabled={selectedKeys.size === 0}
+              >
+                Done
+              </Button>
+            </>
           )}
         </div>
-      </div>
-      {viewerRole === "admin" && !blockMode && (
-        <p className="text-[11px] text-[var(--muted-foreground)]">
-          Tip: choose Block off, then tap free cells to block them weekly until
-          an end date (with optional skip dates).
-        </p>
-      )}
-      {viewerRole === "admin" && blockMode && (
-        <p className="text-[11px] text-[var(--muted-foreground)]">
-          Tap free cells across any day or court, then click Done to set repeat
-          until and exceptions.
-        </p>
       )}
 
       {rowDays.map((days, rowIdx) => {
@@ -336,6 +461,7 @@ export function CourtCalendarGrid({
              * exactly one per column.
              */
             className="snap-x snap-proximity overflow-x-auto rounded-md border border-[var(--border)] scroll-pl-20"
+            ref={rowIdx === 0 ? scrollRef : undefined}
           >
             <table className="w-full border-collapse text-sm">
               <thead className="bg-[var(--muted)]/40 text-xs uppercase tracking-wide">
@@ -351,18 +477,27 @@ export function CourtCalendarGrid({
                       <th
                         key={dh.date}
                         colSpan={data.courts.length}
+                        data-schedule-day={dh.date}
                         className={cn(
                           "border-l-2 border-[var(--border)] px-2 py-2 text-left",
                           di === 0 && "border-l-0",
+                          di > 0 &&
+                            useAdminWeekColumnWidths &&
+                            "border-l-[4px] border-l-[var(--border-strong)] pl-2",
                           dh.isToday &&
-                            "border-b-2 border-b-red-500 bg-red-50 text-red-700",
+                            cn(
+                              "border-b-2",
+                              clubTheme.border,
+                              clubTheme.bg,
+                              clubTheme.accentText,
+                            ),
                         )}
                       >
                         <div className="flex items-baseline gap-2">
                           <span
                             className={cn(
                               "text-sm font-semibold capitalize",
-                              dh.isToday && "text-red-700",
+                              dh.isToday && clubTheme.accentText,
                             )}
                           >
                             {dh.weekday.slice(0, 3)}
@@ -371,14 +506,19 @@ export function CourtCalendarGrid({
                             className={cn(
                               "text-[11px] font-normal",
                               dh.isToday
-                                ? "text-red-600"
+                                ? clubTheme.accentText
                                 : "text-[var(--muted-foreground)]",
                             )}
                           >
                             {dh.short}
                           </span>
                           {dh.isToday && (
-                            <span className="ml-auto text-[9px] font-semibold uppercase tracking-wide text-red-600">
+                            <span
+                              className={cn(
+                                "ml-auto text-[9px] font-semibold uppercase tracking-wide",
+                                clubTheme.accentText,
+                              )}
+                            >
                               today
                             </span>
                           )}
@@ -398,20 +538,17 @@ export function CourtCalendarGrid({
                       const v = visualByCourtId.get(c.id);
                       const dayBoundary = isWeek && ci === 0 && di > 0;
                       const headerCls = cn(
-                        v?.widthClass,
-                        // `snap-start` makes each court header a valid
-                        // horizontal snap target. Combined with the
-                        // scroller's `snap-x snap-proximity` above
-                        // (and `scroll-pl-20`) flick-scrolling the
-                        // grid on touch lands cleanly on a column
-                        // instead of mid-court.
+                        widthClassForColumn(c, dh.date),
                         "snap-start",
                         dayBoundary
-                          ? "border-l-2 border-l-[var(--border-strong)] px-1.5 py-2 text-left"
+                          ? useAdminWeekColumnWidths
+                            ? cn(adminDaySeparator, "px-1.5 py-2 text-left")
+            : "border-l-2 border-l-[var(--border-strong)] px-1.5 py-2 text-left"
                           : "border-l border-[var(--border)] px-1.5 py-2 text-left",
                         !c.isBookable && "px-1 text-center",
-                        v?.surfaceTintClass,
-                        dh.isToday && "bg-red-50/60",
+                        !(useAdminWeekColumnWidths && c.isBookable) &&
+                          v?.surfaceTintClass,
+                        dh.isToday && clubTheme.bg,
                       );
                       if (c.isBookable) {
                         return (
@@ -478,23 +615,32 @@ export function CourtCalendarGrid({
                   const isHalfHourRow = hour.endsWith(":30");
                   const clockHour = parseInt(hour.split(":")[0], 10);
                   const isAltHourBand = clockHour % 2 === 1;
+                  const isPastTimeRow =
+                    todayInThisRow &&
+                    rowMin + rowStepMin <= nowMinutes;
                   return (
                     <tr
                       key={hour}
                       className={cn(
-                        isHalfHourRow
-                          ? "border-t border-[var(--border)]/30"
-                          : "border-t-2 border-[var(--border-strong)]",
+                        isNowRow && todayInThisRow
+                          ? "border-t-[3px] border-t-[var(--danger)]"
+                          : isHalfHourRow
+                            ? "border-t border-[var(--border)]/30"
+                            : "border-t-2 border-[var(--border-strong)]",
                         isAltHourBand && "bg-[var(--muted)]/[0.04]",
-                        "hover:bg-[var(--muted)]/8",
+                        isNowRow &&
+                          todayInThisRow &&
+                          "bg-[var(--danger-soft)]/20",
                       )}
                     >
                       <td
                         className={cn(
                           "px-2 font-mono text-xs text-[var(--muted-foreground)]",
-                          denseGrid ? "py-1" : "py-1.5",
+                          denseGrid ? "py-0.5" : "py-1.5",
                           isHalfHourRow && "text-[var(--muted-foreground)]/70",
-                          isNowRow && "font-semibold text-red-600",
+                          isPastTimeRow &&
+                            "text-[var(--muted-foreground)]/50 line-through decoration-[var(--border-strong)]",
+                          isNowRow && "font-semibold text-[var(--danger)]",
                         )}
                       >
                         {hour}
@@ -506,21 +652,30 @@ export function CourtCalendarGrid({
                           );
                           const dayBoundary = isWeek && ci === 0 && di > 0;
                           const visual = visualByCourtId.get(court.id);
+                          const columnWidth = widthClassForColumn(court, d.date);
                           const isToday = d.date === todayLocalDate;
                           const dimPast =
                             d.date < todayLocalDate ||
                             (isToday &&
                               rowMin + rowStepMin <= nowMinutes);
-                          const showNowLine = isNowRow && isToday;
                           if (!slot) {
                             return (
                               <td
                                 key={`${d.date}|${court.id}`}
                                 className={cn(
                                   dayBoundary
-                                    ? "border-l-2 border-l-[var(--border-strong)] px-2 py-1.5"
-                                    : "border-l border-[var(--border)] px-2 py-1.5",
-                                  visual?.widthClass,
+                                    ? cn(
+                                        useAdminWeekColumnWidths
+                                          ? adminDaySeparator
+                                              : "border-l-2 border-l-[var(--border-strong)]",
+                                        isWeek || denseGrid ? "px-1 py-0.5" : "px-2 py-1.5",
+                                      )
+                                    : cn(
+                                        "border-l border-[var(--border)]",
+                                        isWeek || denseGrid ? "px-1 py-0.5" : "px-2 py-1.5",
+                                      ),
+                                  columnWidth,
+                                  dimPast && PAST_CELL,
                                 )}
                               />
                             );
@@ -530,18 +685,20 @@ export function CourtCalendarGrid({
                           const isBlockSelected =
                             adminBlockMode && selectedKeys.has(blockKey);
                           let continuesFromAbove = false;
-                          if (
-                            slot.state.kind === "recurring_block" &&
-                            hourIdx > 0
-                          ) {
+                          let continuesToBelow = false;
+                          if (hourIdx > 0) {
                             const prevHour = data.hours[hourIdx - 1];
                             const prev = slotsByCourtDayHour.get(
                               `${court.id}|${d.date}T${prevHour}`,
                             );
-                            continuesFromAbove =
-                              prev?.state.kind === "recurring_block" &&
-                              prev.state.recurringBlockId ===
-                                slot.state.recurringBlockId;
+                            continuesFromAbove = slotContinuesFrom(prev, slot);
+                          }
+                          if (hourIdx < data.hours.length - 1) {
+                            const nextHour = data.hours[hourIdx + 1];
+                            const next = slotsByCourtDayHour.get(
+                              `${court.id}|${d.date}T${nextHour}`,
+                            );
+                            continuesToBelow = slotContinuesTo(slot, next);
                           }
                           return (
                             <SlotCell
@@ -557,14 +714,20 @@ export function CourtCalendarGrid({
                               }
                               showSlimWalkon={showSlimWalkonColumn}
                               continuesFromAbove={continuesFromAbove}
+                              continuesToBelow={continuesToBelow}
                               dayBoundary={dayBoundary}
                               dimPast={dimPast}
-                              showNowLine={showNowLine}
                               compact={isWeek || denseGrid}
-                              widthClass={visual?.widthClass}
-                              surfaceTintClass={visual?.surfaceTintClass}
+                              adminWeekStyle={useAdminWeekColumnWidths}
+                              widthClass={columnWidth}
+                              surfaceTintClass={
+                                useAdminWeekColumnWidths
+                                  ? undefined
+                                  : visual?.surfaceTintClass
+                              }
                               onClick={() => {
                                 if (adminBlockMode) return;
+                                if (dimPast) return;
                                 if (
                                   slot.state.kind === "free" &&
                                   court.isBookable
@@ -624,7 +787,10 @@ export function CourtCalendarGrid({
         );
       })}
 
-      <Legend viewerRole={viewerRole} />
+      <Legend
+        viewerRole={viewerRole}
+        adminWeekStyle={useAdminWeekColumnWidths}
+      />
 
       {selected?.kind === "free" && viewerRole === "admin" && (
         <AdminCreateBookingDialog
@@ -722,6 +888,69 @@ function addOneHour(hhmm: string) {
 // Slot cell
 // ---------------------------------------------------------------------------
 
+function slotContinuesFrom(
+  prev: CalendarSlot | undefined,
+  slot: CalendarSlot,
+): boolean {
+  if (!prev) return false;
+  if (slot.state.kind === "class" && prev.state.kind === "class") {
+    return prev.state.classSessionId === slot.state.classSessionId;
+  }
+  if (
+    slot.state.kind === "recurring_block" &&
+    prev.state.kind === "recurring_block"
+  ) {
+    return prev.state.recurringBlockId === slot.state.recurringBlockId;
+  }
+  return false;
+}
+
+function slotContinuesTo(
+  slot: CalendarSlot,
+  next: CalendarSlot | undefined,
+): boolean {
+  if (!next) return false;
+  return slotContinuesFrom(slot, next);
+}
+
+function formatSlotTimeRange(start: Date, end: Date): string {
+  const fmt = new Intl.DateTimeFormat("en-NL", {
+    timeZone: "Europe/Amsterdam",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${fmt.format(start)}–${fmt.format(end)}`;
+}
+
+// ---------------------------------------------------------------------------
+// Slot cell
+// ---------------------------------------------------------------------------
+
+const BOOKABLE_SLOT_BASE =
+  "block w-full select-none rounded border text-center text-[10px] uppercase tracking-wide transition-[box-shadow,background-color,border-color,opacity] duration-[var(--duration-fast)]";
+
+const BOOKABLE_SLOT_INTERACTIVE = cn(
+  "border-dashed text-[var(--muted-foreground)]",
+  "hover:border-[var(--primary)] hover:bg-[var(--primary)]/10 hover:text-[var(--foreground)]",
+  "hover:shadow-[var(--shadow-elevated)] hover:ring-2 hover:ring-[var(--ring)]",
+);
+
+/** Flat dashed cells — keeps the week grid dense (no control-well lift). */
+const BOOKABLE_SLOT_INTERACTIVE_COMPACT = cn(
+  "border-dashed border-[var(--border)] bg-transparent text-[var(--muted-foreground)]/90",
+  "hover:border-[var(--primary)]/45 hover:bg-[var(--primary)]/5 hover:text-[var(--foreground)]",
+);
+
+const BOOKABLE_SLOT_INTERACTIVE_DAY = cn(
+  BOOKABLE_SLOT_INTERACTIVE,
+  "control-well py-1",
+);
+
+const BOOKABLE_SLOT_PAST = cn(
+  PAST_SLOT_MUTED,
+  "cursor-not-allowed border-[var(--border)] bg-transparent text-[var(--muted-foreground)]/70",
+);
+
 function SlotCell({
   slot,
   court,
@@ -733,10 +962,11 @@ function SlotCell({
   onToggleBlockSelection,
   showSlimWalkon,
   continuesFromAbove,
+  continuesToBelow,
   dayBoundary,
   dimPast,
-  showNowLine,
   compact,
+  adminWeekStyle,
   widthClass,
   surfaceTintClass,
 }: {
@@ -750,22 +980,37 @@ function SlotCell({
   onToggleBlockSelection?: () => void;
   showSlimWalkon?: boolean;
   continuesFromAbove?: boolean;
+  continuesToBelow?: boolean;
   dayBoundary?: boolean;
   dimPast?: boolean;
-  showNowLine?: boolean;
   compact?: boolean;
+  adminWeekStyle?: boolean;
   widthClass?: string;
   surfaceTintClass?: string;
 }) {
-  const cellPy = compact ? "py-1" : "py-1.5";
+  const cellPy = compact ? "py-0.5" : "py-1.5";
+  const cellPx = compact ? "px-1" : "px-2";
+  const adminDaySep =
+    "border-l-[4px] border-l-[var(--border-strong)] pl-0.5";
+  const bookableInteractive = compact
+    ? cn(BOOKABLE_SLOT_INTERACTIVE_COMPACT, "py-0.5")
+    : BOOKABLE_SLOT_INTERACTIVE_DAY;
   const baseCell = cn(
     dayBoundary
-      ? `border-l-2 border-l-[var(--border-strong)] px-2 ${cellPy} text-xs leading-tight`
-      : `border-l border-[var(--border)] px-2 ${cellPy} text-xs leading-tight`,
+      ? adminWeekStyle
+        ? `${adminDaySep} ${cellPx} ${cellPy} text-xs leading-tight`
+        : `border-l-2 border-l-[var(--border-strong)] ${cellPx} ${cellPy} text-xs leading-tight`
+      : `border-l border-[var(--border)] ${cellPx} ${cellPy} text-xs leading-tight`,
     widthClass,
-    dimPast && "opacity-60",
-    showNowLine && "shadow-[inset_0_2px_0_0_rgb(239,68,68)]",
+    dimPast && PAST_CELL,
   );
+  const reservedCls = memberReservedSlotClasses();
+  const bookableButtonCls = cn(
+    BOOKABLE_SLOT_BASE,
+    dimPast ? cn(BOOKABLE_SLOT_PAST, "py-0.5") : bookableInteractive,
+  );
+  const bookedButtonHover =
+    "transition-[box-shadow,opacity] duration-[var(--duration-fast)] hover:opacity-90 hover:ring-2 hover:ring-[var(--ring)] hover:shadow-[var(--shadow-sm)]";
 
   switch (slot.state.kind) {
     case "free":
@@ -777,17 +1022,21 @@ function SlotCell({
                 ? "border-l-2 border-l-[var(--border-strong)] p-0"
                 : "border-l border-[var(--border)] p-0",
               widthClass,
-              dimPast && "opacity-60",
-              showNowLine && "shadow-[inset_0_2px_0_0_rgb(239,68,68)]",
-              "bg-[repeating-linear-gradient(45deg,_transparent,_transparent_4px,_var(--muted)_4px,_var(--muted)_8px)]",
+              dimPast && PAST_CELL,
+              !dimPast &&
+                "bg-[repeating-linear-gradient(45deg,_transparent,_transparent_4px,_var(--muted)_4px,_var(--muted)_8px)]",
+              dimPast && "bg-[var(--muted)]/35",
             )}
           >
             <button
               type="button"
               onClick={onClick}
-              disabled={adminBlockMode}
+              disabled={adminBlockMode || dimPast}
               className={cn(
-                "block h-full w-full text-[var(--muted-foreground)] hover:bg-[var(--muted)]/40 hover:text-[var(--foreground)]",
+                "block h-full w-full text-[var(--muted-foreground)] transition-colors duration-[var(--duration-fast)]",
+                !dimPast &&
+                  "hover:bg-[var(--muted)]/40 hover:text-[var(--foreground)]",
+                dimPast && "cursor-not-allowed text-[var(--muted-foreground)]/70",
                 showSlimWalkon
                   ? "px-0 py-1"
                   : "px-1 py-1.5 text-center text-[10px] uppercase tracking-wide",
@@ -795,7 +1044,9 @@ function SlotCell({
               title={
                 adminBlockMode
                   ? "Not selectable — walk-on only"
-                  : "Walk-on rules"
+                  : dimPast
+                    ? "Past slot"
+                    : "Walk-on rules"
               }
             >
               {showSlimWalkon ? (
@@ -820,13 +1071,14 @@ function SlotCell({
               }}
               disabled={dimPast}
               className={cn(
-                "block w-full select-none rounded border border-dashed border-[var(--border)]/60 py-1 text-center text-[10px] uppercase tracking-wide text-[var(--muted-foreground)] transition-colors",
-                dimPast && "cursor-not-allowed opacity-50",
-                isBlockSelected &&
-                  "border-solid border-amber-400 bg-amber-100/60 text-amber-900",
-                !dimPast &&
-                  !isBlockSelected &&
-                  "hover:border-[var(--accent)] hover:bg-[var(--accent)]/10 hover:text-[var(--foreground)]",
+                BOOKABLE_SLOT_BASE,
+                dimPast
+                  ? cn(BOOKABLE_SLOT_PAST, "py-0.5")
+                  : cn(
+                      bookableInteractive,
+                      isBlockSelected &&
+                        "border-solid border-[var(--warning)] bg-[var(--warning-soft)]/60 text-[var(--warning-ink)] hover:ring-[var(--warning)]/40",
+                    ),
               )}
               title={dimPast ? "Past slot" : "Tap to select for block"}
             >
@@ -836,15 +1088,15 @@ function SlotCell({
         );
       }
       return (
-        <td className={cn(baseCell, surfaceTintClass)}>
+        <td className={cn(baseCell, !dimPast && surfaceTintClass)}>
           <button
             type="button"
             onClick={onClick}
-            className={cn(
-              "block w-full select-none rounded border border-dashed border-[var(--border)]/60 py-1 text-center text-[10px] uppercase tracking-wide text-[var(--muted-foreground)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent)]/10 hover:text-[var(--foreground)]",
-            )}
+            disabled={dimPast}
+            className={bookableButtonCls}
+            title={dimPast ? "Past slot" : undefined}
           >
-            {compact ? "+" : "book"}
+            {dimPast ? "—" : compact ? "+" : "book"}
           </button>
         </td>
       );
@@ -854,7 +1106,11 @@ function SlotCell({
         return (
           <td className={baseCell}>
             <div
-              className="block w-full rounded border border-violet-300 bg-violet-100 px-1 py-1 text-left text-[11px] text-violet-900"
+              className={cn(
+                "block w-full rounded px-1 py-0.5 text-left text-[11px]",
+                reservedCls,
+                dimPast && PAST_SLOT_MUTED,
+              )}
               title="Reserved"
             >
               <div className="truncate font-medium">Reserved</div>
@@ -863,14 +1119,15 @@ function SlotCell({
         );
       }
       const isOwn = slot.state.bookedByPersonId === viewerPersonId;
+      const bookingArgs = {
+        purpose: slot.state.purpose,
+        status: slot.state.status,
+        isOwn,
+      };
       const cls =
-        slot.state.status === "cancellation_requested"
-          ? "bg-amber-100 text-amber-900 border-amber-300"
-          : slot.state.purpose === "coaching"
-            ? "bg-violet-100 text-violet-900 border-violet-300"
-            : isOwn
-              ? "bg-emerald-100 text-emerald-900 border-emerald-300"
-              : "bg-sky-100 text-sky-900 border-sky-300";
+        adminWeekStyle && viewerRole === "admin"
+          ? adminCompactBookingSlotClasses(bookingArgs)
+          : bookingSlotColorClasses(bookingArgs);
       const fullName = slot.state.bookedByName || "—";
       // In compact (week) mode use just the first name to fit in narrow cols.
       const displayName = compact ? fullName.split(" ")[0] : fullName;
@@ -880,8 +1137,10 @@ function SlotCell({
             type="button"
             onClick={onClick}
             className={cn(
-              "block w-full rounded border px-1 py-1 text-left text-[11px] hover:opacity-80",
+              "block w-full rounded border px-1 py-0.5 text-left text-[11px]",
               cls,
+              dimPast && PAST_SLOT_MUTED,
+              !dimPast && bookedButtonHover,
             )}
             title={[
               `${fullName} (${slot.state.purpose})`,
@@ -909,17 +1168,71 @@ function SlotCell({
     case "class": {
       const memberLabel = viewerRole === "member" ? "Reserved" : slot.state.label;
       const memberTitle = viewerRole === "member" ? "Reserved" : slot.state.label;
+      const deliveryArgs = {
+        deliveryMode: slot.state.deliveryMode,
+        classType: slot.state.classType,
+      };
+      const useAdminCompactStyle = adminWeekStyle && viewerRole === "admin";
+      const cls =
+        viewerRole === "member"
+          ? reservedCls
+          : useAdminCompactStyle
+            ? adminCompactClassSlotClasses(deliveryArgs)
+            : classSlotColorClasses(deliveryArgs);
+      const mergeBorder = useAdminCompactStyle
+        ? adminCompactClassMergeBorderClasses({
+            continuesFromAbove,
+            continuesToBelow,
+          })
+        : classSlotMergeBorderClasses({
+            ...deliveryArgs,
+            continuesFromAbove,
+            continuesToBelow,
+            isMember: viewerRole === "member",
+          });
+      const category =
+        viewerRole === "admin"
+          ? scheduleClassCategoryLabel(deliveryArgs)
+          : "class";
+      const adminCompact = compact && viewerRole === "admin";
+      const showBlockLabel = !continuesFromAbove;
+      const sessionTimeRange = formatSlotTimeRange(
+        slot.state.sessionStartsAtUtc,
+        slot.state.sessionEndsAtUtc,
+      );
       return (
         <td
-          className={cn(baseCell, "bg-indigo-100 text-indigo-900")}
+          className={cn(
+            baseCell,
+            cls,
+            mergeBorder,
+            continuesFromAbove && "pt-0",
+            continuesToBelow && "pb-0",
+            dimPast && PAST_SLOT_MUTED,
+          )}
           title={memberTitle}
         >
-          <div className="truncate text-[11px] font-medium">{memberLabel}</div>
-          {!compact && (
-            <div className="text-[9px] uppercase tracking-wide opacity-75">
-              class
-            </div>
-          )}
+          {showBlockLabel &&
+            (adminCompact ? (
+              <div className="truncate text-[10px] leading-tight">
+                <span className="font-semibold tabular-nums">
+                  {sessionTimeRange}
+                </span>
+                <span className="text-[var(--muted-foreground)]"> · </span>
+                {shortenAdminClassLabel(memberLabel)}
+              </div>
+            ) : (
+              <>
+                <div className="truncate text-[11px] font-medium">
+                  {memberLabel}
+                </div>
+                {!compact && (
+                  <div className="text-[9px] uppercase tracking-wide opacity-75">
+                    {category}
+                  </div>
+                )}
+              </>
+            ))}
         </td>
       );
     }
@@ -944,8 +1257,13 @@ function SlotCell({
             isInfoOnly
               ? "bg-stone-100 text-stone-600"
               : "bg-stone-200 text-stone-700",
+            dimPast && PAST_SLOT_MUTED,
             continuesFromAbove &&
               (isInfoOnly ? "border-t-stone-100" : "border-t-stone-200"),
+            continuesToBelow &&
+              (isInfoOnly ? "border-b-stone-100" : "border-b-stone-200"),
+            continuesFromAbove && "pt-0",
+            continuesToBelow && "pb-0",
             isInfoOnly && "cursor-pointer hover:bg-stone-50",
           )}
           title={blockTitle}
@@ -1021,7 +1339,9 @@ function CreateBookingDialog({
     onSuccess: () => onOpenChange(false),
   });
   const isPending = checkoutPending || createPending;
-  const [purpose, setPurpose] = useState<"personal" | "coaching">("personal");
+  const [purpose] = useState<"personal" | "coaching">(
+    viewerRole === "coach" ? "coaching" : "personal",
+  );
   const [partyEntries, setPartyEntries] = useState<PartyEntry[]>([]);
   const [notes, setNotes] = useState("");
   // Coaching-only duration override. Members and personal bookings always
@@ -1070,7 +1390,11 @@ function CreateBookingDialog({
           {
             amountEur: priceDueEur,
             description: `${courtName} · ${clubName} · ${slot.startsAtLocal.replace("T", " ")}`,
-            returnUrl: "/portal/bookings",
+            returnUrl: portalPurchaseSuccessUrl({
+              kind: "booking",
+              next: "/portal/bookings",
+              amountEur: priceDueEur,
+            }),
             action: {
               kind: "court_booking_create",
               payload: bookingInput,
@@ -1107,30 +1431,9 @@ function CreateBookingDialog({
 
         <div className="space-y-3">
           {viewerRole === "coach" && (
-            <div className="space-y-1.5">
-              <Label>Purpose</Label>
-              <p className="text-xs text-[var(--muted-foreground)]">
-                Personal play for yourself, or a{" "}
-                {t.privateLesson.singular.toLowerCase()} with students on the
-                calendar.
-              </p>
-              <Select
-                value={purpose}
-                onValueChange={(v) =>
-                  setPurpose(v as "personal" | "coaching")
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="personal">Personal play</SelectItem>
-                  <SelectItem value="coaching">
-                    {t.privateLesson.singular}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <p className="text-xs text-[var(--muted-foreground)]">
+              Book a {t.privateLesson.singular.toLowerCase()} on this court.
+            </p>
           )}
 
           {canPickDuration && (
@@ -1204,7 +1507,7 @@ function CreateBookingDialog({
           </div>
 
           {error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded-md bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-ink)]">
               {error}
             </p>
           )}
@@ -1297,7 +1600,7 @@ function BookingDetailDialog({
                 {slot.startsAtLocal.replace("T", " ")} · {courtName}
               </DialogDescription>
             </DialogHeader>
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <p className="rounded-md bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning-ink)]">
               {slot.state.bookedByName} asked the office to cancel this
               coaching session.
               {slot.state.cancellationReason
@@ -1383,7 +1686,7 @@ function BookingDetailDialog({
         )}
 
         {slot.state.status === "cancellation_requested" && (
-          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <p className="rounded-md bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning-ink)]">
             Awaiting admin decision on the deletion request.
           </p>
         )}
@@ -1405,7 +1708,7 @@ function BookingDetailDialog({
         )}
 
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-ink)]">
             {error}
           </p>
         )}
@@ -1488,23 +1791,63 @@ function WalkOnInfoDialog({
 // Legend
 // ---------------------------------------------------------------------------
 
-function Legend({ viewerRole }: { viewerRole: ViewerRole }) {
-  const t = useTerms();
+function Legend({
+  viewerRole,
+  adminWeekStyle,
+}: {
+  viewerRole: ViewerRole;
+  adminWeekStyle?: boolean;
+}) {
   if (viewerRole === "member") {
     return (
       <div className="flex flex-wrap gap-3 text-[11px] text-[var(--muted-foreground)]">
         <LegendChip className="border-dashed" label="Available" />
         <LegendChip
-          className="border-emerald-300 bg-emerald-100 text-emerald-900"
+          className="border-[var(--success)]/50 bg-[var(--success-soft)] text-[var(--success-ink)]"
           label="Your booking"
         />
         <LegendChip
-          className="border-sky-300 bg-sky-100 text-sky-900"
+          className="border-[var(--delivery-onsite)]/50 bg-[var(--delivery-onsite-soft)] text-[var(--delivery-onsite-ink)]"
           label="Other member"
         />
         <LegendChip
-          className="border-stone-300 bg-stone-200 text-stone-700"
+          className="border-[var(--border-strong)] bg-[var(--surface-strong)] text-[var(--muted-foreground)]"
           label="Reserved"
+        />
+      </div>
+    );
+  }
+  if (adminWeekStyle) {
+    return (
+      <div className="flex flex-wrap gap-3 text-[11px] text-[var(--muted-foreground)]">
+        <LegendChip className="border-dashed" label="Available" />
+        <LegendChip
+          className={adminCompactLegendAccent("success")}
+          label="Your booking"
+        />
+        <LegendChip
+          className={adminCompactLegendAccent("onsite")}
+          label="Other member"
+        />
+        <LegendChip
+          className={adminCompactLegendAccent("private")}
+          label="Private lesson"
+        />
+        <LegendChip
+          className={adminCompactLegendAccent("warning")}
+          label="Deletion pending"
+        />
+        <LegendChip
+          className={adminCompactLegendAccent("at_club")}
+          label="At club lesson"
+        />
+        <LegendChip
+          className={adminCompactLegendAccent("pickup")}
+          label="Pickup lesson"
+        />
+        <LegendChip
+          className="border border-[var(--border)] bg-[var(--surface-strong)] text-[var(--muted-foreground)]"
+          label="Blocked"
         />
       </div>
     );
@@ -1513,23 +1856,34 @@ function Legend({ viewerRole }: { viewerRole: ViewerRole }) {
     <div className="flex flex-wrap gap-3 text-[11px] text-[var(--muted-foreground)]">
       <LegendChip className="border-dashed" label="Available" />
       <LegendChip
-        className="border-emerald-300 bg-emerald-100 text-emerald-900"
+        className="border-[var(--success)]/50 bg-[var(--success-soft)] text-[var(--success-ink)]"
         label="Your booking"
       />
       <LegendChip
-        className="border-sky-300 bg-sky-100 text-sky-900"
+        className="border-[var(--delivery-onsite)]/50 bg-[var(--delivery-onsite-soft)] text-[var(--delivery-onsite-ink)]"
         label="Other member"
       />
       <LegendChip
-        className="border-violet-300 bg-violet-100 text-violet-900"
-        label={`${t.privateLesson.singular} / teaching`}
+        className="border-[var(--border-strong)] bg-[var(--surface-strong)] text-[var(--muted-foreground)]"
+        label="Reserved"
       />
       <LegendChip
-        className="border-amber-300 bg-amber-100 text-amber-900"
+        className="border-[var(--delivery-private)]/50 bg-[var(--delivery-private-soft)] text-[var(--delivery-private-ink)]"
+        label="Private lesson"
+      />
+      <LegendChip
+        className="border-[var(--warning)]/50 bg-[var(--warning-soft)] text-[var(--warning-ink)]"
         label="Deletion pending"
       />
-      <LegendChip className="bg-indigo-100 text-indigo-900" label={t.class.singular} />
-      <LegendChip className="bg-stone-200 text-stone-700" label="Blocked" />
+      <LegendChip
+        className="border-[var(--delivery-at-club)]/50 bg-[var(--delivery-at-club-soft)] text-[var(--delivery-at-club-ink)]"
+        label="At club lesson"
+      />
+      <LegendChip
+        className="border-[var(--delivery-pickup)]/50 bg-[var(--delivery-pickup-soft)] text-[var(--delivery-pickup-ink)]"
+        label="Pickup lesson"
+      />
+      <LegendChip className="bg-[var(--surface-strong)] text-[var(--muted-foreground)]" label="Blocked" />
     </div>
   );
 }

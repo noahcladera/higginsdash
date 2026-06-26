@@ -11,6 +11,7 @@ import { themeForClubs, clubTheme } from "@/lib/club-theme";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { portalPurchaseSuccessUrl } from "@/lib/portal/purchase-success-url";
 import { startCheckout as beginCheckout } from "@/lib/payments/start-checkout";
 import { useActionFeedback } from "@/lib/feedback";
 import { upgradeMembership } from "./actions";
@@ -63,7 +64,11 @@ function OfferCard({ offer }: { offer: UpgradeOffer }) {
             tier: offer.target.tier,
             clubs: offer.target.clubs,
           })}`,
-          returnUrl: "/portal/membership",
+          returnUrl: portalPurchaseSuccessUrl({
+            kind: "membership",
+            next: "/portal/membership",
+            amountEur: offer.netPrice,
+          }),
           action: {
             kind: "membership_upgrade",
             payload: { offerId: offer.id },
@@ -77,7 +82,7 @@ function OfferCard({ offer }: { offer: UpgradeOffer }) {
   return (
     <article
       className={cn(
-        "fade-in rounded-[var(--radius-lg)] p-5 sm:p-6 shadow-[var(--shadow-sm)]",
+        "fade-in elev-card p-5 sm:p-6",
         theme.bg,
       )}
     >

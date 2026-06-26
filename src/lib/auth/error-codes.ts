@@ -12,6 +12,8 @@ export type LoginErrorCode =
   | "signup_succeeded_signin_failed"
   | "auth_callback_failed";
 
+export type AuthNoticeCode = "password_reset";
+
 export type ErrorVariant = "destructive" | "amber";
 
 export interface AuthErrorMessage {
@@ -66,6 +68,16 @@ export const AUTH_ERROR_MESSAGES: Record<LoginErrorCode, AuthErrorMessage> = {
   },
 };
 
+export const AUTH_NOTICE_MESSAGES: Record<
+  AuthNoticeCode,
+  AuthErrorMessage
+> = {
+  password_reset: {
+    variant: "amber",
+    body: "Your password was reset. Sign in with your new password.",
+  },
+};
+
 /**
  * Type guard for a raw query-string value. Use before passing strings to
  * the banner components so unknown codes never produce stray UI.
@@ -75,4 +87,11 @@ export function isLoginErrorCode(
 ): value is LoginErrorCode {
   if (!value) return false;
   return value in AUTH_ERROR_MESSAGES;
+}
+
+export function isAuthNoticeCode(
+  value: string | null | undefined,
+): value is AuthNoticeCode {
+  if (!value) return false;
+  return value in AUTH_NOTICE_MESSAGES;
 }

@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { computeClassTiming } from "@/lib/classes/timing";
 import type { ClassDeliveryMode } from "@/lib/classes/timing";
+import {
+  eventSessionDedupeKey,
+  occurrenceDayBounds,
+  sessionMatchesEnrollmentScope,
+} from "@/lib/classes/event-occurrence";
 
 /**
  * Member-facing calendar event. One discriminated union so the grid can
@@ -98,9 +103,18 @@ export async function getMemberCalendarEvents(
           select: {
             studentPersonId: true,
             classSeriesId: true,
+            eventOccurrenceDate: true,
+            classSeries: { select: { classType: true } },
           },
         })
-      : Promise.resolve([] as { studentPersonId: string; classSeriesId: string }[]),
+      : Promise.resolve(
+          [] as Array<{
+            studentPersonId: string;
+            classSeriesId: string;
+            eventOccurrenceDate: Date | null;
+            classSeries: { classType: string };
+          }>,
+        ),
     prisma.courtBooking.findMany({
       where: {
         startsAt: { gte: weekStart, lt: weekEnd },
@@ -122,26 +136,60 @@ export async function getMemberCalendarEvents(
     }),
   ]);
 
-  // Build series → [studentPersonId, ...] map so one session expands into
-  // one block per enrolled student (siblings in the same class each get
-  // their own coloured block).
-  const seriesToStudents = new Map<string, string[]>();
-  for (const e of enrollments) {
-    const arr = seriesToStudents.get(e.classSeriesId) ?? [];
-    if (!arr.includes(e.studentPersonId)) arr.push(e.studentPersonId);
-    seriesToStudents.set(e.classSeriesId, arr);
-  }
-  const seriesIds = Array.from(seriesToStudents.keys());
+  // Scope sessions to the week window. Events only fetch their enrolled
+  // occurrence when it falls inside `[weekStart, weekEnd)`.
+  const nonEventSeriesIds = new Set<string>();
+  const eventSessionClauses: Array<{
+    classSeriesId: string;
+    startsAtGte: Date;
+    startsAtLt: Date;
+  }> = [];
+  const seenEventKeys = new Set<string>();
 
-  const sessions =
-    seriesIds.length > 0
-      ? await prisma.classSession.findMany({
-          where: {
-            classSeriesId: { in: seriesIds },
+  for (const e of enrollments) {
+    if (e.classSeries.classType === "event") {
+      if (e.eventOccurrenceDate != null) {
+        const { gte, lt } = occurrenceDayBounds(e.eventOccurrenceDate);
+        if (lt <= weekStart || gte >= weekEnd) continue;
+        const key = `${e.classSeriesId}::${gte.toISOString().slice(0, 10)}`;
+        if (seenEventKeys.has(key)) continue;
+        seenEventKeys.add(key);
+        eventSessionClauses.push({
+          classSeriesId: e.classSeriesId,
+          startsAtGte: gte < weekStart ? weekStart : gte,
+          startsAtLt: lt > weekEnd ? weekEnd : lt,
+        });
+      } else {
+        nonEventSeriesIds.add(e.classSeriesId);
+      }
+    } else {
+      nonEventSeriesIds.add(e.classSeriesId);
+    }
+  }
+
+  const sessionWhereParts = [
+    ...eventSessionClauses.map((w) => ({
+      classSeriesId: w.classSeriesId,
+      startsAt: { gte: w.startsAtGte, lt: w.startsAtLt },
+      cancelledAt: null,
+      status: { not: "cancelled" as const },
+    })),
+    ...(nonEventSeriesIds.size > 0
+      ? [
+          {
+            classSeriesId: { in: Array.from(nonEventSeriesIds) },
             startsAt: { gte: weekStart, lt: weekEnd },
             cancelledAt: null,
-            status: { not: "cancelled" },
+            status: { not: "cancelled" as const },
           },
+        ]
+      : []),
+  ];
+
+  const sessions =
+    sessionWhereParts.length > 0
+      ? await prisma.classSession.findMany({
+          where: { OR: sessionWhereParts },
           orderBy: { startsAt: "asc" },
           include: {
             classSeries: {
@@ -165,8 +213,20 @@ export async function getMemberCalendarEvents(
       : [];
 
   const sessionEvents: MemberCalendarEvent[] = [];
+  const seenEventSessionKeys = new Set<string>();
+  const legacyEventEarliest = new Map<string, Date>();
+
   for (const s of sessions) {
     const series = s.classSeries;
+    const matchingEnrollments = enrollments.filter((e) => {
+      if (e.classSeriesId !== s.classSeriesId) return false;
+      return sessionMatchesEnrollmentScope(s.startsAt, {
+        classSeriesId: e.classSeriesId,
+        classType: e.classSeries.classType,
+        eventOccurrenceDate: e.eventOccurrenceDate,
+      });
+    });
+
     const timing = computeClassTiming({
       session: { startsAt: s.startsAt, endsAt: s.endsAt },
       series: {
@@ -185,8 +245,28 @@ export async function getMemberCalendarEvents(
       ),
     );
 
-    const owners = seriesToStudents.get(s.classSeriesId) ?? [];
-    for (const ownerPersonId of owners) {
+    for (const enrollment of matchingEnrollments) {
+      const ownerPersonId = enrollment.studentPersonId;
+      if (enrollment.classSeries.classType === "event") {
+        if (enrollment.eventOccurrenceDate == null) {
+          const legacyKey = `${ownerPersonId}::${enrollment.classSeriesId}`;
+          const earliest = legacyEventEarliest.get(legacyKey);
+          if (earliest == null || s.startsAt.getTime() < earliest.getTime()) {
+            legacyEventEarliest.set(legacyKey, s.startsAt);
+          } else {
+            continue;
+          }
+        }
+
+        const dedupeKey = eventSessionDedupeKey(
+          ownerPersonId,
+          enrollment.classSeriesId,
+          s.startsAt,
+        );
+        if (seenEventSessionKeys.has(dedupeKey)) continue;
+        seenEventSessionKeys.add(dedupeKey);
+      }
+
       const meta = colorByStudent.get(ownerPersonId);
       if (!meta) continue;
       sessionEvents.push({

@@ -1,0 +1,220 @@
+[
+  {
+    "flow": "D",
+    "persona": "adult solo member",
+    "route": "/portal",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 5817,
+    "notes": "Member home greeting + booking CTA",
+    "markers": [
+      "Good",
+      "Book a court"
+    ]
+  },
+  {
+    "flow": "D",
+    "persona": "adult solo member",
+    "route": "/portal/programs",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 2285,
+    "notes": "Programs catalog loads",
+    "markers": [
+      "Enrollment"
+    ]
+  },
+  {
+    "flow": "D",
+    "persona": "adult solo member",
+    "route": "/portal/classes",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 2335,
+    "notes": "My classes page",
+    "markers": []
+  },
+  {
+    "flow": "G",
+    "persona": "adult solo member",
+    "route": "/portal/book",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 2423,
+    "notes": "Court booking (case-insensitive partial match)",
+    "markers": [
+      "court",
+      "book"
+    ]
+  },
+  {
+    "flow": "K",
+    "persona": "adult solo member",
+    "route": "/portal/profile",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 2417,
+    "notes": "Profile + calendar sync",
+    "markers": [
+      "Profile",
+      "calendar"
+    ]
+  },
+  {
+    "flow": "L",
+    "persona": "adult solo member",
+    "route": "/portal/inbox",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 2386,
+    "notes": "Inbox",
+    "markers": []
+  },
+  {
+    "flow": "J",
+    "persona": "adult solo member",
+    "route": "/portal/membership",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 3688,
+    "notes": "Membership management",
+    "markers": [
+      "membership"
+    ]
+  },
+  {
+    "flow": "T",
+    "persona": "adult solo member",
+    "route": "/portal/payments",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 2343,
+    "notes": "Payment history",
+    "markers": []
+  },
+  {
+    "flow": "E",
+    "persona": "returning parent",
+    "route": "/portal",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 3297,
+    "notes": "Parent home — family context",
+    "markers": [
+      "family",
+      "Good"
+    ]
+  },
+  {
+    "flow": "E",
+    "persona": "returning parent",
+    "route": "/portal/family",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 2336,
+    "notes": "Family management with children",
+    "markers": [
+      "family",
+      "child"
+    ]
+  },
+  {
+    "flow": "E",
+    "persona": "returning parent",
+    "route": "/portal/classes",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 1865,
+    "notes": "Children's classes",
+    "markers": []
+  },
+  {
+    "flow": "E",
+    "persona": "returning parent",
+    "route": "/portal/programs",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 1731,
+    "notes": "Enrollment catalog for parent",
+    "markers": [
+      "Enrollment"
+    ]
+  },
+  {
+    "flow": "F",
+    "persona": "parent no kids yet",
+    "route": "/portal/family",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 2116,
+    "notes": "Family page for household without children",
+    "markers": []
+  },
+  {
+    "flow": "F",
+    "persona": "parent no kids yet",
+    "route": "/portal/profile",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 2081,
+    "notes": "Profile as add-child entry point",
+    "markers": [
+      "Profile"
+    ]
+  },
+  {
+    "flow": "B",
+    "persona": "parent no membership?",
+    "route": "/portal/membership",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 4707,
+    "notes": "Membership buy flow entry",
+    "markers": [
+      "membership"
+    ]
+  },
+  {
+    "flow": "B",
+    "persona": "parent no membership?",
+    "route": "/portal/membership#buy",
+    "status": "pass",
+    "httpStatus": 200,
+    "elapsedMs": 2156,
+    "notes": "Membership buy anchor",
+    "markers": [
+      "membership"
+    ]
+  },
+  {
+    "flow": "A",
+    "persona": "anonymous",
+    "route": "/login",
+    "status": "fail",
+    "httpStatus": 200,
+    "elapsedMs": 308,
+    "notes": "Login page with password method; Redirected to login — session not accepted",
+    "markers": [
+      "Sign in",
+      "Password"
+    ]
+  },
+  {
+    "flow": "A",
+    "persona": "anonymous",
+    "route": "/signup",
+    "status": "partial",
+    "httpStatus": 200,
+    "elapsedMs": 580,
+    "notes": "Signup page; Missing markers: Sign up, household",
+    "markers": []
+  },
+  {
+    "flow": "Non-member vs member home",
+    "persona": "parent.single",
+    "route": "/portal",
+    "status": "pass",
+    "elapsedMs": 0,
+    "notes": "MemberHome detected (has active membership)"
+  }
+]

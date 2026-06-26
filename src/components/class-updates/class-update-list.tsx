@@ -46,7 +46,7 @@ export function ClassUpdateList({
         return (
           <li
             key={u.id}
-            className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-sm)]"
+            className="elev-card rounded-md p-4"
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="text-sm font-semibold">{u.title}</h3>

@@ -28,7 +28,7 @@ export function SeasonCalendar() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 sm:p-6 shadow-[var(--shadow-sm)]">
+      <div className="elev-card p-5 sm:p-6">
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
             {year}
@@ -254,7 +254,7 @@ function SummaryCard({
       ? "bg-[var(--triaz-soft)] text-[var(--triaz-ink)]"
       : tone === "randwijck"
         ? "bg-[var(--randwijck-soft)] text-[var(--randwijck-ink)]"
-        : "bg-[var(--warning-soft)] text-[oklch(0.30_0.10_75)]";
+        : "bg-[var(--warning-soft)] text-[var(--warning-ink)]";
   return (
     <div className={cn("rounded-[var(--radius-md)] px-4 py-3", palette)}>
       <div className="text-sm font-semibold">{title}</div>

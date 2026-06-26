@@ -109,7 +109,7 @@ export default async function AdminCoachPrivateLessonsPage({
       />
 
       {sp.invoice && (
-        <div className="rounded-md border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        <div className="rounded-md border border-[var(--success)]/50 bg-[var(--success-soft)] px-4 py-3 text-sm text-[var(--success-ink)]">
           Invoice{" "}
           <span className="font-mono font-medium">{sp.invoice}</span>{" "}
           generated successfully.

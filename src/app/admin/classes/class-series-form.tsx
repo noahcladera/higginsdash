@@ -17,11 +17,13 @@ import { EventPricingField } from "./_components/event-pricing-field";
 import { CampOptionsField } from "./_components/camp-options-field";
 import { AgeAndLevelField } from "./_components/age-and-level-field";
 import { GroupsField, type GroupRow } from "./_components/groups-field";
+import { EventScheduleStep } from "./_components/event-schedule-step";
 import {
   isYouthPickupLesson,
   useSplitGroupsLesson,
 } from "@/lib/classes/class-form-mode";
 import { deriveSeriesName as buildAutoName } from "@/lib/classes/series-name";
+import { ADULT_MIN_AGE } from "@/lib/classes/age-band";
 import {
   campWeekdayDateKeys,
   defaultCampWeekIso,
@@ -90,7 +92,7 @@ type VenueOption = {
   clubId?: string | null;
 };
 type SchoolOption = { id: string; name: string };
-type CourtOption = { id: string; name: string; clubId: string };
+type CourtOption = { id: string; name: string; clubId: string; isBookable?: boolean };
 type SeasonOption = {
   id: string;
   name: string;
@@ -146,15 +148,19 @@ export function ClassSeriesForm({
   const [pickupAt, setPickupAt] = useState<string>("");
   const [dayOfWeek, setDayOfWeek] = useState<DayKey>("mon");
   const [startTime, setStartTime] = useState<string>(
-    kind === "camp" ? "09:00" : "16:00",
+    kind === "camp" ? "09:00" : kind === "event" ? "17:30" : "16:00",
   );
   const [endTime, setEndTime] = useState<string>(
-    kind === "camp" ? "15:00" : "17:00",
+    kind === "camp" ? "15:00" : kind === "event" ? "20:30" : "17:00",
   );
   const [defaultCourtId, setDefaultCourtId] = useState<string>("");
+  const [assignedCourtIds, setAssignedCourtIds] = useState<string[]>([]);
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
   const [courtBlockStartTime, setCourtBlockStartTime] =
-    useState<string>("16:00");
-  const [courtBlockEndTime, setCourtBlockEndTime] = useState<string>("17:00");
+    useState<string>(kind === "event" ? "17:30" : "16:00");
+  const [courtBlockEndTime, setCourtBlockEndTime] = useState<string>(
+    kind === "event" ? "20:30" : "17:00",
+  );
   const [acknowledgeCourtConflicts, setAcknowledgeCourtConflicts] =
     useState(false);
   const [startsOn, setStartsOn] = useState<string>(
@@ -191,6 +197,12 @@ export function ClassSeriesForm({
   const [nameOverride, setNameOverride] = useState("");
   const [eventMaxStudents, setEventMaxStudents] = useState(20);
   const [maxStudents, setMaxStudents] = useState(8);
+
+  useEffect(() => {
+    if (audience === "adult") {
+      setSeriesAges({ minAge: ADULT_MIN_AGE, maxAge: null });
+    }
+  }, [audience]);
 
   // Wizard navigation.
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -348,7 +360,7 @@ export function ClassSeriesForm({
     selectedVenue?.kind === "club" ? (selectedVenue.clubId ?? null) : null;
   const courtOptions = useMemo(() => {
     if (!venueClubId) return [];
-    return courts.filter((c) => c.clubId === venueClubId);
+    return courts.filter((c) => c.clubId === venueClubId && c.isBookable !== false);
   }, [courts, venueClubId]);
 
   // Live preview of what the server will write into `class_series.name`.
@@ -432,6 +444,13 @@ export function ClassSeriesForm({
     setDefaultCourtId("");
   }, [defaultCourtId, courtOptions]);
 
+  useEffect(() => {
+    if (kind !== "event") return;
+    setAssignedCourtIds((prev) =>
+      prev.filter((id) => courtOptions.some((court) => court.id === id)),
+    );
+  }, [kind, courtOptions]);
+
   // When branch selections change, reset the venue/school state so
   // stale hidden values can't leak through validation.
   function pickAudience(next: Audience) {
@@ -441,6 +460,7 @@ export function ClassSeriesForm({
     setSchoolId("");
     if (kind === "event") {
       setSeriesLevels([]);
+      setAssignedCourtIds([]);
     }
     if (next === "adult") {
       setFormat("at_club");
@@ -598,15 +618,23 @@ export function ClassSeriesForm({
     list.push({
       id: "schedule",
       title: "Schedule",
-      hint: "Pick the weekday and time. The calendar previews every session — click any green date to mark it as a no-lesson day.",
+      hint:
+        kind === "event"
+          ? "Pick the date, courts, and times. Toggle weekly repeat if this runs every week until a date."
+          : "Pick the weekday and time. The calendar previews every session — click any green date to mark it as a no-lesson day.",
     });
     list.push({
       id: "age",
-      title: kind === "event" ? "Level" : "Who can sign up?",
+      title:
+        audience === "adult" || kind === "event" ? "Level" : "Who can sign up?",
       hint:
-        kind === "event"
-          ? "Optional — sets the age band and skill levels parents see when signing up."
-          : "Optional but helpful — sets the age band and level bracket parents see on the portal. Leave blank to allow anyone.",
+        audience === "adult"
+          ? kind === "event"
+            ? "Optional — sets the skill levels parents see when signing up."
+            : "Optional — adult classes are 18+. Pick skill levels to narrow who can enroll."
+          : kind === "event"
+            ? "Optional — sets the age band and skill levels parents see when signing up."
+            : "Optional but helpful — sets the age band and level bracket parents see on the portal. Leave blank to allow anyone.",
     });
     list.push({
       id: "naming",
@@ -725,31 +753,46 @@ export function ClassSeriesForm({
     >
       {/* Derived hidden values — server never sees the cascade state directly. */}
       <input type="hidden" name="classType" value={submittedClassType} />
+      <input type="hidden" name="formAudience" value={audience} />
       <input type="hidden" name="deliveryMode" value={deliveryMode} />
       <input type="hidden" name="schoolId" value={schoolId} />
-      <input type="hidden" name="excludedDates" value={excludedCsv} />
-      <input type="hidden" name="defaultCourtId" value={defaultCourtId} />
-      <input
-        type="hidden"
-        name="courtBlockStartTime"
-        value={defaultCourtId ? courtBlockStartTime : ""}
-      />
-      <input
-        type="hidden"
-        name="courtBlockEndTime"
-        value={defaultCourtId ? courtBlockEndTime : ""}
-      />
-      <input
-        type="hidden"
-        name="acknowledgeCourtConflicts"
-        value={acknowledgeCourtConflicts ? "true" : "false"}
-      />
+      {kind !== "event" ? (
+        <>
+          <input type="hidden" name="excludedDates" value={excludedCsv} />
+          <input type="hidden" name="defaultCourtId" value={defaultCourtId} />
+          <input
+            type="hidden"
+            name="courtBlockStartTime"
+            value={defaultCourtId ? courtBlockStartTime : ""}
+          />
+          <input
+            type="hidden"
+            name="courtBlockEndTime"
+            value={defaultCourtId ? courtBlockEndTime : ""}
+          />
+          <input
+            type="hidden"
+            name="acknowledgeCourtConflicts"
+            value={acknowledgeCourtConflicts ? "true" : "false"}
+          />
+        </>
+      ) : null}
       {deliveryMode !== "pickup" && (
         <input type="hidden" name="pickupAt" value="" />
       )}
-      {deliveryMode === "pickup" && (
-        // Server auto-resolves to canonical `kids-group` program.
+      {(deliveryMode === "pickup" || kind === "event" || kind === "camp") && (
+        // Server auto-resolves canonical program for pickup / events / camps.
         <input type="hidden" name="programId" value="" />
+      )}
+      {(kind === "event" || kind === "camp") && (
+        // Events/camps price via tiers or camp options — not per-session EUR.
+        <input type="hidden" name="pricePerSessionEur" value="" />
+      )}
+      {kind === "event" && (
+        <input type="hidden" name="campOptionsJson" value="" />
+      )}
+      {kind === "camp" && (
+        <input type="hidden" name="pricingTiersJson" value="[]" />
       )}
 
       <ClassCreateWizard
@@ -846,12 +889,15 @@ export function ClassSeriesForm({
         return renderLocationBody();
 
       case "schedule":
-        return kind === "camp" ? renderCampScheduleBody() : renderScheduleBody();
+        if (kind === "camp") return renderCampScheduleBody();
+        if (kind === "event") return renderEventScheduleBody();
+        return renderScheduleBody();
 
       case "age":
         return (
           <AgeAndLevelField
             audience={audience === "adult" ? "adults" : "kids"}
+            hideAgeBand={audience === "adult"}
             onChange={handleAgeChange}
             onLevelsChange={handleLevelsChange}
           />
@@ -1047,13 +1093,13 @@ export function ClassSeriesForm({
         </div>
         <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3">
           <Field
-            label={`${t.court.singular} (optional)`}
+            label={t.court.singular}
             hint={
               venueClubId
-                ? `Block a ${t.court.singular.toLowerCase()} for each camp day.`
+                ? `Required for camp days at a ${t.club.singular.toLowerCase()}.`
                 : `Pick a ${t.club.singular.toLowerCase()} first.`
             }
-            optional
+            optional={!venueClubId}
           >
             <select
               value={defaultCourtId}
@@ -1067,8 +1113,13 @@ export function ClassSeriesForm({
               }}
               className={selectClass}
               disabled={!venueClubId}
+              required={!!venueClubId}
             >
-              <option value="">No {t.court.singular.toLowerCase()} selected</option>
+              {venueClubId ? (
+                <option value="">Select a {t.court.singular.toLowerCase()}…</option>
+              ) : (
+                <option value="">No {t.court.singular.toLowerCase()} selected</option>
+              )}
               {courtOptions.map((court) => (
                 <option key={court.id} value={court.id}>
                   {court.name}
@@ -1123,14 +1174,41 @@ export function ClassSeriesForm({
     );
   }
 
+  function renderEventScheduleBody() {
+    return (
+      <EventScheduleStep
+        startsOn={startsOn}
+        onStartsOnChange={setStartsOn}
+        endsOn={endsOn}
+        onEndsOnChange={setEndsOn}
+        repeatWeekly={repeatWeekly}
+        onRepeatWeeklyChange={setRepeatWeekly}
+        dayOfWeek={dayOfWeek}
+        onDayOfWeekChange={setDayOfWeek}
+        startTime={startTime}
+        onStartTimeChange={setStartTime}
+        endTime={endTime}
+        onEndTimeChange={setEndTime}
+        assignedCourtIds={assignedCourtIds}
+        onAssignedCourtIdsChange={setAssignedCourtIds}
+        courtBlockStartTime={courtBlockStartTime}
+        onCourtBlockStartTimeChange={setCourtBlockStartTime}
+        courtBlockEndTime={courtBlockEndTime}
+        onCourtBlockEndTimeChange={setCourtBlockEndTime}
+        acknowledgeCourtConflicts={acknowledgeCourtConflicts}
+        onAcknowledgeCourtConflictsChange={setAcknowledgeCourtConflicts}
+        excludedDates={excludedDates}
+        onToggleExcluded={toggleExcluded}
+        venueClubId={venueClubId}
+        courts={courts}
+      />
+    );
+  }
+
   function renderScheduleBody() {
     return (
       <>
-        <input
-          type="hidden"
-          name="seasonId"
-          value={kind === "event" ? "" : seasonId}
-        />
+        <input type="hidden" name="seasonId" value={seasonId} />
         {kind === "class" && (
           <Field
             label="Season"
@@ -1191,13 +1269,13 @@ export function ClassSeriesForm({
         </div>
         <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3">
           <Field
-            label={`${t.court.singular} (optional)`}
+            label={t.court.singular}
             hint={
               venueClubId
-                ? `Select a ${t.court.singular.toLowerCase()} to block it for this ${t.class.singular.toLowerCase()}. Leave empty to avoid blocking any ${t.court.plural.toLowerCase()}.`
+                ? `Required — which ${t.court.singular.toLowerCase()} this ${t.class.singular.toLowerCase()} uses.`
                 : `Pick a ${t.club.singular.toLowerCase()} venue first to choose a ${t.court.singular.toLowerCase()}.`
             }
-            optional
+            optional={!venueClubId}
           >
             <select
               value={defaultCourtId}
@@ -1211,8 +1289,13 @@ export function ClassSeriesForm({
               }}
               className={selectClass}
               disabled={!venueClubId}
+              required={!!venueClubId}
             >
-              <option value="">No {t.court.singular.toLowerCase()} selected</option>
+              {venueClubId ? (
+                <option value="">Select a {t.court.singular.toLowerCase()}…</option>
+              ) : (
+                <option value="">No {t.court.singular.toLowerCase()} selected</option>
+              )}
               {courtOptions.map((court) => (
                 <option key={court.id} value={court.id}>
                   {court.name}
@@ -1220,7 +1303,7 @@ export function ClassSeriesForm({
               ))}
             </select>
           </Field>
-          {defaultCourtId && (
+          {defaultCourtId ? (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
@@ -1259,7 +1342,7 @@ export function ClassSeriesForm({
                 only conflicting dates.
               </label>
             </>
-          )}
+          ) : null}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Starts on">
@@ -1563,6 +1646,7 @@ export function ClassSeriesForm({
           aspect="16/9"
           label="Cover image (optional)"
           helpText="Shown at the top of the class page parents see when deciding whether to sign up. Leave blank and we'll fall back to the program's cover image."
+          focusYName="coverImageFocusY"
         />
         <Field
           label="WhatsApp group invite link"

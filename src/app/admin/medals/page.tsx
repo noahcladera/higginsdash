@@ -1,11 +1,24 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
-import { Section } from "@/components/ui/section";
-import { MEDAL_LEVELS } from "@/lib/medal-levels";
-import { getTotalByCoachReport } from "@/lib/medals/total-by-coach";
+import { Button } from "@/components/ui/button";
+import { MetricStrip, Stat } from "@/components/ui/stat";
+import { buildWhatsAppLink } from "@/lib/contacts/phone";
+import {
+  getCoachAssignmentGaps,
+  getCoachMedalsReport,
+} from "@/lib/medals/coach-medals-report";
+import {
+  buildLevelReminderWhatsAppBody,
+  buildMedalReminderWhatsAppBody,
+} from "@/lib/medals/reminder-messages";
+import { resolveAppOrigin } from "@/lib/site-url";
+import { getCurrentBrand } from "@/lib/tenant";
 import { MedalsFilters } from "./medals-filters";
+import {
+  MedalsCoachMatrix,
+  type CoachMedalsMatrixRow,
+} from "./_components/medals-coach-matrix";
 
 export default async function AdminMedalsPage({
   searchParams,
@@ -19,52 +32,115 @@ export default async function AdminMedalsPage({
   await requireAdmin();
   const sp = await searchParams;
 
-  const [seasons, clubs, coaches, rows] = await Promise.all([
-    prisma.season.findMany({
-      orderBy: { startsOn: "desc" },
-      select: { id: true, name: true },
-      take: 20,
-    }),
-    prisma.club.findMany({
-      where: { archivedAt: null },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-    prisma.coach.findMany({
-      where: { isActive: true, person: { archivedAt: null } },
-      orderBy: { person: { lastName: "asc" } },
-      select: {
-        personId: true,
-        person: { select: { firstName: true, lastName: true } },
-      },
-    }),
-    getTotalByCoachReport({
-      seasonId: sp.seasonId,
-      clubId: sp.clubId,
-      coachPersonId: sp.coachId,
-    }),
-  ]);
+  const [seasons, clubs, coaches, reportRows, brand, origin] =
+    await Promise.all([
+      prisma.season.findMany({
+        orderBy: { startsOn: "desc" },
+        select: { id: true, name: true },
+        take: 20,
+      }),
+      prisma.club.findMany({
+        where: { archivedAt: null },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+      prisma.coach.findMany({
+        where: { isActive: true, person: { archivedAt: null } },
+        orderBy: { person: { lastName: "asc" } },
+        select: {
+          personId: true,
+          person: { select: { firstName: true, lastName: true } },
+        },
+      }),
+      getCoachMedalsReport({
+        seasonId: sp.seasonId,
+        clubId: sp.clubId,
+        coachPersonId: sp.coachId,
+      }),
+      getCurrentBrand(),
+      resolveAppOrigin(),
+    ]);
+
+  const fullGapsByCoach = new Map(
+    (
+      await Promise.all(
+        reportRows.map(async (row) => [
+          row.coachId,
+          await getCoachAssignmentGaps(row.coachId),
+        ] as const),
+      )
+    ).map(([coachId, gaps]) => [coachId, gaps]),
+  );
+
+  const rows: CoachMedalsMatrixRow[] = reportRows.map((row) => {
+    const fullGaps = fullGapsByCoach.get(row.coachId);
+    const missingMedals = fullGaps?.missingMedals ?? row.missingMedals;
+    const missingLevels = fullGaps?.missingLevels ?? row.missingLevels;
+
+    const whatsappMedalsUrl =
+      missingMedals.length > 0
+        ? buildWhatsAppLink(
+            row.coachPhone,
+            buildMedalReminderWhatsAppBody({
+              coachName: row.coachName,
+              brandName: brand.shortName,
+              origin,
+              gaps: missingMedals,
+            }),
+          )
+        : null;
+
+    const whatsappLevelsUrl =
+      missingLevels.length > 0
+        ? buildWhatsAppLink(
+            row.coachPhone,
+            buildLevelReminderWhatsAppBody({
+              coachName: row.coachName,
+              brandName: brand.shortName,
+              origin,
+              gaps: missingLevels,
+            }),
+          )
+        : null;
+
+    return {
+      ...row,
+      missingMedals,
+      missingLevels,
+      whatsappMedalsUrl,
+      whatsappLevelsUrl,
+    };
+  });
 
   const exportQuery = new URLSearchParams();
   if (sp.seasonId) exportQuery.set("seasonId", sp.seasonId);
   if (sp.clubId) exportQuery.set("clubId", sp.clubId);
   if (sp.coachId) exportQuery.set("coachId", sp.coachId);
 
+  const coachCount = rows.length;
+  const enrolledCount = rows.reduce((sum, row) => sum + row.enrolledCount, 0);
+  const assignedCount = rows.reduce((sum, row) => sum + row.assignedCount, 0);
+  const missingMedalCount = rows.reduce(
+    (sum, row) => sum + row.missingMedals.length,
+    0,
+  );
+  const missingLevelCount = rows.reduce(
+    (sum, row) => sum + row.missingLevels.length,
+    0,
+  );
+
   return (
-    <div className="space-y-8">
-      <PageHeader
-        kicker="Operations"
-        title="Medals — Total By Coach"
-        description="Matrix of medal levels per lead coach and programme, matching the workbook Total By Coach tab."
-        actions={
-          <Link
-            href={`/admin/medals/export?${exportQuery.toString()}`}
-            className="text-sm font-medium text-[var(--triaz-ink)] underline-offset-4 hover:underline"
-          >
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">
+          Medals
+        </h1>
+        <Button asChild variant="outline" tone="neutral" size="sm">
+          <Link href={`/admin/medals/export?${exportQuery.toString()}`}>
             Export CSV
           </Link>
-        }
-      />
+        </Button>
+      </div>
 
       <MedalsFilters
         seasons={seasons}
@@ -84,95 +160,25 @@ export default async function AdminMedalsPage({
         }}
       />
 
-      <Section title="Matrix">
-        {rows.length === 0 ? (
-          <p className="text-sm text-[var(--muted-foreground)]">
-            No lead-coach assignments in published series for these filters.
-          </p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
-            <table className="w-full min-w-[960px] text-left text-sm">
-              <thead className="border-b border-[var(--border)] bg-[var(--muted)]/30">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Coach</th>
-                  <th className="px-3 py-2 font-medium">Programme</th>
-                  {MEDAL_LEVELS.map((l) => (
-                    <th
-                      key={l.value}
-                      className="px-2 py-2 text-center font-medium tabular-nums"
-                    >
-                      {l.shortCode}
-                    </th>
-                  ))}
-                  <th className="px-3 py-2 text-right font-medium">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {rows.flatMap((row) => {
-                  if (row.bySeries.length === 0) {
-                    return (
-                      <MatrixRow
-                        key={row.coachId}
-                        coach={row.coachName}
-                        programme="—"
-                        byMedal={row.byMedal}
-                        total={row.grandTotal}
-                      />
-                    );
-                  }
-                  const seriesRows = row.bySeries.map((s) => (
-                    <MatrixRow
-                      key={`${row.coachId}-${s.seriesId}`}
-                      coach={row.coachName}
-                      programme={s.seriesName}
-                      byMedal={s.byMedal}
-                      total={s.total}
-                    />
-                  ));
-                  seriesRows.push(
-                    <MatrixRow
-                      key={`${row.coachId}-total`}
-                      coach={`${row.coachName} (total)`}
-                      programme=""
-                      byMedal={row.byMedal}
-                      total={row.grandTotal}
-                      bold
-                    />,
-                  );
-                  return seriesRows;
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Section>
-    </div>
-  );
-}
+      <MetricStrip density="compact">
+        <Stat label="Coaches" value={coachCount} tone="triaz" density="compact" />
+        <Stat label="Enrolled" value={enrolledCount} density="compact" />
+        <Stat label="Assigned" value={assignedCount} density="compact" />
+        <Stat
+          label="Missing medal"
+          value={missingMedalCount}
+          tone={missingMedalCount > 0 ? "warning" : "neutral"}
+          density="compact"
+        />
+        <Stat
+          label="Missing level"
+          value={missingLevelCount}
+          tone={missingLevelCount > 0 ? "warning" : "neutral"}
+          density="compact"
+        />
+      </MetricStrip>
 
-function MatrixRow({
-  coach,
-  programme,
-  byMedal,
-  total,
-  bold,
-}: {
-  coach: string;
-  programme: string;
-  byMedal: Record<string, number>;
-  total: number;
-  bold?: boolean;
-}) {
-  return (
-    <tr className={bold ? "bg-[var(--muted)]/20 font-medium" : undefined}>
-      <td className="px-3 py-2">{coach}</td>
-      <td className="px-3 py-2 text-[var(--muted-foreground)]">{programme}</td>
-      {MEDAL_LEVELS.map((l) => (
-        <td key={l.value} className="px-2 py-2 text-center tabular-nums">
-          {byMedal[l.value] || "—"}
-        </td>
-      ))}
-      <td className="px-3 py-2 text-right tabular-nums">{total}</td>
-    </tr>
+      <MedalsCoachMatrix rows={rows} initialCoachId={sp.coachId} />
+    </div>
   );
 }

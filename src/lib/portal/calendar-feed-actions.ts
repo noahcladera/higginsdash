@@ -5,8 +5,22 @@ import { randomBytes } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
 import { requireAuthedPerson } from "@/lib/auth/require-authed-person";
+import { resolvePersonAccess } from "@/lib/auth/person-access";
 import { recordAudit } from "@/lib/audit/record";
 import type { CalendarFeedScope } from "@prisma/client";
+
+const MEMBER_SCOPES: CalendarFeedScope[] = ["self", "household"];
+const COACH_SCOPES: CalendarFeedScope[] = ["coach"];
+
+function allowedScopesFor(access: {
+  isCoachLike: boolean;
+  isMember: boolean;
+}): CalendarFeedScope[] {
+  const scopes: CalendarFeedScope[] = [];
+  if (access.isMember) scopes.push(...MEMBER_SCOPES);
+  if (access.isCoachLike) scopes.push(...COACH_SCOPES);
+  return scopes;
+}
 
 /**
  * Generate a fresh subscription token for the signed-in person.
@@ -15,8 +29,8 @@ import type { CalendarFeedScope } from "@prisma/client";
  * paste into Google/Apple. We never need to display it again — the
  * portal UI shows the full URL once and then masks it.
  *
- * Scope determines whether the feed includes only the owner's classes
- * or every household member they live with.
+ * Scope determines whether the feed includes only the owner's classes,
+ * every household member they live with, or their teaching schedule.
  */
 export async function createCalendarFeedToken(args: {
   scope?: CalendarFeedScope;
@@ -25,9 +39,20 @@ export async function createCalendarFeedToken(args: {
   const { person } = await requireAuthedPerson();
   if (!person) return { ok: false, error: "Not signed in" };
 
+  const access = await resolvePersonAccess();
+  if (!access) return { ok: false, error: "Not signed in" };
+
   const scope = args.scope ?? "self";
+  const allowed = allowedScopesFor(access);
+  if (!allowed.includes(scope)) {
+    return { ok: false, error: "That calendar scope is not available for your account." };
+  }
+
+  if (scope === "household" && !access.householdId) {
+    return { ok: false, error: "Household calendar requires a family on your account." };
+  }
+
   const label = args.label?.trim() || null;
-  // 32 random bytes → 64 hex chars. Plenty for an unguessable URL.
   const token = randomBytes(32).toString("hex");
 
   const created = await prisma.calendarFeedToken.create({
@@ -48,8 +73,71 @@ export async function createCalendarFeedToken(args: {
     after: { scope, label, personId: person.id },
   });
 
-  revalidatePath("/portal/profile");
+  revalidateCalendarPaths();
   return { ok: true, token: created.token, id: created.id };
+}
+
+/**
+ * Return an active token for the given scope, creating one if needed.
+ * Used by the add-to-calendar dialog so repeat clicks reuse the same URL.
+ */
+export async function ensureCalendarFeedToken(args: {
+  scope?: CalendarFeedScope;
+}): Promise<
+  | { ok: true; token: string; id: string; created: boolean }
+  | { ok: false; error: string }
+> {
+  const { person } = await requireAuthedPerson();
+  if (!person) return { ok: false, error: "Not signed in" };
+
+  const access = await resolvePersonAccess();
+  if (!access) return { ok: false, error: "Not signed in" };
+
+  const scope = args.scope ?? "self";
+  const allowed = allowedScopesFor(access);
+  if (!allowed.includes(scope)) {
+    return {
+      ok: false,
+      error: "That calendar scope is not available for your account.",
+    };
+  }
+
+  if (scope === "household" && !access.householdId) {
+    return {
+      ok: false,
+      error: "Household calendar requires a family on your account.",
+    };
+  }
+
+  const existing = await prisma.calendarFeedToken.findFirst({
+    where: {
+      personId: person.id,
+      scope,
+      revokedAt: null,
+    },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, token: true },
+  });
+
+  if (existing) {
+    return {
+      ok: true,
+      token: existing.token,
+      id: existing.id,
+      created: false,
+    };
+  }
+
+  const created = await createCalendarFeedToken({ scope });
+  if (!created.ok) return created;
+  return { ...created, created: true };
+}
+
+function revalidateCalendarPaths() {
+  revalidatePath("/portal");
+  revalidatePath("/portal/profile");
+  revalidatePath("/coach/calendar");
+  revalidatePath("/coach/profile");
 }
 
 /**
@@ -89,6 +177,6 @@ export async function revokeCalendarFeedToken(args: {
     after: updated,
   });
 
-  revalidatePath("/portal/profile");
+  revalidateCalendarPaths();
   return { ok: true };
 }

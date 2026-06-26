@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ADULT_MIN_AGE } from "@/lib/classes/age-band";
 import { ADULT_LEVELS, type SkillLevelValue } from "@/lib/skill-levels";
 import { MEDAL_LEVELS, type MedalLevelValue } from "@/lib/medal-levels";
 
@@ -14,6 +15,7 @@ import { MEDAL_LEVELS, type MedalLevelValue } from "@/lib/medal-levels";
  */
 export function AgeAndLevelField({
   audience,
+  hideAgeBand = false,
   minAgeDefault = "",
   maxAgeDefault = "",
   levelsDefault = [],
@@ -23,6 +25,8 @@ export function AgeAndLevelField({
   onMedalLevelsChange,
 }: {
   audience: "kids" | "adults" | "mixed";
+  /** Adult classes/events — age is always 18+ and never edited here. */
+  hideAgeBand?: boolean;
   minAgeDefault?: string | number | "";
   maxAgeDefault?: string | number | "";
   levelsDefault?: SkillLevelValue[];
@@ -32,10 +36,14 @@ export function AgeAndLevelField({
   onMedalLevelsChange?: (levels: MedalLevelValue[]) => void;
 }) {
   const [minAge, setMinAge] = useState<string>(
-    minAgeDefault === "" || minAgeDefault == null ? "" : String(minAgeDefault),
+    hideAgeBand
+      ? String(ADULT_MIN_AGE)
+      : minAgeDefault === "" || minAgeDefault == null
+        ? ""
+        : String(minAgeDefault),
   );
   const [maxAge, setMaxAge] = useState<string>(
-    maxAgeDefault === "" || maxAgeDefault == null ? "" : String(maxAgeDefault),
+    hideAgeBand ? "" : maxAgeDefault === "" || maxAgeDefault == null ? "" : String(maxAgeDefault),
   );
   const [levels, setLevels] = useState<Set<SkillLevelValue>>(
     () => new Set(levelsDefault),
@@ -52,13 +60,17 @@ export function AgeAndLevelField({
 
   useEffect(() => {
     if (!onChange) return;
+    if (hideAgeBand) {
+      onChange({ minAge: ADULT_MIN_AGE, maxAge: null });
+      return;
+    }
     const parse = (v: string): number | null => {
       if (v === "") return null;
       const n = Number.parseInt(v, 10);
       return Number.isFinite(n) ? n : null;
     };
     onChange({ minAge: parse(minAge), maxAge: parse(maxAge) });
-  }, [minAge, maxAge, onChange]);
+  }, [hideAgeBand, minAge, maxAge, onChange]);
 
   useEffect(() => {
     if (!onLevelsChange) return;
@@ -90,45 +102,51 @@ export function AgeAndLevelField({
 
   return (
     <div className="space-y-4">
-      <input type="hidden" name="minAge" value={minAge} />
-      <input type="hidden" name="maxAge" value={maxAge} />
+      <input
+        type="hidden"
+        name="minAge"
+        value={hideAgeBand ? String(ADULT_MIN_AGE) : minAge}
+      />
+      <input type="hidden" name="maxAge" value={hideAgeBand ? "" : maxAge} />
       <input type="hidden" name="eligibleSkillLevels" value={skillCsv} />
       <input type="hidden" name="eligibleMedalLevels" value={medalCsv} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <Label>Min age</Label>
-            <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-              Optional
-            </span>
+      {!hideAgeBand ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Min age</Label>
+              <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                Optional
+              </span>
+            </div>
+            <Input
+              type="number"
+              min={0}
+              max={120}
+              value={minAge}
+              onChange={(e) => setMinAge(e.target.value)}
+              placeholder="—"
+            />
           </div>
-          <Input
-            type="number"
-            min={0}
-            max={120}
-            value={minAge}
-            onChange={(e) => setMinAge(e.target.value)}
-            placeholder="—"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <Label>Max age</Label>
-            <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-              Optional
-            </span>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Max age</Label>
+              <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                Optional
+              </span>
+            </div>
+            <Input
+              type="number"
+              min={0}
+              max={120}
+              value={maxAge}
+              onChange={(e) => setMaxAge(e.target.value)}
+              placeholder="—"
+            />
           </div>
-          <Input
-            type="number"
-            min={0}
-            max={120}
-            value={maxAge}
-            onChange={(e) => setMaxAge(e.target.value)}
-            placeholder="—"
-          />
         </div>
-      </div>
+      ) : null}
 
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">

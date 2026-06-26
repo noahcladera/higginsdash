@@ -5,7 +5,7 @@ import { daysInRange } from "@/lib/calendar/week";
 import {
   calendarRangeEnd,
   formatAdminCalendarRangeLabel,
-  resolveCalendarAnchor,
+  resolveCalendarRangeStart,
   type AdminClassesFilters,
 } from "@/lib/admin/classes-filters";
 import {
@@ -20,7 +20,7 @@ export async function AdminCalendarView({
 }: {
   filters: AdminClassesFilters;
 }) {
-  const rangeStart = resolveCalendarAnchor(filters.fromISO);
+  const rangeStart = resolveCalendarRangeStart(filters.fromISO, filters.span);
   const rangeEnd = calendarRangeEnd(rangeStart, filters.span);
   const days = daysInRange(rangeStart, filters.span);
 
@@ -47,10 +47,16 @@ export async function AdminCalendarView({
           <EmptyState
             icon={<CalendarIcon size={20} />}
             title="Nothing in this window"
-            description="Try moving to another range, widening to a week, or clearing filters."
+            description="Try moving to another day, switching to Week view, or clearing sidebar filters."
           />
         ) : (
-          <SessionsGrid days={days} sessions={sessions} />
+          <SessionsGrid
+            days={days}
+            sessions={sessions}
+            filters={filters}
+            blockAnchor="class"
+            overflowMode="link"
+          />
         )}
       </Section>
     </div>

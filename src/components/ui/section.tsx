@@ -46,7 +46,7 @@ export function Section({
     padding === "none" ? "" : padding === "compact" ? "p-4 sm:p-5" : "p-5 sm:p-7";
   const surfaceCls =
     surface === "card"
-      ? "rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)]"
+      ? "elev-panel"
       : surface === "ghost"
         ? "rounded-[var(--radius-lg)] bg-transparent"
         : "";

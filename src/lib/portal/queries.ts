@@ -1,7 +1,14 @@
 import { cache } from "react";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  eventSessionDedupeKey,
+  sessionMatchesEnrollmentScope,
+  sessionWindowsForEnrollments,
+} from "@/lib/classes/event-occurrence";
 import type { HouseholdOwnership, MembershipTier } from "@/lib/pricing";
 import { listConfiguredClubSlugs } from "@/lib/pricing/config";
+import { resolveVenueClubSlug } from "@/lib/club-theme";
 
 /**
  * Runtime list of club slugs the active org sells memberships for.
@@ -70,6 +77,8 @@ export interface UpcomingSession {
   deliveryMode: "at_club" | "onsite" | "pickup";
   /** Where the class is played (Triaz / Randwijck / AICS). */
   venueName: string;
+  /** Resolved club slug for venue-aware badges. */
+  venueClubSlug: "triaz" | "randwijck" | null;
   /** Pickup-mode only: kids-out-of-school time, anchored to session day. */
   pickupAt: Date | null;
   /** Pickup-mode only: pickup school name (IFS / AICS / BSA / AMITY). */
@@ -85,8 +94,8 @@ export interface UpcomingSession {
 }
 
 /**
- * Upcoming class sessions for one or more students. Pulls every session
- * for a series the student is actively enrolled in, ordered by start time.
+ * Upcoming class sessions for one or more students. Regular series return
+ * every future session; events return only the enrolled occurrence date.
  * Cancelled sessions are filtered out.
  */
 export async function getUpcomingSessionsForStudents(
@@ -95,6 +104,7 @@ export async function getUpcomingSessionsForStudents(
 ): Promise<UpcomingSession[]> {
   if (studentPersonIds.length === 0) return [];
 
+  const now = new Date();
   const enrollments = await prisma.enrollment.findMany({
     where: {
       studentPersonId: { in: studentPersonIds },
@@ -105,6 +115,7 @@ export async function getUpcomingSessionsForStudents(
         select: {
           id: true,
           name: true,
+          classType: true,
           program: { select: { name: true } },
         },
       },
@@ -117,13 +128,27 @@ export async function getUpcomingSessionsForStudents(
   });
   if (enrollments.length === 0) return [];
 
-  const seriesIds = Array.from(new Set(enrollments.map((e) => e.classSeriesId)));
-  const sessions = await prisma.classSession.findMany({
-    where: {
-      classSeriesId: { in: seriesIds },
-      startsAt: { gte: new Date() },
+  const enrollmentScopes = enrollments.map((e) => ({
+    classSeriesId: e.classSeriesId,
+    classType: e.classSeries.classType,
+    eventOccurrenceDate: e.eventOccurrenceDate,
+  }));
+  const sessionWindows = sessionWindowsForEnrollments(enrollmentScopes, now);
+  if (sessionWindows.length === 0) return [];
+
+  const sessionWhere: Prisma.ClassSessionWhereInput = {
+    OR: sessionWindows.map((w) => ({
+      classSeriesId: w.classSeriesId,
+      startsAt: {
+        gte: w.startsAtGte,
+        ...(w.startsAtLt ? { lt: w.startsAtLt } : {}),
+      },
       status: { not: "cancelled" },
-    },
+    })),
+  };
+
+  const sessions = await prisma.classSession.findMany({
+    where: sessionWhere,
     orderBy: { startsAt: "asc" },
     take: limit * studentPersonIds.length, // a single student can have many series
     include: {
@@ -138,6 +163,8 @@ export async function getUpcomingSessionsForStudents(
           venue: {
             select: {
               name: true,
+              slug: true,
+              club: { select: { slug: true } },
             },
           },
           school: {
@@ -171,13 +198,42 @@ export async function getUpcomingSessionsForStudents(
 
   // Cross every session with every enrolled student in that series so a
   // single session shows up once per attending kid (e.g. siblings in same
-  // class).
+  // class). Events further scope to one occurrence and dedupe multi-court
+  // rows on the same date.
   const out: UpcomingSession[] = [];
+  const seenEventSessionKeys = new Set<string>();
+  const legacyEventEarliest = new Map<string, Date>();
+
   for (const s of sessions) {
-    const enrolledHere = enrollments.filter(
-      (e) => e.classSeriesId === s.classSeriesId,
-    );
+    const enrolledHere = enrollments.filter((e) => {
+      if (e.classSeriesId !== s.classSeriesId) return false;
+      return sessionMatchesEnrollmentScope(s.startsAt, {
+        classSeriesId: e.classSeriesId,
+        classType: e.classSeries.classType,
+        eventOccurrenceDate: e.eventOccurrenceDate,
+      });
+    });
     for (const e of enrolledHere) {
+      if (e.classSeries.classType === "event") {
+        if (e.eventOccurrenceDate == null) {
+          const legacyKey = `${e.studentPersonId}::${e.classSeriesId}`;
+          const earliest = legacyEventEarliest.get(legacyKey);
+          if (earliest == null || s.startsAt.getTime() < earliest.getTime()) {
+            legacyEventEarliest.set(legacyKey, s.startsAt);
+          } else {
+            continue;
+          }
+        }
+
+        const dedupeKey = eventSessionDedupeKey(
+          e.studentPersonId,
+          e.classSeriesId,
+          s.startsAt,
+        );
+        if (seenEventSessionKeys.has(dedupeKey)) continue;
+        seenEventSessionKeys.add(dedupeKey);
+      }
+
       out.push({
         id: s.id,
         startsAt: s.startsAt,
@@ -192,6 +248,7 @@ export async function getUpcomingSessionsForStudents(
         venueText: s.venueText ?? null,
         deliveryMode: s.classSeries.deliveryMode,
         venueName: s.classSeries.venue.name,
+        venueClubSlug: resolveVenueClubSlug(s.classSeries.venue),
         pickupAt: s.classSeries.pickupAt,
         schoolName: s.classSeries.school?.name ?? null,
         schoolCoachArriveAtHubMinutes:
@@ -391,6 +448,7 @@ export interface HouseholdMemberSummary {
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   emergencyContactRelationship: string | null;
+  avatarUrl: string | null;
 }
 
 export const getHouseholdMembers = cache(_getHouseholdMembers);
@@ -423,6 +481,7 @@ async function _getHouseholdMembers(
     emergencyContactName: m.person.emergencyContactName,
     emergencyContactPhone: m.person.emergencyContactPhone,
     emergencyContactRelationship: m.person.emergencyContactRelationship,
+    avatarUrl: m.person.avatarUrl,
   }));
 }
 

@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { requireCoach } from "@/lib/auth/require-coach";
+import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CalendarIcon } from "@/components/icons";
+import { AddToCalendarDialog } from "@/components/calendar/add-to-calendar-dialog";
 import { getCoachCalendarEvents } from "@/lib/coach/calendar-queries";
 import {
   daysOfWeek,
@@ -35,9 +38,19 @@ export default async function CoachCalendarPage({
   const sp = await searchParams;
   const weekStart = resolveWeekStart(sp.week);
   const days = daysOfWeek(weekStart);
-  const events = await getCoachCalendarEvents(person.id, weekStart, {
-    allowedClubIds,
-  });
+  const [events, calendarTokens] = await Promise.all([
+    getCoachCalendarEvents(person.id, weekStart, {
+      allowedClubIds,
+    }),
+    prisma.calendarFeedToken.findMany({
+      where: { personId: person.id, revokedAt: null },
+      select: { id: true, scope: true },
+    }),
+  ]);
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const host = h.get("host") ?? "localhost:3000";
+  const origin = `${proto}://${host}`;
   const sessionCount = events.filter((e) => e.kind === "session").length;
   const bookingCount = events.filter((e) => e.kind === "booking").length;
 
@@ -55,7 +68,15 @@ export default async function CoachCalendarPage({
         title="My calendar"
         description="Every session with your name on it this week. Pickup-mode sessions show the full leave-base to session-end block so you can see your on-the-clock hours at a glance."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <AddToCalendarDialog
+              origin={origin}
+              hasHousehold={false}
+              allowedScopes={["coach"]}
+              defaultScope="coach"
+              initialTokens={calendarTokens}
+              variant="coach"
+            />
             <Button asChild variant="outline" size="sm">
               <Link href={`/coach/calendar?week=${prevParam}`}>← Prev</Link>
             </Button>

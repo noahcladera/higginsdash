@@ -87,7 +87,7 @@ export function DecisionCard({
   }
 
   return (
-    <div className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+    <div className="elev-card p-5">
       {header}
       {body && <div className="mt-3">{body}</div>}
       {conflicts && <div className="mt-3">{conflicts}</div>}

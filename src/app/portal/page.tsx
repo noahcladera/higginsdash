@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
@@ -44,10 +45,12 @@ import {
   type MemberCalendarLegendEntry,
 } from "./_components/member-week-grid";
 import { CalendarPagerTransition } from "./_components/calendar-pager-transition";
+import { AddToCalendarDialog, type CalendarTokenSummary } from "@/components/calendar/add-to-calendar-dialog";
 import { cn } from "@/lib/utils";
 import { clubTheme } from "@/lib/club-theme";
 import { getCurrentOrg } from "@/lib/tenant";
 import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
+import { getMarketingImages } from "@/lib/uploads/marketing-images";
 
 /**
  * Member portal landing — adapts to who you are.
@@ -130,13 +133,14 @@ export default async function PortalHomePage({
   // Non-member: render the dedicated sales surface and short-circuit.
   // -----------------------------------------------------------------
   if (!hasAnyActive) {
-    const [recs, clubs] = await Promise.all([
+    const [recs, clubs, marketingImages] = await Promise.all([
       getRecommendationsForViewer(person.id, householdId),
       prisma.club.findMany({
         where: { isActive: true },
         orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
         select: { id: true, name: true, slug: true },
       }),
+      getMarketingImages(),
     ]);
     const hasAnyChild = householdMembers.some((m) => m.role === "child");
     return (
@@ -153,6 +157,7 @@ export default async function PortalHomePage({
           recs={{ hero: recs.hero, more: recs.more }}
           brandName={brand.shortName}
           showTrialEntry={org.features.trialInterest && !hasLiveEnrollment}
+          marketingImages={marketingImages}
         />
       </div>
     );
@@ -182,7 +187,7 @@ export default async function PortalHomePage({
     });
   }
 
-  const [upcomingBookings, upcomingSessions, weekEvents, recs] =
+  const [upcomingBookings, upcomingSessions, weekEvents, recs, calendarTokens] =
     await Promise.all([
       getUpcomingBookingsForPerson(person.id, 6),
       getUpcomingSessionsForStudents(studentIdsToShow, 6),
@@ -193,7 +198,16 @@ export default async function PortalHomePage({
         calendarStudents,
       ),
       getRecommendationsForViewer(person.id, householdId),
+      prisma.calendarFeedToken.findMany({
+        where: { personId: person.id, revokedAt: null },
+        select: { id: true, scope: true },
+      }),
     ]);
+
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const host = h.get("host") ?? "localhost:3000";
+  const origin = `${proto}://${host}`;
 
   return (
     <div className="space-y-6">
@@ -214,6 +228,9 @@ export default async function PortalHomePage({
         upcomingBookings={upcomingBookings}
         upcomingSessions={upcomingSessions}
         recs={recs}
+        origin={origin}
+        hasHousehold={householdId != null}
+        calendarTokens={calendarTokens}
       />
     </div>
   );
@@ -236,6 +253,9 @@ async function MemberHome({
   upcomingBookings,
   upcomingSessions,
   recs,
+  origin,
+  hasHousehold,
+  calendarTokens,
 }: {
   person: { id: string; firstName: string | null };
   isParent: boolean;
@@ -249,6 +269,9 @@ async function MemberHome({
   upcomingBookings: Awaited<ReturnType<typeof getUpcomingBookingsForPerson>>;
   upcomingSessions: Awaited<ReturnType<typeof getUpcomingSessionsForStudents>>;
   recs: Awaited<ReturnType<typeof getRecommendationsForViewer>>;
+  origin: string;
+  hasHousehold: boolean;
+  calendarTokens: CalendarTokenSummary[];
 }) {
   const days = daysOfWeek(weekStart);
 
@@ -311,63 +334,11 @@ async function MemberHome({
     (e) => e.kind === "booking",
   ).length;
 
-  return (
-    <div className="space-y-10">
-      <PageHeader
-        kicker="Members"
-        title={greeting}
-        description={subtitle}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
-              {/* Tactile micro-translate on the arrow glyph telegraphs
-               * the direction of the week-grid slide that's about to
-               * play once the link navigates. The `group` modifier
-               * targets only the arrow span — the label stays put so
-               * hit area & text don't shift around. */}
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/portal?week=${prevParam}`} className="group">
-                  <span
-                    aria-hidden
-                    className="inline-block transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out-soft)] group-hover:-translate-x-0.5"
-                  >
-                    ←
-                  </span>{" "}
-                  Prev
-                </Link>
-              </Button>
-              {!isThisWeek && (
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/portal?week=${thisWeekParam}`}>This week</Link>
-                </Button>
-              )}
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/portal?week=${nextParam}`} className="group">
-                  Next{" "}
-                  <span
-                    aria-hidden
-                    className="inline-block transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out-soft)] group-hover:translate-x-0.5"
-                  >
-                    →
-                  </span>
-                </Link>
-              </Button>
-            </div>
-            <Button asChild tone="triaz" size="lg">
-              <Link href="/portal/book">
-                <CalendarIcon /> Book a court
-              </Link>
-            </Button>
-          </div>
-        }
-      />
+  const hasUpcomingActivity =
+    bookingsCount > 0 || sessionsCount > 0 || weekEvents.length > 0;
 
-      <RecommendedPrograms
-        hero={recs.hero}
-        more={recs.more}
-        isParent={isParent}
-      />
-
+  const calendarBlock = (
+    <>
       <MetricStrip>
         <Stat
           label="Active memberships"
@@ -409,19 +380,36 @@ async function MemberHome({
         />
       </MetricStrip>
 
-      {/* Membership status banner — only fires for members with expiring/expired coverage */}
       {expiredMembership ? (
         <StatusBanner tone="danger">
-          Your membership expired{" "}
-          {Math.abs(expiredMembership.daysUntilExpiry)} day
-          {Math.abs(expiredMembership.daysUntilExpiry) === 1 ? "" : "s"} ago.
-          Reach out to the office to renew it.
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              Your membership expired{" "}
+              {Math.abs(expiredMembership.daysUntilExpiry)} day
+              {Math.abs(expiredMembership.daysUntilExpiry) === 1 ? "" : "s"} ago.
+              Renew online in a few clicks.
+            </span>
+            <Button asChild tone="triaz" size="sm">
+              <Link href="/portal/membership#buy">
+                Renew now <ArrowRightIcon size={14} />
+              </Link>
+            </Button>
+          </div>
         </StatusBanner>
       ) : expiringMembership ? (
         <StatusBanner tone="warning">
-          Your membership expires in {expiringMembership.daysUntilExpiry} day
-          {expiringMembership.daysUntilExpiry === 1 ? "" : "s"}. Renew when
-          you're ready — talk to the office.
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              Your membership expires in {expiringMembership.daysUntilExpiry}{" "}
+              day
+              {expiringMembership.daysUntilExpiry === 1 ? "" : "s"}.
+            </span>
+            <Button asChild tone="triaz" size="sm" variant="outline">
+              <Link href="/portal/membership#buy">
+                Renew now <ArrowRightIcon size={14} />
+              </Link>
+            </Button>
+          </div>
         </StatusBanner>
       ) : null}
 
@@ -444,9 +432,18 @@ async function MemberHome({
                 .join(" · ")
         }
         action={
-          <Button asChild variant="ghost" tone="neutral" size="sm">
-            <Link href="/portal/bookings">All bookings →</Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {(isParent || isStudent) && (
+              <AddToCalendarDialog
+                origin={origin}
+                hasHousehold={hasHousehold}
+                initialTokens={calendarTokens}
+              />
+            )}
+            <Button asChild variant="ghost" tone="neutral" size="sm">
+              <Link href="/portal/bookings">All bookings →</Link>
+            </Button>
+          </div>
         }
       >
         {weekEvents.length === 0 ? (
@@ -473,6 +470,74 @@ async function MemberHome({
           </CalendarPagerTransition>
         )}
       </Section>
+    </>
+  );
+
+  return (
+    <div className="space-y-10">
+      <PageHeader
+        kicker="Members"
+        title={greeting}
+        description={subtitle}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/portal?week=${prevParam}`} className="group">
+                  <span
+                    aria-hidden
+                    className="inline-block transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out-soft)] group-hover:-translate-x-0.5"
+                  >
+                    ←
+                  </span>{" "}
+                  Prev
+                </Link>
+              </Button>
+              {!isThisWeek && (
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/portal?week=${thisWeekParam}`}>This week</Link>
+                </Button>
+              )}
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/portal?week=${nextParam}`} className="group">
+                  Next{" "}
+                  <span
+                    aria-hidden
+                    className="inline-block transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out-soft)] group-hover:translate-x-0.5"
+                  >
+                    →
+                  </span>
+                </Link>
+              </Button>
+            </div>
+            <Button asChild tone="triaz" size="lg">
+              <Link href="/portal/book">
+                <CalendarIcon /> Book a court
+              </Link>
+            </Button>
+          </div>
+        }
+      />
+
+      {hasUpcomingActivity ? (
+        <>
+          {calendarBlock}
+          <RecommendedPrograms
+            hero={recs.hero}
+            more={recs.more}
+            isParent={isParent}
+          />
+        </>
+      ) : (
+        <>
+          <RecommendedPrograms
+            hero={recs.hero}
+            more={recs.more}
+            isParent={isParent}
+          />
+          {calendarBlock}
+        </>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-2">
         <Section title="Household" description="Everyone on your account.">
@@ -490,6 +555,7 @@ async function MemberHome({
                   >
                     <Avatar
                       name={`${m.firstName} ${m.lastName}`}
+                      src={m.avatarUrl}
                       size="xs"
                     />
                     <span className="text-xs font-medium">{m.firstName}</span>
@@ -578,7 +644,7 @@ function StatusBanner({
         tone === "neutral" &&
           "bg-[var(--surface-strong)] text-[var(--foreground)]",
         tone === "warning" &&
-          "bg-[var(--warning-soft)] text-[oklch(0.30_0.10_75)]",
+          "bg-[var(--warning-soft)] text-[var(--warning-ink)]",
         tone === "danger" &&
           "bg-[var(--danger-soft)] text-[var(--destructive)]",
       )}

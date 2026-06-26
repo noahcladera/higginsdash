@@ -6,17 +6,17 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { createEnrollment } from "@/lib/portal/enrollment-actions";
 import {
-  eventHasMemberPricingTier,
-  resolveEventCheckoutPrice,
-  type PricingTier,
-} from "@/lib/classes/pricing-tiers";
+  ageIncludesYears,
+  formatPublicAgeLabel,
+} from "@/lib/classes/age-band";
 import {
   resolveCampCheckoutPrice,
   type CampOptionsConfig,
 } from "@/lib/classes/camp-options";
 import { computeEnrollmentPricing } from "@/lib/portal/enrollment-pricing";
+import { createEnrollment } from "@/lib/portal/enrollment-actions";
+import { enrollmentSuccessUrl } from "@/lib/portal/purchase-success-url";
 import { startCheckout as beginCheckout } from "@/lib/payments/start-checkout";
 import {
   getMollieAccountForMembership,
@@ -74,8 +74,8 @@ export function EnrollPanel({
   pricePerSeries,
   isEvent = false,
   isCamp = false,
-  pricingTiers = null,
   campOptions = null,
+  nextEventOccurrenceLabel = null,
   /**
    * Sessions serialized as ISO strings — Server Components can't pass
    * Date instances across the boundary cleanly, and we only need the
@@ -109,8 +109,9 @@ export function EnrollPanel({
   pricePerSeries: number | null;
   isEvent?: boolean;
   isCamp?: boolean;
-  pricingTiers?: PricingTier[] | null;
   campOptions?: CampOptionsConfig | null;
+  /** Next event date/time shown above the enroll button. */
+  nextEventOccurrenceLabel?: string | null;
   sessionStartsAtIso: string[];
   venueClubSlug: "triaz" | "randwijck" | null;
   /**
@@ -143,22 +144,12 @@ export function EnrollPanel({
   // so they see the second Mollie account label before paying.
   const lessonStepUnlocked = searchParams.get("step") === "lesson";
   const [checkoutPending, startCheckout] = useTransition();
-  const [success, setSuccess] = useState<{
-    status: "pending_payment" | "waitlist" | "active";
-    isNew: boolean;
-    name: string;
-  } | null>(null);
   const { run, pending: enrollPending, error } = useActionFeedback<{
     enrollmentId: string;
     status: "pending_payment" | "waitlist" | "active";
     isNew: boolean;
   }>({
-    success: (r) =>
-      r.status === "waitlist"
-        ? "Added to the waitlist"
-        : r.status === "active"
-          ? "Enrollment confirmed"
-          : "Spot saved",
+    silentSuccess: true,
   });
   const pending = checkoutPending || enrollPending;
 
@@ -245,20 +236,12 @@ export function EnrollPanel({
         hasActiveMembership: selected.hasActiveMembership,
       });
     }
-    if (!isEvent || !pricingTiers?.length) return pricePerSeries;
-    if (!selected) return pricePerSeries;
-    return resolveEventCheckoutPrice({
-      pricePerSeries,
-      pricingTiers,
-      hasActiveMembership: selected.hasActiveMembership,
-    }).amountEur;
+    return pricePerSeries;
   }, [
     isCamp,
     campOptions,
     selectedCampOptionId,
     selectedDropInDate,
-    isEvent,
-    pricingTiers,
     pricePerSeries,
     selected,
   ]);
@@ -266,15 +249,14 @@ export function EnrollPanel({
   const breakdown = useMemo(() => {
     if (!selected) return null;
     return computeEnrollmentPricing({
-      pricePerSeries: effectivePricePerSeries,
+      pricePerSeries: isEvent ? null : effectivePricePerSeries,
       sessions: sessionStartsAtIso.map((iso) => ({ startsAt: new Date(iso) })),
       now: new Date(),
       venueClubSlug,
       hasActiveMembership: selected.hasActiveMembership,
       candidateAgeBracket: selected.ageBracket,
       isReturningHousehold,
-      suppressMembershipAddOn:
-        isEvent && eventHasMemberPricingTier(pricingTiers),
+      eventOccurrencePrice: isEvent ? pricePerSeries : null,
       campSelectionPrice: isCamp ? effectivePricePerSeries : null,
       campSelectionKind: isCamp
         ? campNeedsDropInDate
@@ -291,7 +273,7 @@ export function EnrollPanel({
     isEvent,
     isCamp,
     campNeedsDropInDate,
-    pricingTiers,
+    pricePerSeries,
   ]);
 
   const showWaitlist = isFull && waitlistEnabled;
@@ -328,7 +310,6 @@ export function EnrollPanel({
         : `Enroll${selected ? ` ${firstWord(selected.displayName)}` : ""}${buttonTotalLabel}`;
 
   function onEnroll() {
-    setSuccess(null);
     if (!selected) return;
     if (selected.existing) return;
     if (!selected.ageOk && !ageOverrideAck) return;
@@ -353,32 +334,30 @@ export function EnrollPanel({
           ageOverrideAck: !selected.ageOk ? true : undefined,
         });
         if (res.ok) {
-          setSuccess({ status: res.status, isNew: res.isNew, name });
-          // Land the parent on /portal/classes (where the class actually
-          // lives) with query params the inline EnrollmentSuccessBanner
-          // uses to render the friendly "see you on court" / waitlist
-          // message. The toast still fires from useActionFeedback so
-          // the redirect feels intentional.
-          const params = new URLSearchParams({
-            enrolled: "1",
-            series: seriesId,
-            student: studentParam,
-          });
-          if (res.status === "waitlist") params.set("waitlist", "1");
-          router.push(`/portal/classes?${params.toString()}`);
+          router.push(
+            enrollmentSuccessUrl({
+              seriesId,
+              studentName: firstWord(name),
+              waitlist: res.status === "waitlist",
+            }),
+          );
         }
         return res;
       });
       return;
     }
 
-    const studentParam = encodeURIComponent(firstWord(selected.displayName));
+    const studentParam = firstWord(selected.displayName);
     startCheckout(() => {
       void beginCheckout(
         {
           amountEur: totalDue,
           description: `${seriesName} · ${selected.displayName}`,
-          returnUrl: `/portal/classes?enrolled=1&series=${seriesId}&student=${studentParam}`,
+          returnUrl: enrollmentSuccessUrl({
+            seriesId,
+            studentName: studentParam,
+            amountEur: totalDue ?? undefined,
+          }),
           action: {
             kind: "enrollment_create",
             payload: {
@@ -451,7 +430,7 @@ export function EnrollPanel({
     venueClubSlug != null;
 
   return (
-    <div className="space-y-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-sm)]">
+    <div className="space-y-4 elev-card p-5">
       <CapacityHeader
         slotsLeft={slotsLeft}
         maxStudents={maxStudents}
@@ -460,8 +439,15 @@ export function EnrollPanel({
         waitlistedCount={waitlistedCount}
       />
 
+      {isEvent && nextEventOccurrenceLabel && (
+        <p className="text-sm text-[var(--foreground)]">
+          Signing up for{" "}
+          <span className="font-medium tabular">{nextEventOccurrenceLabel}</span>
+        </p>
+      )}
+
       {!enrollmentOpenNow && (
-        <div className="rounded-md bg-[var(--warning-soft)] px-3 py-2 text-xs text-[oklch(0.42_0.13_75)]">
+        <div className="rounded-md bg-[var(--warning-soft)] px-3 py-2 text-xs text-[var(--warning-ink)]">
           {opensAt && opensAt > new Date()
             ? `Enrollment opens ${formatDate(opensAt)}.`
             : closesAt && closesAt < new Date()
@@ -579,7 +565,7 @@ export function EnrollPanel({
                       )}
                     </div>
                     <div className="text-[11px] text-[var(--muted-foreground)]">
-                      {ageBandLabel(g)}
+                      {ageBandLabel(g, isEvent)}
                       {!g.isFull && ` · ${g.slotsLeft} spot${g.slotsLeft === 1 ? "" : "s"} left`}
                       {!fits && selected && " · outside your child's age band"}
                     </div>
@@ -640,6 +626,7 @@ export function EnrollPanel({
             creditAppliedEur={creditAppliedEur}
             brandName={brandName}
             privateLessonLabel={privateLessonLabel}
+            isEvent={isEvent}
           />
         )}
 
@@ -660,9 +647,7 @@ export function EnrollPanel({
         />
       )}
 
-      {success ? (
-        <SuccessNotice success={success} seriesName={seriesName} />
-      ) : showTwoStepCheckout && selected && breakdown ? (
+      {showTwoStepCheckout && selected && breakdown ? (
         <TwoStepCheckout
           membershipAddOn={breakdown.membershipAddOn ?? 0}
           lessonAmount={adjustedLessonAmount}
@@ -686,15 +671,16 @@ export function EnrollPanel({
           }
           pending={pending}
           onLessonRun={(payload) => {
-            const studentParam = encodeURIComponent(
-              firstWord(selected.displayName),
-            );
             startCheckout(() => {
               void beginCheckout(
                 {
                   amountEur: payload.lessonAmount,
                   description: `${seriesName} · ${selected.displayName} (lesson only)`,
-                  returnUrl: `/portal/classes?enrolled=1&series=${seriesId}&student=${studentParam}`,
+                  returnUrl: enrollmentSuccessUrl({
+                    seriesId,
+                    studentName: firstWord(selected.displayName),
+                    amountEur: payload.lessonAmount,
+                  }),
                   mollieAccount: getMollieAccountForOperations(),
                   action: {
                     kind: "enrollment_create_lesson_only",
@@ -941,7 +927,7 @@ function StepCard({
   return (
     <div
       className={cn(
-        "rounded-md border bg-[var(--card)] p-3 shadow-[var(--shadow-sm)] transition-opacity",
+        "control-well rounded-md p-3 transition-opacity",
         completed
           ? "border-[var(--success)]/40 opacity-90"
           : disabled
@@ -1032,51 +1018,6 @@ function CapacityHeader({
   );
 }
 
-function SuccessNotice({
-  success,
-  seriesName,
-}: {
-  success: { status: "pending_payment" | "waitlist" | "active"; isNew: boolean; name: string };
-  seriesName: string;
-}) {
-  const tone =
-    success.status === "waitlist"
-      ? "warning"
-      : success.status === "active"
-        ? "success"
-        : "triaz";
-  const headline =
-    success.status === "waitlist"
-      ? `${success.name} is on the waitlist for ${seriesName}.`
-      : success.status === "active"
-        ? `${success.name} is enrolled in ${seriesName}.`
-        : success.isNew
-          ? `${success.name} is signed up for ${seriesName}.`
-          : `${success.name} was already on the list — nothing to do.`;
-  return (
-    <div className="space-y-2 rounded-md border border-[var(--border)] bg-[var(--surface)] p-3 text-sm">
-      <div className="flex items-center gap-2">
-        <Badge tone={tone}>
-          {success.status.replace("_", " ")}
-        </Badge>
-      </div>
-      <p>{headline}</p>
-      <Link
-        href="/portal/classes"
-        className="text-xs font-semibold text-[var(--triaz-ink)] underline-offset-4 hover:underline"
-      >
-        Go to My classes →
-      </Link>
-    </div>
-  );
-}
-
-/**
- * Itemized "Your total" block. Reactive to candidate selection — when
- * the parent toggles between kids, membership status and age bracket
- * change which alters both the deduction and the add-on. We always
- * show the math so the parent never wonders where a number came from.
- */
 function CreditToggle({
   checked,
   onChange,
@@ -1115,12 +1056,14 @@ function PricingBreakdown({
   creditAppliedEur,
   brandName,
   privateLessonLabel,
+  isEvent = false,
 }: {
   breakdown: ReturnType<typeof computeEnrollmentPricing>;
   candidate: EnrollCandidate;
   creditAppliedEur: number;
   brandName: string;
   privateLessonLabel: string;
+  isEvent?: boolean;
 }) {
   if (breakdown.fullSeriesPrice == null) {
     return (
@@ -1136,17 +1079,19 @@ function PricingBreakdown({
   const showMembershipLine = breakdown.membershipAddOn != null;
 
   return (
-    <div className="space-y-2 rounded-md bg-[var(--surface)] p-3 text-sm shadow-[var(--shadow-sm)]">
+    <div className="space-y-2 elev-panel rounded-md p-3 text-sm">
       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
         Your total
       </div>
 
       <Row
-        label="Lesson series"
+        label={isEvent ? "Event ticket" : "Lesson series"}
         sub={
-          breakdown.pricePerSession != null
+          !isEvent && breakdown.pricePerSession != null
             ? `${breakdown.totalSessions} sessions · €${breakdown.pricePerSession.toFixed(0)} each`
-            : undefined
+            : isEvent
+              ? "One upcoming date"
+              : undefined
         }
         value={`€${breakdown.fullSeriesPrice}`}
       />
@@ -1163,7 +1108,7 @@ function PricingBreakdown({
       <Divider />
 
       <Row
-        label="Lesson price"
+        label={isEvent ? "Event price" : "Lesson price"}
         value={
           breakdown.payableLesson != null
             ? `€${breakdown.payableLesson}`
@@ -1272,7 +1217,7 @@ function AgeOverrideAck({
   studentName: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-md border border-dashed border-[var(--warning)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-[oklch(0.42_0.13_75)]">
+    <label className="flex cursor-pointer items-start gap-3 rounded-md border border-dashed border-[var(--warning)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-[var(--warning-ink)]">
       <input
         type="checkbox"
         checked={checked}
@@ -1291,16 +1236,22 @@ function AgeOverrideAck({
 
 function candidateFitsGroup(c: EnrollCandidate, g: EnrollGroup): boolean {
   if (c.age == null) return true;
-  if (g.minAge != null && c.age < g.minAge) return false;
-  if (g.maxAge != null && c.age > g.maxAge) return false;
-  return true;
+  return ageIncludesYears({
+    minAge: g.minAge,
+    maxAge: g.maxAge,
+    age: c.age,
+  });
 }
 
-function ageBandLabel(g: EnrollGroup): string {
-  if (g.minAge != null && g.maxAge != null) return `Ages ${g.minAge}–${g.maxAge}`;
-  if (g.minAge != null) return `Ages ${g.minAge}+`;
-  if (g.maxAge != null) return `Up to ${g.maxAge}`;
-  return "All ages";
+function ageBandLabel(g: EnrollGroup, isEvent: boolean): string {
+  return (
+    formatPublicAgeLabel({
+      minAge: g.minAge,
+      maxAge: g.maxAge,
+      isEvent,
+      withAgesPrefix: true,
+    }) ?? "All ages"
+  );
 }
 
 function firstWord(name: string): string {

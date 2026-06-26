@@ -16,8 +16,10 @@ import { jointSavings } from "@/lib/pricing";
  */
 export function MembershipGate({
   clubs,
+  marketingImages = {},
 }: {
   clubs: { id: string; name: string; slug: string }[];
+  marketingImages?: Record<string, string>;
 }) {
   const adultJointSaving = jointSavings("adult", { isReturning: true });
   const known = clubs.filter(
@@ -28,7 +30,7 @@ export function MembershipGate({
     <div className="space-y-8">
       <MembershipPitchHeader />
 
-      <ClubTilesGrid clubs={clubs} />
+      <ClubTilesGrid clubs={clubs} marketingImages={marketingImages} />
 
       {known.length === 2 && <JointCrossSell saving={adultJointSaving} />}
 

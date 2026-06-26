@@ -4,11 +4,14 @@ import {
   formatLocalDate,
   parseLocalDate,
 } from "@/lib/booking/time";
-import type { ClassDeliveryMode, ClassSeriesStatus } from "@prisma/client";
+import { mondayOfWeekUtc } from "@/lib/calendar/week";
+import type { ClassDeliveryMode, ClassSeriesStatus, DayOfWeek } from "@prisma/client";
 
 export type AdminView = "calendar" | "list";
 export type AdminAudience = "youth" | "adults" | "all";
 export type AdminSpan = 1 | 3 | 7;
+
+export type AdminGroupBy = "program-season" | "flat";
 
 /** Parsed admin /classes URL state (searchParams). */
 export type AdminClassesFilters = {
@@ -19,6 +22,12 @@ export type AdminClassesFilters = {
   schoolSlug: string | null;
   clubId: string | null;
   coachPersonId: string | null;
+  dayOfWeek: DayOfWeek | null;
+  programSlug: string | null;
+  seasonId: string | null;
+  /** Narrow to one class series (wins over program/season). */
+  seriesId: string | null;
+  groupBy: AdminGroupBy;
   /** Narrow series by status; `null` = use default time-based visibility (no extra status chip). */
   seriesStatus: ClassSeriesStatus | "all" | null;
   /** `true` = include past-ended series (same as legacy `all=1`). */
@@ -58,8 +67,8 @@ export function resolveCalendarAnchor(raw: string | undefined | null): Date {
   return amsterdamMidnightUtc(year, month, day);
 }
 
-function parseView(v: string | undefined): AdminView {
-  return v === "calendar" ? "calendar" : "list";
+function parseView(_v: string | undefined): AdminView {
+  return "list";
 }
 
 function parseAudience(v: string | undefined): AdminAudience {
@@ -92,10 +101,31 @@ function parseSeriesStatus(
   return null;
 }
 
+const DAY_OF_WEEK_VALUES: DayOfWeek[] = [
+  "mon",
+  "tue",
+  "wed",
+  "thu",
+  "fri",
+  "sat",
+  "sun",
+];
+
+function parseDayOfWeek(v: string | undefined): DayOfWeek | null {
+  if (!v) return null;
+  return DAY_OF_WEEK_VALUES.includes(v as DayOfWeek)
+    ? (v as DayOfWeek)
+    : null;
+}
+
+function parseGroupBy(v: string | undefined): AdminGroupBy {
+  return v === "flat" ? "flat" : "program-season";
+}
+
 function parseSpan(v: string | undefined): AdminSpan {
-  const n = parseInt(v ?? "7", 10);
+  const n = parseInt(v ?? "1", 10);
   if (n === 1 || n === 3 || n === 7) return n as AdminSpan;
-  return 7;
+  return 1;
 }
 
 /**
@@ -113,6 +143,11 @@ export function parseAdminClassesFilters(
     schoolSlug: (firstValue(sp.school) ?? "").trim() || null,
     clubId: (firstValue(sp.club) ?? "").trim() || null,
     coachPersonId: (firstValue(sp.coach) ?? "").trim() || null,
+    dayOfWeek: parseDayOfWeek(firstValue(sp.day)),
+    programSlug: (firstValue(sp.program) ?? "").trim() || null,
+    seasonId: (firstValue(sp.season) ?? "").trim() || null,
+    seriesId: (firstValue(sp.series) ?? "").trim() || null,
+    groupBy: parseGroupBy(firstValue(sp.group)),
     seriesStatus: parseSeriesStatus(firstValue(sp.status)),
     includeAllSeries,
     q,
@@ -125,16 +160,50 @@ export function parseAdminClassesFilters(
   };
 }
 
+/**
+ * Calendar range start for session queries. Week view (`span === 7`) snaps
+ * to Monday of the week containing the anchor day.
+ */
+export function resolveCalendarRangeStart(
+  fromISO: string,
+  span: AdminSpan,
+): Date {
+  const anchor = resolveCalendarAnchor(fromISO);
+  if (span === 7) return mondayOfWeekUtc(anchor);
+  return anchor;
+}
+
+/** Monday (YYYY-MM-DD) of the week containing today in Amsterdam. */
+export function weekContainingTodayISO(): string {
+  return formatLocalDate(mondayOfWeekUtc(new Date()));
+}
+
 /** Range [start, end) for session queries — `end` is exclusive. */
 export function calendarRangeEnd(rangeStart: Date, span: AdminSpan): Date {
   return addDays(rangeStart, span);
 }
 
-/** Shift anchor day by whole calendar days (Amsterdam). */
-export function shiftCalendarFromISO(fromISO: string, dayDelta: number): string {
-  const anchor = resolveCalendarAnchor(fromISO);
-  const shifted = addDays(anchor, dayDelta);
+/** Shift anchor day by whole calendar days (Amsterdam). Week view shifts by whole weeks. */
+export function shiftCalendarFromISO(
+  fromISO: string,
+  dayDelta: number,
+  span: AdminSpan = 7,
+): string {
+  const start = resolveCalendarRangeStart(fromISO, span);
+  const delta = span === 7 ? (dayDelta >= 0 ? 7 : -7) * Math.sign(dayDelta || 1) : dayDelta;
+  const shifted = addDays(start, delta);
   return formatLocalDate(shifted);
+}
+
+/** Whether the visible calendar window contains today (Amsterdam). */
+export function calendarWindowContainsToday(
+  fromISO: string,
+  span: AdminSpan,
+): boolean {
+  const start = resolveCalendarRangeStart(fromISO, span);
+  const end = calendarRangeEnd(start, span);
+  const today = resolveCalendarAnchor(defaultCalendarFromISO());
+  return today >= start && today < end;
 }
 
 /** Human label for the visible calendar window, e.g. "21 Apr – 23 Apr 2026". */
@@ -142,7 +211,7 @@ export function formatAdminCalendarRangeLabel(
   fromISO: string,
   span: AdminSpan,
 ): string {
-  const start = resolveCalendarAnchor(fromISO);
+  const start = resolveCalendarRangeStart(fromISO, span);
   const end = addDays(start, span - 1);
   const fmt = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Amsterdam",

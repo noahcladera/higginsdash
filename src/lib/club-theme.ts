@@ -5,6 +5,16 @@ import type { ClubSlug } from "@/lib/pricing";
  * membership looks unmistakably "Triaz" (emerald, outdoor grass) and a
  * Randwijck membership looks unmistakably "Randwijck" (terracotta, clay).
  *
+ * Color rules:
+ * 1. Venue/club identity → `--triaz*` / `--randwijck*` / `--joint*` via
+ *    {@link badgeToneForVenueSlug} or {@link themeForClubs}.
+ * 2. Delivery type (pickup, onsite, private) → `--delivery-*` tokens in
+ *    globals.css — never reuse club colors for delivery semantics.
+ * 3. Status (error, warning, success) → `--danger*`, `--warning*`,
+ *    `--success*` — not `--triaz*` unless the element is club-branded.
+ * 4. Org-wide CTAs with no venue context may default to Triaz; venue-scoped
+ *    actions must use {@link ctaToneForContext}.
+ *
  * The third "joint" theme handles memberships that cover both clubs.
  *
  * Themes are keyed by a slug and resolved through
@@ -106,3 +116,59 @@ export function themeForClubs(clubs: ClubSlug[]): ClubTheme {
   if (clubs[0] === "triaz") return "triaz";
   return "joint";
 }
+
+/** Badge / chip tone for a venue or club slug. Unknown venues → neutral. */
+export type VenueBadgeTone = ClubTheme | "neutral";
+
+export function badgeToneForVenueSlug(
+  slug: string | null | undefined,
+): VenueBadgeTone {
+  const normalized = slug?.toLowerCase();
+  if (normalized === "triaz") return "triaz";
+  if (normalized === "randwijck") return "randwijck";
+  return "neutral";
+}
+
+export function resolveVenueClubSlug(venue: {
+  slug: string;
+  club?: { slug: string } | null;
+}): "triaz" | "randwijck" | null {
+  const raw = venue.club?.slug.toLowerCase() ?? venue.slug.toLowerCase();
+  if (raw === "triaz") return "triaz";
+  if (raw === "randwijck") return "randwijck";
+  return null;
+}
+
+/** Sidebar / nav accent classes derived from membership or venue tone. */
+export function navAccentClasses(
+  tone: ClubTheme | "neutral",
+): {
+  primaryBg: string;
+  primaryText: string;
+  primaryHover: string;
+  badgeBg: string;
+  dot: string;
+} {
+  const base = tone === "neutral" || tone === "joint" ? "triaz" : tone;
+  return {
+    primaryBg: `bg-[var(--${base}-soft)]`,
+    primaryText: `text-[var(--${base}-ink)]`,
+    primaryHover: `hover:bg-[var(--${base})]/15`,
+    badgeBg: `bg-[var(--${base})]`,
+    dot: `bg-[var(--${base})]`,
+  };
+}
+
+/** Resolve CTA/badge tone from venue or membership coverage context. */
+export function ctaToneForContext(args: {
+  venueSlug?: string | null;
+  membershipClubs?: ClubSlug[];
+}): ClubTheme {
+  const venueTone = badgeToneForVenueSlug(args.venueSlug);
+  if (venueTone === "triaz" || venueTone === "randwijck") return venueTone;
+  if (args.membershipClubs?.length) return themeForClubs(args.membershipClubs);
+  return "triaz";
+}
+
+/** Alias for clubVenueFillClasses — venue background tint in calendars. */
+export { clubVenueFillClasses as venueFillClasses } from "@/lib/admin/schedule-slot-colors";

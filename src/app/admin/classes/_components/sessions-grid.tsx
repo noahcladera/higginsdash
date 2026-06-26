@@ -1,8 +1,26 @@
-import type { AdminCalendarSession } from "@/lib/admin/classes-queries";
-import { AdminSessionGridBlock, AdminSessionRow } from "./session-block";
+"use client";
 
-const AXIS_START_HOUR = 8;
-const AXIS_END_HOUR = 22;
+import { useMemo, useState } from "react";
+import {
+  capColumns,
+  laneGeometry,
+  layoutTimedEvents,
+  maxColumnsForSpan,
+} from "@/lib/calendar/timed-event-layout";
+import type { AdminClassesFilters } from "@/lib/admin/classes-filters";
+import type { AdminCalendarSession } from "@/lib/admin/classes-queries";
+import {
+  CALENDAR_AXIS_END_HOUR,
+  CALENDAR_AXIS_START_HOUR,
+} from "@/lib/booking/time";
+import {
+  AdminSessionGridBlock,
+  AdminSessionOverflowChip,
+  AdminSessionRow,
+} from "./session-block";
+
+const AXIS_START_HOUR = CALENDAR_AXIS_START_HOUR;
+const AXIS_END_HOUR = CALENDAR_AXIS_END_HOUR;
 const PX_PER_MIN = 1;
 const GRID_HEIGHT_PX = (AXIS_END_HOUR - AXIS_START_HOUR) * 60 * PX_PER_MIN;
 
@@ -29,7 +47,11 @@ function amsterdamWeekdayShort(d: Date): string {
   }).format(d);
 }
 
-function eventBlockStart(s: AdminCalendarSession): Date {
+function blockStartForSession(
+  s: AdminCalendarSession,
+  blockAnchor: "class" | "full",
+): Date {
+  if (blockAnchor === "class") return s.classStartAt;
   return s.leaveAt ?? s.classStartAt;
 }
 
@@ -45,6 +67,15 @@ function localMinutesSinceAxisStart(d: Date): number {
   return hh * 60 + mm - AXIS_START_HOUR * 60;
 }
 
+function blockGeometry(start: Date, end: Date) {
+  const topMin = localMinutesSinceAxisStart(start);
+  const endMin = localMinutesSinceAxisStart(end);
+  const top = Math.max(0, topMin * PX_PER_MIN);
+  const bottom = Math.min(GRID_HEIGHT_PX, endMin * PX_PER_MIN);
+  const height = Math.max(24, bottom - top);
+  return { top, height };
+}
+
 function hours(): number[] {
   return Array.from(
     { length: AXIS_END_HOUR - AXIS_START_HOUR + 1 },
@@ -52,13 +83,40 @@ function hours(): number[] {
   );
 }
 
+function buildGridTemplateColumns(
+  days: Date[],
+  todayKey: string,
+  expandedColIdx: number | null,
+  expandToday: boolean,
+): string {
+  const dayCols = days.map((d, i) => {
+    const isToday = amsterdamDayKey(d) === todayKey;
+    const isWide = expandedColIdx === i || (expandToday && isToday);
+    return isWide ? "minmax(220px, 2fr)" : "minmax(100px, 1fr)";
+  });
+  return ["60px", ...dayCols].join(" ");
+}
+
 export function SessionsGrid({
   days,
   sessions,
+  filters,
+  colorMode = "venue",
+  blockAnchor = "class",
+  expandToday = false,
+  overflowMode = "link",
+  clubOutlines = false,
 }: {
   days: Date[];
   sessions: AdminCalendarSession[];
+  filters: AdminClassesFilters;
+  colorMode?: "venue" | "schedule";
+  blockAnchor?: "class" | "full";
+  expandToday?: boolean;
+  overflowMode?: "link" | "preview";
+  clubOutlines?: boolean;
 }) {
+  const [expandedColIdx, setExpandedColIdx] = useState<number | null>(null);
   const now = new Date();
   const todayKey = amsterdamDayKey(now);
   const n = days.length;
@@ -66,52 +124,137 @@ export function SessionsGrid({
   const nowMin = localMinutesSinceAxisStart(now);
   const showNowLine =
     todayInRange && nowMin >= 0 && nowMin <= GRID_HEIGHT_PX;
+  const maxCols = maxColumnsForSpan(filters.span);
 
-  const byDay: AdminCalendarSession[][] = Array.from({ length: n }, () => []);
-  for (const s of sessions) {
-    const blockStart = eventBlockStart(s);
-    const dayKey = amsterdamDayKey(blockStart);
-    const idx = days.findIndex((d) => amsterdamDayKey(d) === dayKey);
-    if (idx >= 0) byDay[idx].push(s);
-  }
-  for (const bucket of byDay) {
-    bucket.sort(
-      (a, b) =>
-        eventBlockStart(a).getTime() - eventBlockStart(b).getTime(),
-    );
-  }
+  const gridTemplateColumns = buildGridTemplateColumns(
+    days,
+    todayKey,
+    expandedColIdx,
+    expandToday,
+  );
 
-  const gridCols =
-    n === 1
-      ? "grid-cols-[60px_minmax(0,1fr)]"
-      : `grid-cols-[60px_repeat(${n},minmax(0,1fr))]`;
+  const byDay: AdminCalendarSession[][] = useMemo(() => {
+    const buckets: AdminCalendarSession[][] = Array.from({ length: n }, () => []);
+    for (const s of sessions) {
+      const blockStart = blockStartForSession(s, blockAnchor);
+      const dayKey = amsterdamDayKey(blockStart);
+      const idx = days.findIndex((d) => amsterdamDayKey(d) === dayKey);
+      if (idx >= 0) buckets[idx]!.push(s);
+    }
+    for (const bucket of buckets) {
+      bucket.sort(
+        (a, b) =>
+          blockStartForSession(a, blockAnchor).getTime() -
+          blockStartForSession(b, blockAnchor).getTime(),
+      );
+    }
+    return buckets;
+  }, [sessions, days, n, blockAnchor]);
+
+  const layoutsByDay = useMemo(() => {
+    return byDay.map((daySessions, colIdx) => {
+      const isTodayCol = amsterdamDayKey(days[colIdx]!) === todayKey;
+      const isExpanded = expandedColIdx === colIdx;
+      const maxColsForDay =
+        (expandToday && isTodayCol) || isExpanded
+          ? Number.POSITIVE_INFINITY
+          : maxCols;
+
+      const laidOut = layoutTimedEvents(
+        daySessions.map((s) => {
+          const blockStart = blockStartForSession(s, blockAnchor);
+          return {
+            session: s,
+            id: s.sessionId,
+            startMs: blockStart.getTime(),
+            endMs: s.classEndAt.getTime(),
+          };
+        }),
+      );
+
+      const { visible, overflow } = capColumns(laidOut, maxColsForDay);
+
+      const blocks = visible.map((item) => {
+        const blockStart = blockStartForSession(item.session, blockAnchor);
+        const { top, height } = blockGeometry(blockStart, item.session.classEndAt);
+        const { leftPct, widthPct } = laneGeometry(
+          item.displayColumn,
+          item.laneCount,
+        );
+        return {
+          kind: "session" as const,
+          session: item.session,
+          top,
+          height,
+          leftPct,
+          widthPct,
+          laneCount: item.laneCount,
+        };
+      });
+
+      const chips = overflow.map((chip) => {
+        const { top, height } = blockGeometry(
+          new Date(chip.startMs),
+          new Date(chip.endMs),
+        );
+        const { leftPct, widthPct } = laneGeometry(
+          chip.displayColumn,
+          chip.laneCount,
+        );
+        const hiddenSessions =
+          chip.hiddenEvents?.map((e) => e.session) ?? [];
+        return {
+          kind: "overflow" as const,
+          count: chip.count,
+          top,
+          height,
+          leftPct,
+          widthPct,
+          hiddenSessions,
+        };
+      });
+
+      return [...blocks, ...chips];
+    });
+  }, [
+    byDay,
+    days,
+    blockAnchor,
+    expandToday,
+    expandedColIdx,
+    maxCols,
+    todayKey,
+  ]);
 
   return (
     <div className="space-y-4">
-      <div
-        className={`hidden overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] lg:block`}
-      >
-        <div className={`grid ${gridCols} border-b border-[var(--border)] bg-[var(--surface)]`}>
+      <div className="hidden overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] lg:block">
+        <div
+          className="grid min-w-max border-b border-[var(--border)] bg-[var(--surface)]"
+          style={{ gridTemplateColumns }}
+        >
           <div />
           {days.map((d, i) => {
             const isToday = amsterdamDayKey(d) === todayKey;
+            const isWide =
+              expandedColIdx === i || (expandToday && isToday);
             return (
               <div
                 key={i}
-                className={`flex flex-col items-center justify-center px-2 py-2 text-center ${i < n - 1 ? "border-r border-[var(--border)]" : ""} ${isToday ? "border-b-2 border-b-red-500 bg-red-50" : ""}`}
+                className={cnDayHeader(i, n, isToday, isWide)}
               >
                 <div
-                  className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${isToday ? "text-red-600" : "text-[var(--muted-foreground)]"}`}
+                  className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${isToday ? "text-[var(--danger)]" : "text-[var(--muted-foreground)]"}`}
                 >
                   {amsterdamWeekdayShort(d)}
                 </div>
                 <div
-                  className={`tabular text-base font-medium ${isToday ? "text-red-700" : ""}`}
+                  className={`tabular text-base font-medium ${isToday ? "text-[var(--danger-ink)]" : ""}`}
                 >
                   {amsterdamDayNumber(d)}
                 </div>
                 {isToday && (
-                  <div className="text-[9px] font-semibold uppercase tracking-wide text-red-600">
+                  <div className="text-[9px] font-semibold uppercase tracking-wide text-[var(--danger)]">
                     today
                   </div>
                 )}
@@ -121,8 +264,8 @@ export function SessionsGrid({
         </div>
 
         <div
-          className={`relative grid ${gridCols}`}
-          style={{ height: GRID_HEIGHT_PX }}
+          className="relative grid min-w-max"
+          style={{ gridTemplateColumns, height: GRID_HEIGHT_PX }}
         >
           <div className="relative border-r border-[var(--border)]">
             {hours().map((h) => (
@@ -136,12 +279,15 @@ export function SessionsGrid({
             ))}
           </div>
 
-          {byDay.map((daySessions, colIdx) => {
-            const isTodayCol = amsterdamDayKey(days[colIdx]) === todayKey;
+          {layoutsByDay.map((dayLayouts, colIdx) => {
+            const isTodayCol = amsterdamDayKey(days[colIdx]!) === todayKey;
+            const dayISO = amsterdamDayKey(days[colIdx]!);
+            const isWideCol =
+              expandedColIdx === colIdx || (expandToday && isTodayCol);
             return (
               <div
                 key={colIdx}
-                className={`relative ${colIdx < n - 1 ? "border-r border-[var(--border)]" : ""} ${isTodayCol ? "bg-red-50/60" : ""}`}
+                className={`relative ${colIdx < n - 1 ? "border-r border-[var(--border)]" : ""} ${isTodayCol ? "bg-[var(--danger-soft)]/60" : ""}`}
               >
                 {hours().map((h) => (
                   <div
@@ -150,25 +296,41 @@ export function SessionsGrid({
                     style={{ top: (h - AXIS_START_HOUR) * 60 * PX_PER_MIN }}
                   />
                 ))}
-                {daySessions.map((s) => {
-                  const blockStart = eventBlockStart(s);
-                  const topMin = localMinutesSinceAxisStart(blockStart);
-                  const endMin = localMinutesSinceAxisStart(s.classEndAt);
-                  const top = Math.max(0, topMin * PX_PER_MIN);
-                  const bottom = Math.min(GRID_HEIGHT_PX, endMin * PX_PER_MIN);
-                  const height = Math.max(24, bottom - top);
-                  return (
+                {dayLayouts.map((item) =>
+                  item.kind === "session" ? (
                     <AdminSessionGridBlock
-                      key={s.sessionId}
-                      session={s}
-                      top={top}
-                      height={height}
+                      key={item.session.sessionId}
+                      session={item.session}
+                      top={item.top}
+                      height={item.height}
+                      leftPct={item.leftPct}
+                      widthPct={item.widthPct}
+                      laneCount={item.laneCount}
+                      colorMode={colorMode}
+                      preferFullLabels={isWideCol}
+                      clubOutlines={clubOutlines}
                     />
-                  );
-                })}
+                  ) : (
+                    <AdminSessionOverflowChip
+                      key={`overflow-${colIdx}-${item.top}-${item.count}`}
+                      filters={filters}
+                      dayISO={dayISO}
+                      count={item.count}
+                      top={item.top}
+                      height={item.height}
+                      leftPct={item.leftPct}
+                      widthPct={item.widthPct}
+                      overflowMode={overflowMode}
+                      hiddenSessions={item.hiddenSessions}
+                      colorMode={colorMode}
+                      clubOutlines={clubOutlines}
+                      onExpandDay={() => setExpandedColIdx(colIdx)}
+                    />
+                  ),
+                )}
                 {isTodayCol && showNowLine && (
                   <div
-                    className="pointer-events-none absolute left-0 right-0 z-10 h-0.5 bg-red-500"
+                    className="pointer-events-none absolute left-0 right-0 z-10 h-0.5 bg-[var(--danger)]"
                     style={{ top: nowMin * PX_PER_MIN }}
                   />
                 )}
@@ -186,14 +348,14 @@ export function SessionsGrid({
           return (
             <div
               key={amsterdamDayKey(d)}
-              className={`rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-3 shadow-[var(--shadow-sm)] ${isToday ? "border-l-2 border-l-red-500" : ""}`}
+              className={`rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-3 shadow-[var(--shadow-sm)] ${isToday ? "border-l-2 border-l-[var(--danger)]" : ""}`}
             >
               <div
-                className={`mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] ${isToday ? "text-red-600" : "text-[var(--muted-foreground)]"}`}
+                className={`mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] ${isToday ? "text-[var(--danger)]" : "text-[var(--muted-foreground)]"}`}
               >
                 <span>{label}</span>
                 {isToday && (
-                  <span className="text-[9px] font-semibold uppercase tracking-wide text-red-600">
+                  <span className="text-[9px] font-semibold uppercase tracking-wide text-[var(--danger)]">
                     today
                   </span>
                 )}
@@ -206,7 +368,11 @@ export function SessionsGrid({
                 <ul className="space-y-2">
                   {list.map((s) => (
                     <li key={s.sessionId}>
-                      <AdminSessionRow session={s} />
+                      <AdminSessionRow
+                        session={s}
+                        colorMode={colorMode}
+                        clubOutlines={clubOutlines}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -217,4 +383,19 @@ export function SessionsGrid({
       </div>
     </div>
   );
+}
+
+function cnDayHeader(
+  i: number,
+  n: number,
+  isToday: boolean,
+  isWide: boolean,
+): string {
+  const parts = [
+    "flex flex-col items-center justify-center px-2 py-2 text-center",
+    i < n - 1 ? "border-r border-[var(--border)]" : "",
+    isToday ? "border-b-2 border-b-[var(--danger)] bg-[var(--danger-soft)]" : "",
+    isWide ? "min-w-[220px]" : "",
+  ];
+  return parts.filter(Boolean).join(" ");
 }

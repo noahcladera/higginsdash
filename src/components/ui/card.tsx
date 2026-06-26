@@ -3,14 +3,14 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /*
- * Card — borderless on a tinted surface by default.
+ * Card — Liquid Paper elevation primitive.
  *
- *   <Card>            tinted, no border, soft elevation
- *   <Card variant="solid">   on `--card` background with hairline border
- *   <Card variant="ghost">   transparent, no shadow (just structure)
- *
- * `padded` toggles the standard 24px gutter; turn off to lay out content
- * edge-to-edge (e.g. tables that handle their own padding).
+ *   <Card>                    elevated card (default)
+ *   <Card variant="glass">    frosted glass panel
+ *   <Card variant="elevated"> explicit elevated card
+ *   <Card variant="panel">    tinted panel (elev-1)
+ *   <Card variant="solid">    bordered control well
+ *   <Card variant="ghost">    transparent structure only
  */
 function Card({
   className,
@@ -18,18 +18,20 @@ function Card({
   padded = true,
   ...props
 }: React.ComponentProps<"div"> & {
-  variant?: "default" | "solid" | "ghost";
+  variant?: "default" | "elevated" | "glass" | "panel" | "solid" | "ghost";
   padded?: boolean;
 }) {
   return (
     <div
       data-slot="card"
+      data-variant={variant}
       className={cn(
         "rounded-[var(--radius-lg)] text-[var(--card-foreground)]",
-        variant === "default" &&
-          "bg-[var(--surface)] shadow-[var(--shadow-sm)]",
+        (variant === "default" || variant === "elevated") && "elev-card",
+        variant === "glass" && "glass-panel",
+        variant === "panel" && "elev-panel",
         variant === "solid" &&
-          "bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-sm)]",
+          "bg-[var(--card)] border border-[var(--glass-border-subtle)] shadow-[var(--shadow-elevated)]",
         variant === "ghost" && "bg-transparent",
         padded && "p-6",
         className,
@@ -100,7 +102,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-footer"
       className={cn(
-        "flex items-center gap-2 border-t border-[var(--border)] pt-4 mt-4",
+        "mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4",
         className,
       )}
       {...props}

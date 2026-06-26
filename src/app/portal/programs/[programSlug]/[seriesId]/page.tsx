@@ -10,10 +10,15 @@ import {
   getProgramBySlug,
   getVisibleSeriesById,
 } from "@/lib/portal/catalog-queries";
+import {
+  ageIncludesYears,
+  formatPublicAgeLabel,
+  programTargetToAudience,
+} from "@/lib/classes/age-band";
 import { getActiveMembershipCoverage } from "@/lib/memberships/coverage";
 import { isReturningHousehold } from "@/lib/memberships/returning";
-import { ageBracketFromAge } from "@/lib/portal/enrollment-pricing";
 import { getHouseholdCreditBalanceCents } from "@/lib/credits";
+import { ageBracketFromAge } from "@/lib/portal/enrollment-pricing";
 import {
   EnrollPanel,
   type EnrollCandidate,
@@ -23,6 +28,18 @@ import { listClassUpdatesForSeries } from "@/lib/class-updates/queries";
 import { ClassUpdateList } from "@/components/class-updates/class-update-list";
 import { getCurrentOrg } from "@/lib/tenant";
 import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
+import { CoverImage } from "@/components/portal/cover-image";
+import { Avatar } from "@/components/portal/avatar";
+import {
+  PickupVenueLocationLink,
+  VenueLocationLink,
+} from "@/components/venue/venue-location-link";
+import { stripStubPrefix } from "@/lib/classes/clean-text";
+import {
+  enrollmentBlocksNextEventOccurrence,
+  formatOccurrenceDateTime,
+} from "@/lib/classes/event-occurrence";
+import { autoCompleteStaleEventEnrollment } from "@/lib/portal/enrollment-actions";
 
 /**
  * Series detail page — the "info + enroll" stop on the catalog flow.
@@ -55,6 +72,7 @@ export default async function SeriesDetailPage({
   if (!series || series.programSlug !== programSlug) notFound();
 
   const isCamp = series.classType === "camp";
+  const isEvent = series.classType === "event";
 
   // Build the candidate list: the viewer themselves (if they're old
   // enough to be a Student-track user) plus every child in the household.
@@ -65,18 +83,51 @@ export default async function SeriesDetailPage({
 
   // Map of "this candidate is already enrolled here" so the panel can
   // disable the picker entry / show the existing status.
-  const existingEnrollments = await prisma.enrollment.findMany({
+  const existingEnrollmentsRaw = await prisma.enrollment.findMany({
     where: {
       classSeriesId: seriesId,
       studentPersonId: { in: enrollCandidates.map((c) => c.personId) },
     },
-    select: { studentPersonId: true, status: true, id: true },
+    select: {
+      id: true,
+      studentPersonId: true,
+      status: true,
+      eventOccurrenceDate: true,
+    },
   });
+
+  const now = new Date();
+  const existingEnrollments = isEvent
+    ? await Promise.all(
+        existingEnrollmentsRaw.map(async (e) => ({
+          ...e,
+          status: await autoCompleteStaleEventEnrollment(
+            e.id,
+            e.eventOccurrenceDate,
+            e.status,
+            now,
+          ),
+        })),
+      )
+    : existingEnrollmentsRaw;
+
+  const nextOccurrenceDate = series.nextEventOccurrence?.occurrenceDate ?? null;
+
   const existingByPersonId = new Map(
-    existingEnrollments.map((e) => [
-      e.studentPersonId,
-      { status: e.status, enrollmentId: e.id },
-    ]),
+    existingEnrollments
+      .filter((e) => {
+        if (!isEvent || !nextOccurrenceDate) return true;
+        return enrollmentBlocksNextEventOccurrence({
+          status: e.status,
+          eventOccurrenceDate: e.eventOccurrenceDate,
+          nextOccurrenceDate,
+          now,
+        });
+      })
+      .map((e) => [
+        e.studentPersonId,
+        { status: e.status, enrollmentId: e.id },
+      ]),
   );
 
   // The WhatsApp group invite is private — only surface it to a viewer
@@ -110,13 +161,43 @@ export default async function SeriesDetailPage({
     ? await getHouseholdCreditBalanceCents(householdId)
     : 0;
 
-  const now = new Date();
   const pricePerSession =
     !isCamp &&
+    !isEvent &&
     series.pricePerSeries != null &&
     series.sessions.length > 0
       ? series.pricePerSeries / series.sessions.length
       : null;
+
+  const composedTitle = isEvent
+    ? series.name
+    : isCamp
+      ? `${formatDateRange(series.startsOn, series.endsOn)} · ${series.venueName}`
+      : `${formatDow(series.dayOfWeek)} ${series.startTimeHHMM}–${series.endTimeHHMM} · ${series.venueName}`;
+
+  const memberPrice =
+    series.memberPrice ??
+    series.pricingTiers?.find((t) => t.forMembers)?.amountEur ??
+    null;
+  const nonMemberPrice = series.nonMemberPrice ?? series.pricePerSeries;
+  const showMemberPair =
+    !isEvent &&
+    memberPrice != null &&
+    nonMemberPrice != null &&
+    series.classType !== "camp";
+
+  const description =
+    stripStubPrefix(series.publicNotes) ??
+    stripStubPrefix(series.programDescription);
+
+  const catalogAudience = programTargetToAudience(series.programTargetAudience);
+  const ageLabel = formatPublicAgeLabel({
+    minAge: series.minAge,
+    maxAge: series.maxAge,
+    audience: catalogAudience,
+    isEvent: series.classType === "event",
+    withAgesPrefix: true,
+  });
 
   return (
     <div className="space-y-8">
@@ -129,15 +210,34 @@ export default async function SeriesDetailPage({
         </Link>
       </div>
 
-      <PageHeader
-        kicker={program.name}
-        title={series.name}
-        description={
-          series.publicNotes ??
-          series.programDescription ??
-          undefined
-        }
-      />
+      {series.coverImageUrl && (
+        <CoverImage
+          src={series.coverImageUrl}
+          alt={series.name}
+          focusY={series.coverImageFocusY}
+          className="shadow-[var(--shadow-sm)]"
+        />
+      )}
+
+      <div className="space-y-3">
+        <PageHeader
+          kicker={program.name}
+          title={composedTitle}
+          description={description}
+        />
+        <div className="flex flex-wrap gap-2">
+          {series.seasonName && (
+            <Badge tone="neutral">{series.seasonName}</Badge>
+          )}
+          {ageLabel ? <Badge tone="neutral">{ageLabel}</Badge> : null}
+          {series.levelLabels.map((label) => (
+            <Badge key={label} tone="neutral">{label}</Badge>
+          ))}
+          {series.schoolName && (
+            <Badge tone="joint">School pickup</Badge>
+          )}
+        </div>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         {/* Left: details */}
@@ -184,7 +284,30 @@ export default async function SeriesDetailPage({
 
               <Term>Location</Term>
               <Detail>
-                {series.venueName}
+                {series.schoolName ? (
+                  <PickupVenueLocationLink
+                    schoolName={series.schoolName}
+                    venue={{
+                      name: series.venueName,
+                      mapUrl: series.venueMapUrl,
+                      addressLine1: series.venueAddressLine1,
+                      postalCode: series.venuePostalCode,
+                      city: series.venueCity,
+                    }}
+                    showAddress
+                  />
+                ) : (
+                  <VenueLocationLink
+                    venue={{
+                      name: series.venueName,
+                      mapUrl: series.venueMapUrl,
+                      addressLine1: series.venueAddressLine1,
+                      postalCode: series.venuePostalCode,
+                      city: series.venueCity,
+                    }}
+                    showAddress
+                  />
+                )}
                 {series.schoolName && (
                   <Badge tone="joint" className="ml-2">
                     School pickup
@@ -192,19 +315,35 @@ export default async function SeriesDetailPage({
                 )}
               </Detail>
 
-              {(series.minAge != null || series.maxAge != null) && (
+              {ageLabel ? (
                 <>
                   <Term>Age</Term>
-                  <Detail>
-                    {series.minAge ?? "?"}–{series.maxAge ?? "?"} years
-                  </Detail>
+                  <Detail>{ageLabel.replace(/^Ages /, "")}</Detail>
                 </>
-              )}
+              ) : null}
 
-              {series.coachNames.length > 0 && (
+              {series.coaches.length > 0 && (
                 <>
-                  <Term>Coach{series.coachNames.length === 1 ? "" : "es"}</Term>
-                  <Detail>{series.coachNames.join(", ")}</Detail>
+                  <Term>
+                    Coach{series.coaches.length === 1 ? "" : "es"}
+                  </Term>
+                  <Detail>
+                    <ul className="space-y-2">
+                      {series.coaches.map((coach) => (
+                        <li
+                          key={coach.name}
+                          className="flex items-center gap-2"
+                        >
+                          <Avatar
+                            name={coach.name}
+                            src={coach.photoUrl}
+                            size="sm"
+                          />
+                          <span>{coach.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Detail>
                 </>
               )}
             </dl>
@@ -215,17 +354,16 @@ export default async function SeriesDetailPage({
               title="Sub-groups"
               description="This class runs as one block on court but has more than one age band — pick the matching sub-group when you enroll."
             >
-              <ul className="rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)] divide-y divide-[var(--border)]">
+              <ul className="elev-card divide-y divide-[var(--border)]">
                 {series.groups.map((g) => {
                   const slotsLeft = Math.max(g.maxStudents - g.enrolledCount, 0);
                   const ageStr =
-                    g.minAge == null && g.maxAge == null
-                      ? "Any age"
-                      : g.minAge != null && g.maxAge != null
-                        ? `${g.minAge}–${g.maxAge} yrs`
-                        : g.minAge != null
-                          ? `${g.minAge}+ yrs`
-                          : `up to ${g.maxAge} yrs`;
+                    formatPublicAgeLabel({
+                      minAge: g.minAge,
+                      maxAge: g.maxAge,
+                      audience: catalogAudience,
+                      isEvent: series.classType === "event",
+                    }) ?? "Any age";
                   return (
                     <li
                       key={g.id}
@@ -291,7 +429,7 @@ export default async function SeriesDetailPage({
             title="What it costs"
             description={
               series.classType === "event"
-                ? "Event price. Members with an active club membership see the member rate automatically at checkout."
+                ? "Price for the next upcoming date. You sign up for one occurrence at a time."
                 : series.classType === "camp"
                   ? "Camp option pricing. Pick week/drop-in + member status in the enrollment panel for the exact total."
                 : "Sticker price for the full series. We prorate automatically if it's already started — see your total in the panel."
@@ -301,31 +439,51 @@ export default async function SeriesDetailPage({
               <p className="text-sm text-[var(--muted-foreground)]">
                 Contact the office for pricing on this series.
               </p>
+            ) : showMemberPair ? (
+              <div className="elev-card p-5 sm:p-6">
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-display text-3xl font-medium tracking-tight tabular sm:text-4xl">
+                      €{memberPrice!.toFixed(0)}
+                    </span>
+                    <span className="text-sm font-medium text-[var(--foreground)]">
+                      Member
+                    </span>
+                    <span className="text-sm text-[var(--muted-foreground)]">
+                      / series
+                    </span>
+                  </div>
+                  <p className="tabular text-sm text-[var(--muted-foreground)]">
+                    Non-members{" "}
+                    <span className="font-medium text-[var(--foreground)]">
+                      €{nonMemberPrice!.toFixed(0)}
+                    </span>
+                    / series
+                  </p>
+                </div>
+                {!isCamp &&
+                  series.classType !== "event" &&
+                  pricePerSession != null && (
+                  <p className="mt-3 text-sm text-[var(--muted-foreground)]">
+                    Equivalent to{" "}
+                    <span className="text-[var(--foreground)] tabular">
+                      €{pricePerSession.toFixed(2)}
+                    </span>{" "}
+                    / session × {series.sessions.length} session
+                    {series.sessions.length === 1 ? "" : "s"}.
+                  </p>
+                )}
+              </div>
             ) : (
-              <div className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] sm:p-6">
+              <div className="elev-card p-5 sm:p-6">
                 <div className="flex items-baseline gap-2">
                   <span className="font-display text-3xl font-medium tracking-tight tabular sm:text-4xl">
                     €{series.pricePerSeries.toFixed(0)}
                   </span>
                   <span className="text-sm text-[var(--muted-foreground)]">
-                    {series.classType === "event" ? "standard" : "/ series"}
+                    {series.classType === "event" ? "/ event" : "/ series"}
                   </span>
                 </div>
-                {series.pricingTiers
-                  ?.filter((t) => t.forMembers)
-                  .map((t) => (
-                    <p
-                      key={t.id}
-                      className="text-sm text-[var(--muted-foreground)]"
-                    >
-                      <span className="font-medium text-[var(--foreground)]">
-                        €{t.amountEur.toFixed(0)}
-                      </span>{" "}
-                      {t.label}
-                      {t.note ? ` — ${t.note}` : ""} (applied automatically
-                      when you have membership)
-                    </p>
-                  ))}
                 {!isCamp &&
                   series.classType !== "event" &&
                   pricePerSession != null && (
@@ -342,14 +500,36 @@ export default async function SeriesDetailPage({
             )}
           </Section>
 
-          <Section title="Schedule" description="Every session in this series. Past sessions are crossed out — you'll only be billed for what's still ahead of you.">
-            {series.sessions.length === 0 ? (
+          <Section
+            title="Schedule"
+            description={
+              isEvent
+                ? "Next upcoming date you can sign up for."
+                : "Every session in this series. Past sessions are crossed out — you'll only be billed for what's still ahead of you."
+            }
+          >
+            {isEvent ? (
+              series.nextEventOccurrence ? (
+                <div className="elev-card px-5 py-4">
+                  <p className="tabular text-sm font-medium">
+                    {formatOccurrenceDateTime(series.nextEventOccurrence.startsAt)}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                    {series.venueName}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  No upcoming dates — check back later or contact the office.
+                </p>
+              )
+            ) : series.sessions.length === 0 ? (
               <p className="text-sm text-[var(--muted-foreground)]">
                 No sessions generated yet — the office is finalising the
                 calendar.
               </p>
             ) : (
-              <ul className="rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)] divide-y divide-[var(--border)]">
+              <ul className="elev-card divide-y divide-[var(--border)]">
                 {series.sessions.map((s, i) => {
                   const isPast = s.startsAt.getTime() <= now.getTime();
                   return (
@@ -409,11 +589,17 @@ export default async function SeriesDetailPage({
             pricePerSeries={series.pricePerSeries}
             isEvent={series.classType === "event"}
             isCamp={series.classType === "camp"}
-            pricingTiers={series.pricingTiers}
             campOptions={series.campOptions}
-            sessionStartsAtIso={series.sessions.map((s) =>
-              s.startsAt.toISOString(),
-            )}
+            nextEventOccurrenceLabel={
+              series.nextEventOccurrence
+                ? formatOccurrenceDateTime(series.nextEventOccurrence.startsAt)
+                : null
+            }
+            sessionStartsAtIso={
+              series.nextEventOccurrence
+                ? [series.nextEventOccurrence.startsAt.toISOString()]
+                : series.sessions.map((s) => s.startsAt.toISOString())
+            }
             venueClubSlug={series.venueClubSlug}
             isReturningHousehold={isReturning}
             householdCreditCents={householdCreditCents}
@@ -444,8 +630,11 @@ export default async function SeriesDetailPage({
                 ageOk:
                   c.age == null
                     ? true
-                    : (series.minAge == null || c.age >= series.minAge) &&
-                      (series.maxAge == null || c.age <= series.maxAge),
+                    : ageIncludesYears({
+                        minAge: series.minAge,
+                        maxAge: series.maxAge,
+                        age: c.age,
+                      }),
               };
             })}
           />
@@ -514,7 +703,7 @@ async function getEnrollCandidates(
 
 function Term({ children }: { children: React.ReactNode }) {
   return (
-    <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)] sm:pt-1">
+    <dt className="text-sm font-medium text-[var(--foreground)]/70 sm:pt-1">
       {children}
     </dt>
   );

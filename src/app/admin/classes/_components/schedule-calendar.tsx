@@ -22,8 +22,12 @@ type Props = {
   /** Ignored when `variant="camp"` (Mon–Fri in range). */
   dayOfWeek?: DayKey;
   excluded: Set<string>;
+  /** Dates with court conflicts — shown in orange before save. */
+  conflicts?: Set<string>;
   /** `camp` = every weekday in the date range; default = single recurring weekday. */
   variant?: "weekly" | "camp";
+  /** Copy for the scheduled-state legend dot. */
+  scheduledLabel?: string;
 } & (
   | { mode: "edit"; onToggle: (iso: string) => void }
   | { mode: "read"; onToggle?: undefined }
@@ -35,8 +39,10 @@ export function ScheduleCalendar(props: Props) {
     endsOn,
     dayOfWeek = "mon",
     excluded,
+    conflicts = new Set<string>(),
     mode,
     variant = "weekly",
+    scheduledLabel,
   } = props;
   const onToggle = mode === "edit" ? props.onToggle : undefined;
   const isCamp = variant === "camp";
@@ -84,6 +90,8 @@ export function ScheduleCalendar(props: Props) {
           cell = { kind: "plain", day, iso };
         } else if (excluded.has(iso)) {
           cell = { kind: "excluded", day, iso };
+        } else if (conflicts.has(iso)) {
+          cell = { kind: "conflict", day, iso };
         } else {
           cell = { kind: "scheduled", day, iso };
           scheduledCount += 1;
@@ -103,7 +111,7 @@ export function ScheduleCalendar(props: Props) {
     }
 
     return { months, scheduledCount };
-  }, [start?.getTime(), end?.getTime(), dayOfWeek, excluded, isCamp]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [start?.getTime(), end?.getTime(), dayOfWeek, excluded, conflicts, isCamp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!startsOn || !endsOn) {
     return (
@@ -122,13 +130,15 @@ export function ScheduleCalendar(props: Props) {
     );
   }
 
+  const scheduledLegend = scheduledLabel ?? (isCamp ? "Camp day" : "Lesson");
+
   return (
     <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-strong)] p-4">
       <div className="flex items-center justify-between gap-4 text-xs">
-        <div className="flex items-center gap-3 text-[var(--muted-foreground)]">
-          <LegendDot className="bg-emerald-500/80" />{" "}
-          {isCamp ? "Camp day" : "Lesson"}
-          <LegendDot className="bg-rose-500/80" />{" "}
+        <div className="flex flex-wrap items-center gap-3 text-[var(--muted-foreground)]">
+          <LegendDot className="bg-[var(--success)]/80" /> {scheduledLegend}
+          <LegendDot className="bg-[var(--warning)]/80" /> Conflict
+          <LegendDot className="bg-[var(--danger)]/80" />{" "}
           {isCamp ? "Day off" : "No lesson"}
           <LegendDot className="bg-[var(--surface)] ring-1 ring-[var(--border)]" />{" "}
           {isCamp ? "Not a camp day" : "Not scheduled"}
@@ -173,6 +183,7 @@ type Cell =
   | { kind: "empty" }
   | { kind: "plain"; day: number; iso: string }
   | { kind: "scheduled"; day: number; iso: string }
+  | { kind: "conflict"; day: number; iso: string }
   | { kind: "excluded"; day: number; iso: string };
 
 function CalendarCell({
@@ -195,8 +206,8 @@ function CalendarCell({
     );
   }
   if (cell.kind === "scheduled") {
-    const className = `${base} bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ${
-      onToggle ? "hover:bg-emerald-500/25 cursor-pointer" : "cursor-default"
+    const className = `${base} bg-[var(--success-soft)] text-[var(--success-ink)] ${
+      onToggle ? "hover:bg-[var(--success)]/15 cursor-pointer" : "cursor-default"
     }`;
     if (!onToggle) {
       return (
@@ -216,8 +227,30 @@ function CalendarCell({
       </button>
     );
   }
-  const excludedClass = `${base} bg-rose-500/20 text-rose-700 dark:text-rose-300 line-through ${
-    onToggle ? "hover:bg-rose-500/30 cursor-pointer" : "cursor-default"
+  if (cell.kind === "conflict") {
+    const className = `${base} bg-[var(--warning-soft)] text-[var(--warning-ink)] ${
+      onToggle ? "hover:bg-[var(--warning)]/15 cursor-pointer" : "cursor-default"
+    }`;
+    if (!onToggle) {
+      return (
+        <div className={className} title={`${cell.iso} — court conflict`}>
+          {cell.day}
+        </div>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => onToggle(cell.iso)}
+        className={className}
+        title={`${cell.iso} — court conflict (click to exclude)`}
+      >
+        {cell.day}
+      </button>
+    );
+  }
+  const excludedClass = `${base} bg-[var(--danger-soft)] text-[var(--danger-ink)] line-through ${
+    onToggle ? "hover:bg-[var(--danger)]/15 cursor-pointer" : "cursor-default"
   }`;
   if (!onToggle) {
     return (

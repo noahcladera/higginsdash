@@ -1,7 +1,7 @@
 import { cache } from "react";
 
 import { prisma } from "@/lib/prisma";
-import { getUnreadCount } from "@/lib/inbox/queries";
+import { getMemberUnreadCount } from "@/lib/inbox/queries";
 import { getCurrentOrg } from "@/lib/tenant";
 import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
 
@@ -70,6 +70,8 @@ interface PortalNavSectionsArgs {
    * current behaviour until they pass through the real value.
    */
   hasActiveMembership?: boolean;
+  /** Household credit balance in cents — surfaces Credits nav when > 0. */
+  creditBalanceCents?: number;
 }
 
 // Public entry point. We keep the object-arg shape callers already use,
@@ -84,6 +86,7 @@ export async function getPortalNavSections(
     args.householdId,
     args.isStudent,
     args.hasActiveMembership ?? true,
+    args.creditBalanceCents ?? 0,
   );
 }
 
@@ -94,10 +97,11 @@ async function _getPortalNavSections(
   householdId: string | null,
   isStudent: boolean,
   hasActiveMembership: boolean,
+  creditBalanceCents: number,
 ): Promise<PortalNavSections> {
   const conditional: PortalNavItem[] = [];
   const [unreadCount, org, hasLiveEnrollment] = await Promise.all([
-    getUnreadCount(personId),
+    getMemberUnreadCount(personId),
     getCurrentOrg(),
     householdHasLiveEnrollment({ personId, householdId }),
   ]);
@@ -168,12 +172,14 @@ async function _getPortalNavSections(
       hint: `Find a ${t.class.singular.toLowerCase()} — browse ${t.program.plural.toLowerCase()} and ${t.enrollVerb.toLowerCase()}`,
     });
   }
+  const trialIsPrimary =
+    !hasActiveMembership && f.trialInterest && !hasLiveEnrollment;
   if (f.trialInterest && !hasLiveEnrollment) {
     playItems.push({
       href: "/portal/request-trial",
       label: "Request trial",
       hint: `Try a ${t.class.singular.toLowerCase()} before you ${t.enrollVerb.toLowerCase()}`,
-      emphasis: "primary",
+      emphasis: trialIsPrimary ? "primary" : undefined,
     });
   }
   if (eventsEnabled) {
@@ -221,11 +227,19 @@ async function _getPortalNavSections(
         href: "/portal/membership#buy",
         label: `Get a ${t.membership.singular.toLowerCase()}`,
         hint: `Pick the right tier and ${t.club.plural.toLowerCase()}`,
-        emphasis: "primary",
+        emphasis: trialIsPrimary ? undefined : "primary",
       });
     }
     if (inboxEnabled) accountItems.push(inboxItem);
     if (paymentsEnabled) accountItems.push(paymentsItem);
+  }
+
+  if (creditBalanceCents > 0) {
+    accountItems.push({
+      href: "/portal/credits",
+      label: "Credits",
+      hint: "Household lesson credit balance",
+    });
   }
 
   const accountGroup: PortalNavGroup = {

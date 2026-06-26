@@ -15,9 +15,16 @@ export type ClassRowData = {
   id: string;
   name: string;
   programName: string;
+  programSlug: string;
+  programTargetAudience: "kids" | "adults" | "mixed";
   seasonName: string | null;
+  seasonId: string | null;
+  displayTitle: string;
+  displaySubtitle: string;
   deliveryMode: "at_club" | "onsite" | "pickup";
   venueName: string;
+  venueKind: "club" | "school" | "rented_court";
+  defaultCourtId: string | null;
   schoolName: string | null;
   dayOfWeek: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
   startTimeHHMM: string;
@@ -51,7 +58,14 @@ export type ClassRowData = {
  * The "Edit" button stops click propagation and links to the full
  * locked edit page.
  */
-export function ClassRow({ data }: { data: ClassRowData }) {
+export function ClassRow({
+  data,
+  compact = false,
+}: {
+  data: ClassRowData;
+  /** Grouped list: venue/season are in section headers. */
+  compact?: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   const modeTone =
@@ -94,7 +108,7 @@ export function ClassRow({ data }: { data: ClassRowData }) {
         onClick={() => setOpen((v) => !v)}
         className="cursor-pointer transition-colors hover:bg-[var(--surface)]/60"
       >
-        <TableCell className="max-w-[260px] whitespace-normal align-top sm:max-w-[320px] lg:max-w-[380px]">
+        <TableCell className="max-w-[260px] whitespace-normal align-top sm:max-w-[320px] lg:max-w-[420px]">
           <div className="flex items-start gap-2">
             <ChevronRightIcon
               size={14}
@@ -103,50 +117,60 @@ export function ClassRow({ data }: { data: ClassRowData }) {
               }`}
             />
             <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="font-medium leading-snug break-words"
+                  title={data.name}
+                >
+                  {data.displayTitle}
+                </span>
+                <Badge tone={modeTone} variant="soft">
+                  {deliveryModeLabel(data.deliveryMode)}
+                </Badge>
+                <Badge
+                  tone={
+                    data.status === "published"
+                      ? "success"
+                      : data.status === "draft"
+                        ? "warning"
+                        : "neutral"
+                  }
+                  variant="soft"
+                  className="capitalize"
+                >
+                  {data.status === "draft"
+                    ? "Draft"
+                    : data.status === "published"
+                      ? "Published"
+                      : data.status.replace("_", " ")}
+                </Badge>
+                {data.venueKind === "club" && !data.defaultCourtId && (
+                  <Badge tone="warning" variant="soft">
+                    Missing court
+                  </Badge>
+                )}
+              </div>
               <div
-                className="line-clamp-2 font-medium leading-snug break-words whitespace-normal"
+                className="truncate text-xs text-[var(--muted-foreground)]"
                 title={data.name}
               >
-                {data.name}
-              </div>
-              <div className="truncate text-xs text-[var(--muted-foreground)]">
-                {data.programName}
+                {data.displaySubtitle}
               </div>
             </div>
           </div>
         </TableCell>
-        <TableCell>
-          <div className="flex flex-col items-start gap-1">
-            <Badge tone={modeTone} variant="soft">
-              {deliveryModeLabel(data.deliveryMode)}
-            </Badge>
-            <Badge
-              tone={
-                data.status === "published"
-                  ? "success"
-                  : data.status === "draft"
-                    ? "warning"
-                    : "neutral"
-              }
-              variant="soft"
-              className="capitalize"
-            >
-              {data.status === "draft"
-                ? "Draft"
-                : data.status === "published"
-                  ? "Published"
-                  : data.status.replace("_", " ")}
-            </Badge>
-          </div>
-        </TableCell>
-        <TableCell className="text-[var(--muted-foreground)]">
-          {data.deliveryMode === "pickup" && data.schoolName
-            ? `${data.schoolName} → ${data.venueName}`
-            : data.venueName}
-        </TableCell>
-        <TableCell className="text-[var(--muted-foreground)]">
-          {data.seasonName ?? "—"}
-        </TableCell>
+        {!compact && (
+          <TableCell className="text-[var(--muted-foreground)]">
+            {data.deliveryMode === "pickup" && data.schoolName
+              ? `${data.schoolName} → ${data.venueName}`
+              : data.venueName}
+          </TableCell>
+        )}
+        {!compact && (
+          <TableCell className="text-[var(--muted-foreground)]">
+            {data.seasonName ?? "—"}
+          </TableCell>
+        )}
         <TableCell className="text-xs text-[var(--muted-foreground)]">
           {data.allCoachNames.length === 0
             ? "—"
@@ -164,8 +188,10 @@ export function ClassRow({ data }: { data: ClassRowData }) {
       </TableRow>
       {open && (
         <TableRow className="bg-[var(--surface)]/40 hover:bg-transparent">
-          <TableCell colSpan={7} className="p-4">
-            <div className="space-y-4">
+          <TableCell colSpan={compact ? 4 : 6} className="p-4">
+            <div
+              className="space-y-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-4"
+            >
               <ClassSummaryCard {...summary} />
               <ScheduleCalendar
                 mode="read"

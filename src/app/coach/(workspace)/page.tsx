@@ -138,7 +138,7 @@ export default async function CoachHomePage() {
       />
 
       {pendingMine > 0 && (
-        <div className="fade-in flex items-center justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[oklch(0.30_0.10_75)]">
+        <div className="fade-in flex items-center justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[var(--warning-ink)]">
           <span>
             {pendingMine} deletion request{pendingMine === 1 ? "" : "s"}{" "}
             awaiting an admin decision.
@@ -340,7 +340,7 @@ export default async function CoachHomePage() {
                       {b.club.name} · {b.court.name}
                     </div>
                     {b.status === "cancellation_requested" && (
-                      <div className="text-xs text-[oklch(0.30_0.10_75)]">
+                      <div className="text-xs text-[var(--warning-ink)]">
                         Deletion pending
                       </div>
                     )}

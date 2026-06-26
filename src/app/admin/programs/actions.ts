@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
+import { savedRedirectPath } from "@/lib/feedback/saved-flash";
 
 /**
  * Update the parent-facing presentation of a program: the public
@@ -26,6 +27,7 @@ const UpdateProgramPresentationSchema = z.object({
     .max(2048)
     .optional()
     .or(z.literal("")),
+  coverImageFocusY: z.coerce.number().int().min(0).max(100).default(50),
 });
 
 export type UpdateProgramPresentationResult =
@@ -41,6 +43,7 @@ export async function updateProgramPresentation(
     id: formData.get("id") ?? "",
     descriptionPublic: formData.get("descriptionPublic") ?? "",
     coverImageUrl: formData.get("coverImageUrl") ?? "",
+    coverImageFocusY: formData.get("coverImageFocusY") ?? "50",
   });
   if (!parsed.success) {
     return {
@@ -60,6 +63,7 @@ export async function updateProgramPresentation(
       coverImageUrl: parsed.data.coverImageUrl
         ? parsed.data.coverImageUrl
         : null,
+      coverImageFocusY: parsed.data.coverImageFocusY,
     },
   });
 
@@ -176,7 +180,7 @@ export async function createProgramForm(
   });
 
   revalidateProgramSurfaces();
-  redirect(`/admin/programs/${slug}`);
+  redirect(savedRedirectPath(`/admin/programs/${slug}`));
 }
 
 export type DeleteProgramResult =

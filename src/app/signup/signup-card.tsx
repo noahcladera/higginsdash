@@ -3,10 +3,20 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  AddressFields,
+  emptyAddressValue,
+  mergeAddressForSubmit,
+  type AddressFieldsValue,
+} from "@/components/forms/address-fields";
+import { CountrySelect } from "@/components/forms/country-select";
+import { PhoneInput } from "@/components/forms/phone-input";
 import { DateField } from "@/components/ui/date-field";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { selectClassName } from "@/lib/ui/form-control";
+import type { CountryCode } from "@/lib/countries";
 import { KNOWN_SCHOOLS, isKnownSchool } from "@/lib/schools";
 import { signUp } from "./actions";
 
@@ -28,25 +38,28 @@ const EMPTY_CHILD: ChildDraft = {
   school: "",
 };
 
-export function SignupCard({ brandName }: { brandName: string }) {
+export function SignupCard({
+  brandName,
+  brandLogoUrl,
+  officeEmail,
+}: {
+  brandName: string;
+  brandLogoUrl?: string;
+  officeEmail?: string;
+}) {
   const [path, setPath] = useState<Path | null>(null);
 
-  // Parent fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState("");
-  const [streetName, setStreetName] = useState("");
-  const [houseNumber, setHouseNumber] = useState("");
-  const [houseNumberSuffix, setHouseNumberSuffix] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const [city, setCity] = useState("");
-  const [country, setCountry] = useState("NL");
+  const [address, setAddress] = useState<AddressFieldsValue>(emptyAddressValue());
+  const [country, setCountry] = useState<CountryCode>("NL");
 
-  // Children-only fields
   const [parentAlsoPlays, setParentAlsoPlays] = useState(true);
   const [children, setChildren] = useState<ChildDraft[]>([{ ...EMPTY_CHILD }]);
 
@@ -67,28 +80,47 @@ export function SignupCard({ brandName }: { brandName: string }) {
     );
   }
 
-  // Path picker — first screen.
+  const brandHeader = (
+    <header className="space-y-3 text-center">
+      {brandLogoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={brandLogoUrl}
+          alt={brandName}
+          className="mx-auto h-12 w-auto object-contain"
+        />
+      )}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {path === null
+            ? `Create your ${brandName} account`
+            : path === "myself"
+              ? "Tell us about you"
+              : "Tell us about you and your kids"}
+        </h1>
+        <p className="text-sm text-[var(--muted-foreground)]">
+          {path === null
+            ? "Who are you signing up?"
+            : "A few details so we can manage lessons, invoices, and emergency contact."}
+        </p>
+      </div>
+    </header>
+  );
+
   if (path === null) {
     return (
       <div className="space-y-8">
-        <header className="space-y-2 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Create your {brandName} account
-          </h1>
-          <p className="text-sm text-[var(--muted-foreground)]">
-            Who are you signing up?
-          </p>
-        </header>
+        {brandHeader}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <PathButton
             title="For myself"
-            blurb="I'm an adult signing up for classes."
+            blurb="I'm an adult enrolling in classes."
             onClick={() => setPath("myself")}
           />
           <PathButton
             title="For my child(ren)"
-            blurb="I'm a parent signing up my kid(s). I can play too if I want."
+            blurb="I'm a parent enrolling my child. I can sign up for classes too."
             onClick={() => setPath("children")}
           />
         </div>
@@ -117,11 +149,10 @@ export function SignupCard({ brandName }: { brandName: string }) {
       school: c.school.trim(),
     }));
 
-    const street = streetName.trim();
-    const number = houseNumber.trim();
-    const suffix = houseNumberSuffix.trim();
-    const addressLine1 = [street, number].filter(Boolean).join(" ");
-    const addressLine2 = suffix || "";
+    const { addressLine1, addressLine2 } = mergeAddressForSubmit(
+      country,
+      address,
+    );
 
     startTransition(async () => {
       const res = await signUp({
@@ -135,16 +166,15 @@ export function SignupCard({ brandName }: { brandName: string }) {
         dateOfBirth,
         gender,
         addressLine1,
-        addressLine2,
-        postalCode,
-        city,
+        addressLine2: addressLine2 ?? "",
+        postalCode: address.postalCode,
+        city: address.city,
         country,
         children: path === "children" ? trimmedChildren : [],
       });
       if (!("ok" in res) || !res.ok) {
         setError(res.error);
       }
-      // Success path: server action redirects, this branch is unreachable.
     });
   }
 
@@ -152,21 +182,54 @@ export function SignupCard({ brandName }: { brandName: string }) {
     path === "children" &&
     children.some((c) => !c.firstName.trim() || !c.dateOfBirth.trim());
 
+  const footerNote = officeEmail ? (
+    <>
+      Your information is stored securely and used only to manage your
+      family&apos;s account at {brandName}. Questions?{" "}
+      <a
+        href={`mailto:${officeEmail}`}
+        className="underline hover:text-[var(--foreground)]"
+      >
+        Email us
+      </a>
+      .
+    </>
+  ) : (
+    <>
+      Your information is stored securely and used only to manage your
+      family&apos;s account at {brandName}.
+    </>
+  );
+
   return (
     <form
       onSubmit={onSubmit}
-      className="space-y-6 rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 sm:p-8 shadow-sm"
+      className="space-y-6 glass-panel-strong rounded-[var(--radius-lg)] p-6 sm:p-8"
     >
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {path === "myself"
-            ? "Tell us about you"
-            : "Tell us about you and your kids"}
-        </h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          {brandLogoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brandLogoUrl}
+              alt={brandName}
+              className="mb-2 h-10 w-auto object-contain"
+            />
+          )}
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {path === "myself"
+              ? "Tell us about you"
+              : "Tell us about you and your kids"}
+          </h1>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            A few details so we can manage lessons, invoices, and emergency
+            contact.
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setPath(null)}
-          className="text-xs text-[var(--muted-foreground)] underline-offset-4 hover:text-[var(--foreground)] hover:underline"
+          className="shrink-0 text-xs text-[var(--muted-foreground)] underline-offset-4 hover:text-[var(--foreground)] hover:underline"
         >
           Switch
         </button>
@@ -184,14 +247,24 @@ export function SignupCard({ brandName }: { brandName: string }) {
             />
           </Field>
           <Field label="Password" required>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                autoComplete="new-password"
+                className="pr-20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </Field>
         </div>
         <p className="mt-1 text-xs text-[var(--muted-foreground)]">
@@ -218,14 +291,17 @@ export function SignupCard({ brandName }: { brandName: string }) {
               autoComplete="family-name"
             />
           </Field>
-          <Field label="Phone">
-            <Input
-              type="tel"
+          <Field label="Phone" required className="sm:col-span-2">
+            <PhoneInput
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+31 6 …"
-              autoComplete="tel"
+              onChange={setPhone}
+              defaultCountryCode={country}
+              required
             />
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              How coaches and the office reach you about lessons or schedule
+              changes.
+            </p>
           </Field>
           <Field label="Date of birth" required>
             <DateField
@@ -241,81 +317,36 @@ export function SignupCard({ brandName }: { brandName: string }) {
             <select
               value={gender}
               onChange={(e) => setGender(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-1 text-sm shadow-xs"
+              className={selectClassName()}
             >
               <option value="">Prefer not to say</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
               <option value="other">Other</option>
-              <option value="prefer_not_to_say">Prefer not to say</option>
             </select>
           </Field>
         </div>
       </Section>
 
-      <Section title="Address">
-        <div className="grid gap-3 sm:grid-cols-6">
-          <Field label="Street name" required className="sm:col-span-6">
-            <Input
-              value={streetName}
-              onChange={(e) => setStreetName(e.target.value)}
-              required
-              autoComplete="address-line1"
-              placeholder="Damstraat"
-            />
-          </Field>
-          <Field label="House number" required className="sm:col-span-3">
-            <Input
-              value={houseNumber}
-              onChange={(e) => setHouseNumber(e.target.value)}
-              required
-              inputMode="numeric"
-              placeholder="12"
-            />
-          </Field>
-          <Field
-            label="Toevoeging"
-            className="sm:col-span-3"
-          >
-            <Input
-              value={houseNumberSuffix}
-              onChange={(e) => setHouseNumberSuffix(e.target.value)}
-              autoComplete="address-line2"
-              placeholder="A, bus 2, 1-hg…"
-            />
-          </Field>
-          <Field label="Postal code" required className="sm:col-span-3">
-            <Input
-              value={postalCode}
-              onChange={(e) => setPostalCode(e.target.value)}
-              required
-              autoComplete="postal-code"
-              placeholder="1234 AB"
-            />
-          </Field>
-          <Field label="City" required className="sm:col-span-3">
-            <Input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              required
-              autoComplete="address-level2"
-              placeholder="Amsterdam"
-            />
-          </Field>
-          <Field label="Country" required className="sm:col-span-3">
-            <Input
+      <Section
+        title="Address"
+        description={`For invoices and emergency contact. We never share your address outside ${brandName}.`}
+      >
+        <div className="space-y-3">
+          <Field label="Country" required className="max-w-xs">
+            <CountrySelect
               value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              maxLength={2}
+              onChange={setCountry}
               required
-              autoComplete="country"
             />
           </Field>
+          <AddressFields
+            country={country}
+            value={address}
+            onChange={setAddress}
+            idPrefix="signup"
+          />
         </div>
-        <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-          Toevoeging is optional — only fill it in if your address has a letter
-          or addition (e.g. Damstraat 12 A or 12 bus 3).
-        </p>
       </Section>
 
       {path === "children" && (
@@ -328,10 +359,10 @@ export function SignupCard({ brandName }: { brandName: string }) {
               {children.map((c, idx) => (
                 <div
                   key={idx}
-                  className="rounded-md border border-[var(--border)] bg-[var(--background)] p-3"
+                  className="elev-card rounded-[var(--radius-md)] p-4"
                 >
                   <div className="mb-2 flex items-center justify-between text-xs">
-                    <span className="font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
+                    <span className="text-sm font-medium text-[var(--foreground)]/80">
                       Child {idx + 1}
                     </span>
                     {children.length > 1 && (
@@ -432,9 +463,7 @@ export function SignupCard({ brandName }: { brandName: string }) {
       )}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-[var(--muted-foreground)]">
-          By continuing you agree we can email you about your account.
-        </p>
+        <p className="text-xs text-[var(--muted-foreground)]">{footerNote}</p>
         <Button
           type="submit"
           size="lg"
@@ -461,8 +490,8 @@ function PathButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex h-full flex-col gap-2 rounded-lg border-2 border-[var(--border)] bg-[var(--card)] p-5 text-left transition-colors",
-        "hover:border-[var(--accent)] hover:bg-[var(--muted)]/40",
+        "group elev-card flex h-full flex-col gap-2 p-5 text-left transition-all",
+        "hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-md)]",
       )}
     >
       <span className="text-lg font-semibold tracking-tight">{title}</span>
@@ -476,16 +505,23 @@ function PathButton({
 
 function Section({
   title,
+  description,
   children,
 }: {
   title: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
-        {title}
-      </h2>
+    <section className="space-y-3">
+      <div className="space-y-1">
+        <h2 className="font-display text-lg font-medium tracking-tight">
+          {title}
+        </h2>
+        {description && (
+          <p className="text-xs text-[var(--muted-foreground)]">{description}</p>
+        )}
+      </div>
       <div>{children}</div>
     </section>
   );
@@ -493,31 +529,29 @@ function Section({
 
 function Field({
   label,
+  name,
   required,
   className,
   children,
 }: {
   label: string;
+  name?: string;
   required?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("space-y-1.5", className)}>
-      <Label>
-        {label}
-        {required ? " *" : ""}
-      </Label>
+    <FormField
+      label={label}
+      name={name}
+      required={required}
+      className={className}
+    >
       {children}
-    </div>
+    </FormField>
   );
 }
 
-/**
- * Controlled school picker for the children-array signup state. Mirrors
- * the UX of the uncontrolled <SchoolSelect /> but emits a single string
- * upward via `onChange` instead of relying on FormData.
- */
 function ChildSchoolPicker({
   value,
   onChange,
@@ -549,7 +583,10 @@ function ChildSchoolPicker({
       <select
         value={mode}
         onChange={(e) => pickMode(e.target.value)}
-        className="flex h-9 w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-1 text-sm shadow-xs"
+        className={cn(
+          "flex h-9 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--control)] px-3 py-1 text-sm shadow-xs",
+          "hover:border-[var(--border-strong)] focus-visible:border-[var(--triaz)]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+        )}
       >
         <option value="">— select school —</option>
         {KNOWN_SCHOOLS.map((s) => (

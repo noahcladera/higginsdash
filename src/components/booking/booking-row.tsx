@@ -156,7 +156,7 @@ export function BookingList({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)] divide-y divide-[var(--border)]",
+        "elev-card divide-y divide-[var(--border)]",
         className,
       )}
     >

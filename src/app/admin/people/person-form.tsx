@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/ui/date-field";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useActionFeedback } from "@/lib/feedback";
+import type { SimpleActionResult } from "@/lib/feedback/types";
 
 export type PersonFormValues = {
   firstName: string;
@@ -32,22 +33,28 @@ export function PersonForm({
   action,
   submitLabel,
   lockIsAdmin = false,
+  returnTo,
 }: {
   defaults: PersonFormValues;
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<SimpleActionResult | void>;
   submitLabel: string;
   lockIsAdmin?: boolean;
+  returnTo?: string;
 }) {
-  const router = useRouter();
   const { run, pending, error } = useActionFeedback({
     success: "Person saved",
     errorTitle: "Couldn't save person",
+    returnTo,
   });
 
   function onSubmit(formData: FormData) {
+    if (returnTo) {
+      run(() => action(formData) as Promise<SimpleActionResult>);
+      return;
+    }
     run(async () => {
       await action(formData);
-      return { ok: true };
+      return { ok: true as const };
     });
   }
 
@@ -250,14 +257,11 @@ export function PersonForm({
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : submitLabel}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => router.back()}
-          disabled={pending}
-        >
-          Cancel
-        </Button>
+        {returnTo ? (
+          <Button asChild type="button" variant="ghost" disabled={pending}>
+            <Link href={returnTo}>Cancel</Link>
+          </Button>
+        ) : null}
       </div>
     </form>
   );

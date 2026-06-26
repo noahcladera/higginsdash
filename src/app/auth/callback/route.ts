@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { resolveAuthCallbackAfterSession } from "@/app/auth/complete-auth-callback";
+import { RECOVERY_COOKIE } from "@/lib/auth/password-reset";
 import { resolveAppOrigin } from "@/lib/site-url";
 
 async function loginRedirect(request: NextRequest, origin: string): Promise<NextResponse> {
@@ -73,6 +74,17 @@ export async function GET(request: NextRequest) {
 
     const finalUrl = new URL(resolved.next, origin);
     redirectResponse.headers.set("Location", finalUrl.toString());
+
+    if (resolved.next === "/reset-password") {
+      redirectResponse.cookies.set(RECOVERY_COOKIE, "1", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 3600,
+        path: "/reset-password",
+      });
+    }
+
     return redirectResponse;
   }
 

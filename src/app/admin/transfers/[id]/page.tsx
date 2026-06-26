@@ -164,7 +164,7 @@ export default async function AdminTransferDetailPage({
       />
 
       <Section title="Status">
-        <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+        <div className="flex flex-wrap items-center gap-3 elev-card p-5">
           <Badge
             tone={
               row.status === "approved"
@@ -212,7 +212,7 @@ export default async function AdminTransferDetailPage({
       </Section>
 
       <Section title="Parent's request">
-        <div className="space-y-2 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+        <div className="space-y-2 elev-card p-5">
           <p className="text-sm">
             Source class:{" "}
             <span className="font-medium">

@@ -1,5 +1,5 @@
 import { RoutePageSkeleton } from "@/components/ui/route-page-skeleton";
 
 export default function PortalBookLoading() {
-  return <RoutePageSkeleton rows={6} />;
+  return <RoutePageSkeleton rows={6} className="space-y-10" />;
 }

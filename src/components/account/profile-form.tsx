@@ -1,12 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  AddressFields,
+  mergeAddressForSubmit,
+  splitNlAddressLine1,
+  type AddressFieldsValue,
+} from "@/components/forms/address-fields";
+import { CountrySelect } from "@/components/forms/country-select";
+import { PhoneInput } from "@/components/forms/phone-input";
 import { DateField } from "@/components/ui/date-field";
+import {
+  FormField,
+  FormPanel,
+  FormSection,
+} from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { CheckIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { selectClassName } from "@/lib/ui/form-control";
+import type { CountryCode } from "@/lib/countries";
 import { useActionFeedback } from "@/lib/feedback";
 import type { UpdateProfileResult } from "@/lib/account/profile-actions";
 
@@ -24,21 +38,59 @@ export interface ProfileInitial {
   emergencyContactName: string;
   emergencyContactPhone: string;
   emergencyContactRelationship: string;
+  avatarUrl?: string;
 }
 
 export type ProfileFormTone = "triaz" | "joint";
+
+function initialAddressFromProfile(initial: ProfileInitial): AddressFieldsValue {
+  if (initial.country === "NL") {
+    const { streetName, houseNumber } = splitNlAddressLine1(initial.addressLine1);
+    return {
+      streetName,
+      houseNumber,
+      houseNumberSuffix: initial.addressLine2,
+      addressLine1: initial.addressLine1,
+      addressLine2: initial.addressLine2,
+      postalCode: initial.postalCode,
+      city: initial.city,
+    };
+  }
+  return {
+    streetName: "",
+    houseNumber: "",
+    houseNumberSuffix: "",
+    addressLine1: initial.addressLine1,
+    addressLine2: initial.addressLine2,
+    postalCode: initial.postalCode,
+    city: initial.city,
+  };
+}
 
 export function ProfileForm({
   initial,
   action,
   submitTone = "triaz",
+  avatarUploadSlot,
 }: {
   initial: ProfileInitial;
   action: (formData: FormData) => Promise<UpdateProfileResult>;
   submitTone?: ProfileFormTone;
+  avatarUploadSlot?: ReactNode;
 }) {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [phone, setPhone] = useState(initial.phone);
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState(
+    initial.emergencyContactPhone,
+  );
+  const [country, setCountry] = useState<CountryCode>(
+    (initial.country as CountryCode) || "NL",
+  );
+  const [address, setAddress] = useState<AddressFieldsValue>(() =>
+    initialAddressFromProfile(initial),
+  );
+
   const { run, pending, error } = useActionFeedback({
     success: "Profile saved",
     errorTitle: "Couldn't save profile",
@@ -48,163 +100,176 @@ export function ProfileForm({
     },
   });
 
-  function onSubmit(formData: FormData) {
-    run(() => action(formData));
+  const markDirty = () => setDirty(true);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const { addressLine1, addressLine2 } = mergeAddressForSubmit(
+      country,
+      address,
+    );
+    fd.set("phone", phone);
+    fd.set("country", country);
+    fd.set("addressLine1", addressLine1);
+    fd.set("addressLine2", addressLine2 ?? "");
+    fd.set("postalCode", address.postalCode);
+    fd.set("city", address.city);
+    fd.set("emergencyContactPhone", emergencyContactPhone);
+    run(() => action(fd));
   }
+
+  const countryForPhone = useMemo(() => country, [country]);
 
   return (
     <form
-      action={onSubmit}
-      onChange={() => setDirty(true)}
+      onSubmit={handleSubmit}
+      onChange={markDirty}
       className="space-y-8 pb-24"
     >
-      <FormGroup
+      {avatarUploadSlot && (
+        <div
+          className="elev-card p-4"
+        >
+          {avatarUploadSlot}
+        </div>
+      )}
+      <FormSection
         title="Identity"
         description="What we'll call you and how to verify your age."
       >
-        <Field label="First name" name="firstName" required>
-          <Input
-            id="firstName"
-            name="firstName"
-            defaultValue={initial.firstName}
-            required
-          />
-        </Field>
-        <Field label="Last name" name="lastName" required>
-          <Input
-            id="lastName"
-            name="lastName"
-            defaultValue={initial.lastName}
-            required
-          />
-        </Field>
-        <Field label="Phone" name="phone" required>
-          <Input
-            id="phone"
-            name="phone"
-            type="tel"
-            defaultValue={initial.phone}
-            placeholder="+31 6 …"
-            required
-          />
-        </Field>
-        <Field label="Date of birth" name="dateOfBirth" required>
-          <DateField
-            id="dateOfBirth"
-            name="dateOfBirth"
-            defaultValue={initial.dateOfBirthIso}
-            mode="dob"
-            locale="en-NL"
-            required
-          />
-        </Field>
-        <Field label="Gender" name="gender">
-          <select
-            id="gender"
-            name="gender"
-            defaultValue={initial.gender}
-            className="flex h-11 w-full rounded-[var(--radius-md)] border border-transparent bg-[var(--surface)] px-3.5 text-sm text-[var(--foreground)] transition-all hover:bg-[var(--surface-strong)] focus:bg-[var(--card)] focus-visible:border-[var(--triaz)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-          >
-            <option value="">Prefer not to say</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-            <option value="prefer_not_to_say">Prefer not to say</option>
-          </select>
-        </Field>
-      </FormGroup>
+        <FormPanel>
+          <FormField label="First name" name="firstName" required>
+            <Input
+              id="firstName"
+              name="firstName"
+              defaultValue={initial.firstName}
+              required
+            />
+          </FormField>
+          <FormField label="Last name" name="lastName" required>
+            <Input
+              id="lastName"
+              name="lastName"
+              defaultValue={initial.lastName}
+              required
+            />
+          </FormField>
+          <FormField label="Phone" name="phone" required>
+            <PhoneInput
+              id="phone"
+              value={phone}
+              onChange={(next) => {
+                setPhone(next);
+                markDirty();
+              }}
+              defaultCountryCode={countryForPhone}
+              required
+            />
+          </FormField>
+          <FormField label="Date of birth" name="dateOfBirth" required>
+            <DateField
+              id="dateOfBirth"
+              name="dateOfBirth"
+              defaultValue={initial.dateOfBirthIso}
+              mode="dob"
+              locale="en-NL"
+              required
+            />
+          </FormField>
+          <FormField label="Gender" name="gender">
+            <select
+              id="gender"
+              name="gender"
+              defaultValue={initial.gender}
+              className={selectClassName()}
+            >
+              <option value="">Prefer not to say</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </FormField>
+        </FormPanel>
+      </FormSection>
 
-      <FormGroup
+      <FormSection
         title="Address"
-        description="Used for invoices and the occasional postcard."
+        description="Used for invoices and emergency contact."
       >
-        <Field label="Street" name="addressLine1" wide required>
-          <Input
-            id="addressLine1"
-            name="addressLine1"
-            defaultValue={initial.addressLine1}
-            placeholder="Damstraat 12"
-            required
-          />
-        </Field>
-        <Field label="Apartment / extra" name="addressLine2" wide>
-          <Input
-            id="addressLine2"
-            name="addressLine2"
-            defaultValue={initial.addressLine2}
-          />
-        </Field>
-        <Field label="Postal code" name="postalCode" required>
-          <Input
-            id="postalCode"
-            name="postalCode"
-            defaultValue={initial.postalCode}
-            placeholder="1234 AB"
-            required
-          />
-        </Field>
-        <Field label="City" name="city" required>
-          <Input
-            id="city"
-            name="city"
-            defaultValue={initial.city}
-            placeholder="Amsterdam"
-            required
-          />
-        </Field>
-        <Field label="Country" name="country" required>
-          <Input
-            id="country"
-            name="country"
-            maxLength={2}
-            defaultValue={initial.country}
-            placeholder="NL"
-            required
-          />
-        </Field>
-      </FormGroup>
+        <FormPanel>
+          <FormField label="Country" name="country" required>
+            <CountrySelect
+              id="country"
+              value={country}
+              onChange={(next) => {
+                setCountry(next);
+                markDirty();
+              }}
+              required
+            />
+          </FormField>
+          <div className="sm:col-span-2">
+            <AddressFields
+              country={country}
+              value={address}
+              onChange={(next) => {
+                setAddress(next);
+                markDirty();
+              }}
+              idPrefix="profile"
+            />
+          </div>
+        </FormPanel>
+      </FormSection>
 
-      <FormGroup
+      <FormSection
         title="Emergency contact"
         description="Who should we call if something happens? All three fields are required so we can reach someone fast."
       >
-        <Field label="Name" name="emergencyContactName" required>
-          <Input
-            id="emergencyContactName"
-            name="emergencyContactName"
-            defaultValue={initial.emergencyContactName}
-            required
-          />
-        </Field>
-        <Field label="Phone" name="emergencyContactPhone" required>
-          <Input
-            id="emergencyContactPhone"
-            name="emergencyContactPhone"
-            type="tel"
-            defaultValue={initial.emergencyContactPhone}
-            required
-          />
-        </Field>
-        <Field
-          label="Relationship"
-          name="emergencyContactRelationship"
-          wide
-          required
-        >
-          <Input
-            id="emergencyContactRelationship"
+        <FormPanel>
+          <FormField label="Name" name="emergencyContactName" required>
+            <Input
+              id="emergencyContactName"
+              name="emergencyContactName"
+              defaultValue={initial.emergencyContactName}
+              required
+            />
+          </FormField>
+          <FormField label="Phone" name="emergencyContactPhone" required>
+            <PhoneInput
+              id="emergencyContactPhone"
+              value={emergencyContactPhone}
+              onChange={(next) => {
+                setEmergencyContactPhone(next);
+                markDirty();
+              }}
+              defaultCountryCode={countryForPhone}
+              required
+            />
+          </FormField>
+          <FormField
+            label="Relationship"
             name="emergencyContactRelationship"
-            placeholder="Partner / parent / friend …"
-            defaultValue={initial.emergencyContactRelationship}
+            wide
             required
-          />
-        </Field>
-      </FormGroup>
+          >
+            <Input
+              id="emergencyContactRelationship"
+              name="emergencyContactRelationship"
+              placeholder="Partner / parent / friend …"
+              defaultValue={initial.emergencyContactRelationship}
+              required
+            />
+          </FormField>
+        </FormPanel>
+      </FormSection>
 
       <div className="fixed bottom-4 left-1/2 z-20 -translate-x-1/2">
         <div
           className={cn(
-            "flex items-center gap-3 rounded-full bg-[var(--card)] px-2 py-2 shadow-[var(--shadow-lg)] transition-all",
+            "flex items-center gap-3 rounded-full border border-[var(--border)] bg-[var(--card)] px-2 py-2 shadow-[var(--shadow-lg)] transition-all",
             !dirty &&
               !pending &&
               !error &&
@@ -239,60 +304,5 @@ export function ProfileForm({
         </div>
       </div>
     </form>
-  );
-}
-
-function FormGroup({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="grid gap-6 lg:grid-cols-[1fr_2fr]">
-      <header className="space-y-1.5">
-        <h2 className="font-display text-xl font-medium tracking-tight">
-          {title}
-        </h2>
-        {description && (
-          <p className="text-sm text-[var(--muted-foreground)]">
-            {description}
-          </p>
-        )}
-      </header>
-      <div className="grid gap-4 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] sm:grid-cols-2 sm:p-6">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function Field({
-  label,
-  name,
-  children,
-  required,
-  wide,
-}: {
-  label: string;
-  name: string;
-  children: React.ReactNode;
-  required?: boolean;
-  wide?: boolean;
-}) {
-  return (
-    <div className={cn("space-y-1.5", wide && "sm:col-span-2")}>
-      <Label
-        htmlFor={name}
-        className="text-xs uppercase tracking-[0.12em] text-[var(--muted-foreground)]"
-      >
-        {label}
-        {required && <span className="ml-1 text-[var(--destructive)]">*</span>}
-      </Label>
-      {children}
-    </div>
   );
 }

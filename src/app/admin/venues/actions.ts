@@ -5,8 +5,27 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { savedRedirectPath } from "@/lib/feedback/saved-flash";
+import type { SimpleActionResult } from "@/lib/feedback/types";
 
 const SlugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+const CoverImageUrlSchema = z
+  .string()
+  .max(2048)
+  .optional()
+  .nullable()
+  .transform((v) => (v && v.trim() !== "" ? v.trim() : null))
+  .refine((v) => v === null || /^https?:\/\//i.test(v), {
+    message: "Cover image URL must be a full https:// link.",
+  });
+
+const CoverImageFocusYSchema = z.coerce
+  .number()
+  .int()
+  .min(0)
+  .max(100)
+  .default(50);
 
 const VenueSchema = z.object({
   slug: z
@@ -29,6 +48,8 @@ const VenueSchema = z.object({
   city: trimmedOptional(80),
   country: z.string().trim().min(2).max(2).default("NL"),
   notes: trimmedOptional(2000),
+  coverImageUrl: CoverImageUrlSchema,
+  coverImageFocusY: CoverImageFocusYSchema,
 });
 
 function trimmedOptional(max: number) {
@@ -42,6 +63,20 @@ function trimmedOptional(max: number) {
       const t = v.trim();
       return t === "" ? null : t;
     });
+}
+
+function clubRelationForVenue(
+  kind: "club" | "school" | "rented_court",
+  clubId: string | null,
+  mode: "create" | "update",
+) {
+  if (kind === "club" && clubId) {
+    return { club: { connect: { id: clubId } } } as const;
+  }
+  if (mode === "update") {
+    return { club: { disconnect: true } } as const;
+  }
+  return {} as const;
 }
 
 /**
@@ -65,51 +100,66 @@ export async function createVenue(formData: FormData) {
       slug: data.slug,
       name: data.name,
       kind: data.kind,
-      clubId: data.kind === "club" ? data.clubId : null,
+      ...clubRelationForVenue(data.kind, data.clubId, "create"),
       addressLine1: data.addressLine1,
       addressLine2: data.addressLine2,
       postalCode: data.postalCode,
       city: data.city,
       country: data.country,
       notes: data.notes,
+      coverImageUrl: data.coverImageUrl,
+      coverImageFocusY: data.coverImageFocusY,
     },
   });
 
   revalidatePath("/admin/venues");
-  redirect(`/admin/venues/${created.id}`);
+  revalidatePath("/portal", "layout");
+  redirect(savedRedirectPath(`/admin/venues/${created.id}`));
 }
 
 const UpdateSchema = VenueSchema.extend({ venueId: z.string().uuid() });
 
-export async function updateVenue(formData: FormData) {
+export async function updateVenue(formData: FormData): Promise<SimpleActionResult> {
   await requireAdmin();
   const parsed = UpdateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input");
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid input",
+    };
   }
   const { venueId, ...data } = parsed.data;
   if (data.kind === "club" && !data.clubId) {
-    throw new Error("Club venues must be linked to a club.");
+    return { ok: false, error: "Club venues must be linked to a club." };
   }
 
-  await prisma.venue.update({
+  try {
+    await prisma.venue.update({
     where: { id: venueId },
     data: {
       slug: data.slug,
       name: data.name,
       kind: data.kind,
-      clubId: data.kind === "club" ? data.clubId : null,
+      ...clubRelationForVenue(data.kind, data.clubId, "update"),
       addressLine1: data.addressLine1,
       addressLine2: data.addressLine2,
       postalCode: data.postalCode,
       city: data.city,
       country: data.country,
       notes: data.notes,
+      coverImageUrl: data.coverImageUrl,
+      coverImageFocusY: data.coverImageFocusY,
     },
-  });
+    });
+  } catch {
+    return { ok: false, error: "Could not save venue — try again." };
+  }
 
   revalidatePath("/admin/venues");
   revalidatePath(`/admin/venues/${venueId}`);
+  revalidatePath("/portal", "layout");
+  revalidatePath("/admin/settings/photos");
+  return { ok: true, message: "Venue saved" };
 }
 
 const ArchiveSchema = z.object({

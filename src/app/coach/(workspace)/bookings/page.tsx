@@ -77,7 +77,7 @@ export default async function CoachBookingsPage() {
       />
 
       {pendingCount > 0 && (
-        <div className="fade-in rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[oklch(0.30_0.10_75)]">
+        <div className="fade-in rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[var(--warning-ink)]">
           {pendingCount} deletion request{pendingCount === 1 ? "" : "s"} waiting
           on admin review.
         </div>

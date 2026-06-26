@@ -30,7 +30,7 @@ export function UnreadInbox({ items }: { items: DashboardInboxRow[] }) {
       {items.map((item) => {
         const href = linkForRelated(item);
         const Inner = (
-          <div className="flex items-start justify-between gap-3 rounded-[var(--radius-lg)] bg-[var(--surface)] p-4 shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--surface-strong)]">
+          <div className="flex items-start justify-between gap-3 elev-card p-4 transition-colors hover:bg-[var(--surface-strong)]">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone="triaz" variant="soft">

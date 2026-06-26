@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
+  calendarWindowContainsToday,
   defaultCalendarFromISO,
   shiftCalendarFromISO,
+  weekContainingTodayISO,
   type AdminClassesFilters,
 } from "@/lib/admin/classes-filters";
 import { adminClassesHrefPatch } from "@/lib/admin/classes-href";
@@ -13,10 +15,22 @@ export function AdminCalendarDayNav({
 }: {
   filters: AdminClassesFilters;
 }) {
-  const today = defaultCalendarFromISO();
-  const prevFrom = shiftCalendarFromISO(filters.fromISO, -filters.span);
-  const nextFrom = shiftCalendarFromISO(filters.fromISO, filters.span);
-  const isToday = filters.fromISO === today;
+  const prevFrom = shiftCalendarFromISO(
+    filters.fromISO,
+    -filters.span,
+    filters.span,
+  );
+  const nextFrom = shiftCalendarFromISO(
+    filters.fromISO,
+    filters.span,
+    filters.span,
+  );
+  const isCurrentWindow = calendarWindowContainsToday(
+    filters.fromISO,
+    filters.span,
+  );
+  const todayFrom =
+    filters.span === 7 ? weekContainingTodayISO() : defaultCalendarFromISO();
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -28,10 +42,10 @@ export function AdminCalendarDayNav({
           ← Prev
         </Link>
       </Button>
-      {!isToday && (
+      {!isCurrentWindow && (
         <Button asChild variant="outline" size="sm">
           <Link
-            href={adminClassesHrefPatch(filters, { fromISO: today })}
+            href={adminClassesHrefPatch(filters, { fromISO: todayFrom })}
             scroll={false}
           >
             Today
@@ -60,7 +74,7 @@ export function AdminCalendarDayNav({
                 : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
             )}
           >
-            {sp === 1 ? "1d" : sp === 3 ? "3d" : "Week"}
+            {sp === 1 ? "Day" : sp === 3 ? "3-day" : "Week"}
           </Link>
         ))}
       </div>

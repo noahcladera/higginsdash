@@ -24,6 +24,11 @@ import { getCurrentBrand, getTerms } from "@/lib/tenant";
 import type { Terms } from "@/lib/tenant/terms";
 import { isYouthPickupLesson } from "@/lib/classes/class-form-mode";
 import {
+  formatPublicAgeLabel,
+  isAdultSeries,
+  programTargetToAudience,
+} from "@/lib/classes/age-band";
+import {
   computeClassTiming,
   formatTimingLine,
   deliveryModeLabel,
@@ -167,9 +172,9 @@ export default async function EditClassPage({
         select: { id: true, name: true },
       }),
       prisma.court.findMany({
-        where: { isActive: true },
+        where: { isActive: true, isBookable: true },
         orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-        select: { id: true, name: true, clubId: true },
+        select: { id: true, name: true, clubId: true, isBookable: true },
       }),
       prisma.coach.findMany({
         where: {
@@ -405,6 +410,9 @@ export default async function EditClassPage({
 
   const audienceForUI: "kids" | "adults" | "mixed" =
     series.program.targetAudience;
+  const hideAgeBand =
+    audienceForUI === "adults" ||
+    isAdultSeries({ minAge: series.minAge, maxAge: series.maxAge });
 
   const youthPickup =
     !isEvent &&
@@ -647,11 +655,13 @@ export default async function EditClassPage({
       />
 
       <SectionCard
-        title="Age &amp; level"
+        title={hideAgeBand ? "Level" : "Age &amp; level"}
         description={
-          useSplitGroupsUI
-            ? "Age band and eligible level brackets for the whole series. Per-sub-group bands further down can narrow these."
-            : "Age band and eligible level brackets for the whole series."
+          hideAgeBand
+            ? "Eligible skill levels for this series."
+            : useSplitGroupsUI
+              ? "Age band and eligible level brackets for the whole series. Per-sub-group bands further down can narrow these."
+              : "Age band and eligible level brackets for the whole series."
         }
         action={updateAgeAndLevel}
         read={
@@ -659,12 +669,15 @@ export default async function EditClassPage({
             minAge={series.minAge}
             maxAge={series.maxAge}
             levels={series.eligibleSkillLevels as SkillLevelValue[]}
+            audience={audienceForUI}
+            isEvent={isEvent}
           />
         }
         edit={
           <AgeAndLevelSectionEditor
             classSeriesId={series.id}
             audience={audienceForUI}
+            hideAgeBand={hideAgeBand}
             defaultMinAge={series.minAge}
             defaultMaxAge={series.maxAge}
             defaultLevels={series.eligibleSkillLevels as SkillLevelValue[]}
@@ -778,6 +791,7 @@ export default async function EditClassPage({
             defaultNotes={series.internalNotes}
             defaultWhatsappUrl={series.whatsappUrl}
             defaultCoverImageUrl={series.coverImageUrl}
+            defaultCoverImageFocusY={series.coverImageFocusY}
           />
         }
       />
@@ -1302,22 +1316,24 @@ function AgeAndLevelReadout({
   minAge,
   maxAge,
   levels,
+  audience,
+  isEvent,
 }: {
   minAge: number | null;
   maxAge: number | null;
   levels: SkillLevelValue[];
+  audience: "kids" | "adults" | "mixed";
+  isEvent: boolean;
 }) {
-  const ageStr =
-    minAge == null && maxAge == null
-      ? "Any age"
-      : minAge != null && maxAge != null
-        ? `${minAge}–${maxAge} yrs`
-        : minAge != null
-          ? `${minAge}+ yrs`
-          : `up to ${maxAge} yrs`;
+  const ageStr = formatPublicAgeLabel({
+    minAge,
+    maxAge,
+    audience: programTargetToAudience(audience),
+    isEvent,
+  });
   return (
     <div className="space-y-1 text-sm">
-      <div className="font-medium">{ageStr}</div>
+      {ageStr ? <div className="font-medium">{ageStr}</div> : null}
       <div className="flex flex-wrap gap-1.5 text-xs text-[var(--muted-foreground)]">
         {levels.length === 0 ? (
           <span>All levels welcome.</span>

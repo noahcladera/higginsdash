@@ -16,7 +16,7 @@ import {
   type MembershipTier,
   type RandwijckBundleId,
 } from "@/lib/pricing";
-import { clubTheme, type ClubTheme } from "@/lib/club-theme";
+import { clubTheme, ctaToneForContext, themeForClubs, type ClubTheme } from "@/lib/club-theme";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -161,7 +161,7 @@ export function BuyMenu({
       )}
 
       {!randwijckOpen && open && (
-        <div className="rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[oklch(0.30_0.10_75)]">
+        <div className="rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning-ink)]">
           <strong className="font-semibold">
             Randwijck is closed for the season.
           </strong>{" "}
@@ -252,10 +252,9 @@ function ClubColumn({
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-4 rounded-[var(--radius-lg)] p-5 transition-shadow",
+        "relative flex flex-col gap-4 rounded-[var(--radius-lg)] p-5 transition-shadow elev-card",
         styles.bg,
-        highlight && "shadow-[var(--shadow-md)] ring-2 " + styles.ring,
-        !highlight && "shadow-[var(--shadow-sm)]",
+        highlight && "ring-2 shadow-[var(--shadow-floating)] " + styles.ring,
         disabled && "opacity-60",
       )}
     >
@@ -353,7 +352,7 @@ function ClubColumn({
       )}
 
       {disabled && disabledReason && (
-        <p className="text-xs text-[oklch(0.30_0.10_75)]">{disabledReason}</p>
+        <p className="text-xs text-[var(--warning-ink)]">{disabledReason}</p>
       )}
 
       {!disabled && clubs.length === 2 && (
@@ -454,7 +453,7 @@ function TierRow({
       (availability.kind === "unlocked" || partial);
 
     return (
-      <div className="relative rounded-[var(--radius-md)] bg-[var(--card)] p-3.5 shadow-[var(--shadow-sm)]">
+      <div className="relative control-well rounded-[var(--radius-md)] p-3.5">
         {childPickerOpen && (
           <div
             className="fixed inset-0 z-40 bg-black/20"
@@ -531,6 +530,7 @@ function TierRow({
               }
               onClose={() => setChildPickerOpen(false)}
               clubsLabel={childPickerClubs.map(clubLabelFor).join(" + ")}
+              ctaTone={themeForClubs(childPickerClubs)}
             />
           </div>
         )}
@@ -543,7 +543,7 @@ function TierRow({
   }
 
   return (
-    <div className="rounded-[var(--radius-md)] bg-[var(--card)] p-3.5 shadow-[var(--shadow-sm)]">
+    <div className="control-well rounded-[var(--radius-md)] p-3.5">
       <div className="flex items-baseline justify-between gap-2">
         <div>
           <div className={cn("text-sm font-semibold", styles.accentText)}>
@@ -643,7 +643,7 @@ function BundleRow({
   params.set("randwijckBundle", bundleId);
   const href = `/portal/membership/confirm?${params.toString()}`;
   return (
-    <div className="rounded-[var(--radius-md)] bg-[var(--card)] p-3.5 shadow-[var(--shadow-sm)]">
+    <div className="control-well rounded-[var(--radius-md)] p-3.5">
       <div className="flex items-baseline justify-between gap-2">
         <div className="min-w-0">
           <div className={cn("text-sm font-semibold", styles.accentText)}>
@@ -688,7 +688,7 @@ function FamilyBlockedRow({
   const styles = clubTheme(theme);
   return (
     <div
-      className="rounded-[var(--radius-md)] bg-[var(--card)] p-3.5 opacity-70 shadow-[var(--shadow-sm)]"
+      className="control-well rounded-[var(--radius-md)] p-3.5 opacity-70"
       title="Family covers Randwijck only"
     >
       <div className="flex items-baseline justify-between gap-2">
@@ -730,6 +730,7 @@ function ChildPickerBody({
   confirmHref,
   onClose,
   clubsLabel,
+  ctaTone = "triaz",
 }: {
   pickerId: string;
   householdChildren: HouseholdOwnership["householdMembers"];
@@ -739,6 +740,7 @@ function ChildPickerBody({
   confirmHref: string | null;
   onClose: () => void;
   clubsLabel: string;
+  ctaTone?: ClubTheme;
 }) {
   const eligibleIds = new Set(
     unlocked?.eligibleAssignees?.map((a) => a.personId) ?? [],
@@ -824,7 +826,7 @@ function ChildPickerBody({
             <Button
               asChild={!!confirmHref}
               type="button"
-              tone="triaz"
+              tone={ctaTone}
               size="sm"
               disabled={!confirmHref}
             >

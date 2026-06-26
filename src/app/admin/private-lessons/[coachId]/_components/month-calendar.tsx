@@ -105,7 +105,7 @@ export function MonthCalendar({
                   </span>
                   {dayData && dayData.cancelled.length > 0 && (
                     <span
-                      className="text-[10px] font-medium text-red-700"
+                      className="text-[10px] font-medium text-[var(--danger-ink)]"
                       title={`${dayData.cancelled.length} cancelled`}
                     >
                       ×{dayData.cancelled.length}
@@ -133,7 +133,7 @@ function HeldChip({ lesson }: { lesson: CoachMonthHeldLesson }) {
   const time = formatHHMM(lesson.startsAt);
   return (
     <div
-      className="rounded px-1.5 py-0.5 text-[10px] leading-tight bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200"
+      className="rounded px-1.5 py-0.5 text-[10px] leading-tight bg-[var(--success-soft)] text-[var(--success-ink)]"
       title={`${time} · ${lesson.minutes} min · ${lesson.courtName} (${lesson.clubName})${lesson.kind === "recurring_occurrence" ? " · recurring" : ""}`}
     >
       <span className="font-medium tabular-nums">{time}</span>
@@ -159,7 +159,7 @@ function CancelledChip({ lesson }: { lesson: CoachMonthCancelledLesson }) {
   }
   return (
     <div
-      className="rounded px-1.5 py-0.5 text-[10px] leading-tight bg-red-100 text-red-900 dark:bg-red-950/60 dark:text-red-200"
+      className="rounded px-1.5 py-0.5 text-[10px] leading-tight bg-[var(--danger-soft)] text-[var(--danger-ink)]"
       title={tooltipParts.join("\n")}
     >
       <span className="font-medium tabular-nums line-through">{time}</span>

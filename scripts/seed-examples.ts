@@ -1,6 +1,9 @@
 /**
  * Seed four canonical example records that exercise every kind of CRM
- * shape we care about:
+ * shape we care about.
+ *
+ * @deprecated Use `npm run db:seed-demo-personas` for the four Spring 2026
+ * demo login personas (student, parent, multi-child, parent-who-plays).
  *
  *   1. A coach (Carlos Mendez)                           — Coach + Person + auth
  *   2. An adult student (Anna de Vries)                  — Student + Person + auth, no household
@@ -287,6 +290,8 @@ async function upsertMembership(args: {
   coverageTier: "adult" | "child" | "family";
   clubIds: string[];
   pricePaid: number;
+  /** Required when coverageTier is adult or child (DB CHECK constraint). */
+  assignedPersonId?: string;
 }): Promise<void> {
   const membershipId = uuidv5(`membership:${args.slug}`, NS);
 
@@ -295,15 +300,14 @@ async function upsertMembership(args: {
   const expiresOn = new Date(startsOn);
   expiresOn.setUTCFullYear(expiresOn.getUTCFullYear() + 1);
 
-  // `kind` is kept in sync with `coverageTier`: family -> family, adult/child -> individual.
-  const kind = args.coverageTier === "family" ? "family" : "individual";
+  // coverageTier drives membership shape: family vs adult/child individual tiers.
 
   await prisma.membership.upsert({
     where: { id: membershipId },
     create: {
       id: membershipId,
       householdId: args.householdId,
-      kind,
+      assignedPersonId: args.assignedPersonId ?? null,
       coverageTier: args.coverageTier,
       startsOn,
       expiresOn,
@@ -312,7 +316,7 @@ async function upsertMembership(args: {
       paidAt: new Date(),
     },
     update: {
-      kind,
+      assignedPersonId: args.assignedPersonId ?? null,
       coverageTier: args.coverageTier,
       startsOn,
       expiresOn,
@@ -322,12 +326,23 @@ async function upsertMembership(args: {
     },
   });
 
-  await prisma.membershipClub.deleteMany({ where: { membershipId } });
   for (const clubId of args.clubIds) {
-    await prisma.membershipClub.create({
-      data: { membershipId, clubId },
+    await prisma.membershipClub.upsert({
+      where: {
+        membershipId_clubId: { membershipId, clubId },
+      },
+      create: { membershipId, clubId },
+      update: {},
     });
   }
+  // Remove clubs no longer in the seed set (safe: we never drop below 1 in one statement
+  // because we upsert the new set first).
+  await prisma.membershipClub.deleteMany({
+    where: {
+      membershipId,
+      clubId: { notIn: args.clubIds },
+    },
+  });
 }
 
 async function upsertHousehold(args: {
@@ -632,6 +647,7 @@ async function main() {
     slug: "anna-devries",
     householdId: uuidv5("household:household-anna-devries", NS),
     coverageTier: "adult",
+    assignedPersonId: annaId,
     clubIds: [clubs.triaz, clubs.randwijck],
     pricePaid: 150,
   });

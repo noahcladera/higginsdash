@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
+import { AuthNoticeBanner } from "@/components/auth/auth-notice-banner";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { signInWithPassword } from "./actions";
 
@@ -46,7 +47,7 @@ export function LoginCard({
   }, []);
 
   return (
-    <div className="w-full max-w-sm space-y-6 rounded-lg border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm">
+    <div className="w-full max-w-sm space-y-6 glass-panel-strong rounded-[var(--radius-xl)] p-8">
       <div className="space-y-3 text-center">
         {brandLogoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -65,6 +66,7 @@ export function LoginCard({
       </div>
 
       <AuthErrorBanner />
+      <AuthNoticeBanner />
 
       {/* Method toggle */}
       <div className="inline-flex w-full overflow-hidden rounded-md border border-[var(--border)] text-sm">
@@ -147,7 +149,15 @@ function PasswordForm({ nextPath }: { nextPath: string | null }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Password</Label>
+          <Link
+            href="/forgot-password"
+            className="text-xs text-[var(--muted-foreground)] underline-offset-4 hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
         <Input
           id="password"
           type="password"

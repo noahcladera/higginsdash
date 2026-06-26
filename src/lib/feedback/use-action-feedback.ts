@@ -49,8 +49,10 @@ export interface UseActionFeedbackOptions<T> {
   onSuccess?: (result: Extract<ActionResult<T>, { ok: true }>) => void;
   /** Run after a failed action. Useful for closing optimistic UI. */
   onError?: (error: string) => void;
-  /** Whether to call `router.refresh()` on success. Defaults to true. */
+  /** Whether to call `router.refresh()` on success. Defaults to true unless `returnTo` is set. */
   refresh?: boolean;
+  /** Navigate here after a successful save (after toast). Skips refresh by default. */
+  returnTo?: string;
   /** Suppress the success toast (still calls `onSuccess`). */
   silentSuccess?: boolean;
 }
@@ -131,7 +133,9 @@ export function useActionFeedback<T = void>(
 
         options.onSuccess?.(okResult);
 
-        if (options.refresh !== false) {
+        if (options.returnTo) {
+          router.push(options.returnTo);
+        } else if (options.refresh !== false) {
           router.refresh();
         }
       });

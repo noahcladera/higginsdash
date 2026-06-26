@@ -75,7 +75,7 @@ export default async function CoachBookPage({ searchParams }: PageProps) {
       <PageHeader
         kicker={terms.coach.role}
         title={`${terms.bookVerb} ${terms.privateLesson.plural.toLowerCase()} & ${terms.court.plural.toLowerCase()}`}
-        description={`Tap an open slot, then choose personal play or a ${terms.privateLesson.singular.toLowerCase()}. ${terms.privateLesson.singular} cancellations need admin approval.`}
+        description={`Tap an open slot to book a ${terms.privateLesson.singular.toLowerCase()}. ${terms.privateLesson.singular} cancellations need admin approval.`}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -95,7 +95,7 @@ export default async function CoachBookPage({ searchParams }: PageProps) {
                 className={cn(
                   "rounded-full px-4 py-1.5 text-sm transition-colors",
                   active
-                    ? "bg-[var(--card)] text-[var(--foreground)] shadow-[var(--shadow-sm)] font-medium"
+                    ? "control-well text-[var(--foreground)] font-medium shadow-[var(--shadow-elevated)]"
                     : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
                 )}
               >
@@ -149,7 +149,7 @@ export default async function CoachBookPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[var(--radius-lg)] bg-[var(--surface)] p-2 shadow-[var(--shadow-sm)] sm:p-4">
+      <div className="elev-card overflow-hidden p-2 sm:p-4">
         <CourtCalendarGrid
           data={data}
           viewerRole="coach"

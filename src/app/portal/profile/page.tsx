@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
@@ -7,8 +6,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { ArrowRightIcon, FamilyIcon, PlusIcon } from "@/components/icons";
 import { ProfileForm } from "@/components/account/profile-form";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { Avatar } from "@/components/portal/avatar";
 import { updateMyProfilePortal } from "@/lib/account/profile-actions";
-import { CalendarSyncCard } from "./_calendar-sync-card";
 
 /**
  * Self-serve profile editor. Email is intentionally not editable —
@@ -53,25 +53,6 @@ export default async function PortalProfilePage() {
   const hasFamily = childCount > 0 || familyMembershipCount > 0;
   const canOpenFamily = householdId != null;
 
-  const calendarTokens = await prisma.calendarFeedToken.findMany({
-    where: { personId: person.id, revokedAt: null },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      scope: true,
-      label: true,
-      token: true,
-      createdAt: true,
-      revokedAt: true,
-      lastFetchedAt: true,
-    },
-  });
-
-  const h = await headers();
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  const host = h.get("host") ?? "localhost:3000";
-  const origin = `${proto}://${host}`;
-
   return (
     <div className="space-y-10">
       <PageHeader
@@ -81,8 +62,8 @@ export default async function PortalProfilePage() {
       />
 
       {primaryEmail && (
-        <div className="rounded-[var(--radius-md)] bg-[var(--surface)] px-5 py-4 text-sm">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+        <div className="elev-panel px-5 py-4 text-sm">
+          <span className="text-sm font-medium text-[var(--foreground)]/80">
             Sign-in email
           </span>
           <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -94,34 +75,60 @@ export default async function PortalProfilePage() {
         </div>
       )}
 
-      <ProfileForm
-        initial={{
-          firstName: full.firstName,
-          lastName: full.lastName,
-          phone: full.phone ?? "",
-          dateOfBirthIso: full.dateOfBirth
-            ? full.dateOfBirth.toISOString().slice(0, 10)
-            : "",
-          gender: full.gender ?? "",
-          addressLine1: full.addressLine1 ?? "",
-          addressLine2: full.addressLine2 ?? "",
-          postalCode: full.postalCode ?? "",
-          city: full.city ?? "",
-          country: full.country,
-          emergencyContactName: full.emergencyContactName ?? "",
-          emergencyContactPhone: full.emergencyContactPhone ?? "",
-          emergencyContactRelationship: full.emergencyContactRelationship ?? "",
-        }}
-        action={updateMyProfilePortal}
-      />
+      <section className="elev-card p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <Avatar
+            name={`${full.firstName} ${full.lastName}`}
+            src={full.avatarUrl}
+            size="xl"
+          />
+          <div className="min-w-0 flex-1 space-y-1">
+            <h2 className="font-display text-lg font-medium tracking-tight">
+              Profile photo
+            </h2>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              Optional — shown on your household ribbon and family page.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <ProfileForm
+            initial={{
+              firstName: full.firstName,
+              lastName: full.lastName,
+              phone: full.phone ?? "",
+              dateOfBirthIso: full.dateOfBirth
+                ? full.dateOfBirth.toISOString().slice(0, 10)
+                : "",
+              gender: full.gender ?? "",
+              addressLine1: full.addressLine1 ?? "",
+              addressLine2: full.addressLine2 ?? "",
+              postalCode: full.postalCode ?? "",
+              city: full.city ?? "",
+              country: full.country,
+              emergencyContactName: full.emergencyContactName ?? "",
+              emergencyContactPhone: full.emergencyContactPhone ?? "",
+              emergencyContactRelationship:
+                full.emergencyContactRelationship ?? "",
+              avatarUrl: full.avatarUrl ?? "",
+            }}
+            action={updateMyProfilePortal}
+            avatarUploadSlot={
+              <ImageUpload
+                name="avatarUrl"
+                defaultUrl={full.avatarUrl}
+                kind="photo"
+                aspect="square"
+                label="Upload photo"
+                showStockPicker={false}
+                helpText="Square photos work best. PNG, JPG, or WebP up to 8MB."
+              />
+            }
+          />
+        </div>
+      </section>
 
       {canOpenFamily && <FamilyEntryPanel hasFamily={hasFamily} />}
-
-      <CalendarSyncCard
-        origin={origin}
-        hasHousehold={householdId != null}
-        initialTokens={calendarTokens}
-      />
     </div>
   );
 }

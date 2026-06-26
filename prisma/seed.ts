@@ -30,6 +30,10 @@
 import { PrismaClient } from "@prisma/client";
 import { SYSTEM_PERSON_ID } from "../src/lib/system-ids";
 import { ADULT_LEVELS, KIDS_LEVELS } from "../src/lib/skill-levels";
+import {
+  curriculumLongDescription,
+  MEDAL_CURRICULUM,
+} from "../src/lib/medals/curriculum/checkpoints";
 import { seedCore, seedOrganization } from "./seed-core";
 
 const prisma = new PrismaClient();
@@ -38,29 +42,55 @@ async function seedClubs() {
   const triaz = await prisma.club.upsert({
     where: { slug: "triaz" },
     create: {
-      name: "Triaz",
+      name: "S.V. Triaz",
       slug: "triaz",
       ownershipType: "leased",
+      addressLine1: "Van Heenvlietlaan 6",
+      postalCode: "1083 CL",
+      city: "Amsterdam",
       country: "NL",
+      latitude: 52.330343,
+      longitude: 4.882560,
       displayOrder: 1,
       notes:
         "Paid-up multi-year lease. Shared evening use with original Triaz korfball club (Tue + Wed evenings — modeled as recurring_blocks).",
     },
-    update: { displayOrder: 1 },
+    update: {
+      name: "S.V. Triaz",
+      addressLine1: "Van Heenvlietlaan 6",
+      postalCode: "1083 CL",
+      city: "Amsterdam",
+      latitude: 52.330343,
+      longitude: 4.882560,
+      displayOrder: 1,
+    },
   });
 
   const randwijck = await prisma.club.upsert({
     where: { slug: "randwijck" },
     create: {
-      name: "Randwijck",
+      name: "Tennispark Randwijck",
       slug: "randwijck",
       ownershipType: "leased",
+      addressLine1: "Barend van Dorenweerdelaan 16",
+      postalCode: "1181 BK",
+      city: "Amstelveen",
       country: "NL",
+      latitude: 52.3125,
+      longitude: 4.865,
       displayOrder: 2,
       notes:
         "Paid-up. HTN acts as operator. Land owned by Sjoerd Robijn who also maintains the courts daily — quality is exceptional. Strategic priority: fill the courts.",
     },
-    update: { displayOrder: 2 },
+    update: {
+      name: "Tennispark Randwijck",
+      addressLine1: "Barend van Dorenweerdelaan 16",
+      postalCode: "1181 BK",
+      city: "Amstelveen",
+      latitude: 52.3125,
+      longitude: 4.865,
+      displayOrder: 2,
+    },
   });
 
   return { triaz, randwijck };
@@ -84,22 +114,52 @@ async function seedVenues(clubs: {
     where: { slug: "triaz" },
     create: {
       slug: "triaz",
-      name: "Triaz",
+      name: "S.V. Triaz",
       kind: "club",
+      addressLine1: "Van Heenvlietlaan 6",
+      postalCode: "1083 CL",
+      city: "Amsterdam",
+      mapUrl:
+        "https://maps.google.com/?q=S.V.+Triaz+Van+Heenvlietlaan+6+Amsterdam",
       clubId: clubs.triaz.id,
     },
-    update: { clubId: clubs.triaz.id, kind: "club", isActive: true },
+    update: {
+      name: "S.V. Triaz",
+      addressLine1: "Van Heenvlietlaan 6",
+      postalCode: "1083 CL",
+      city: "Amsterdam",
+      mapUrl:
+        "https://maps.google.com/?q=S.V.+Triaz+Van+Heenvlietlaan+6+Amsterdam",
+      clubId: clubs.triaz.id,
+      kind: "club",
+      isActive: true,
+    },
   });
 
   await prisma.venue.upsert({
     where: { slug: "randwijck" },
     create: {
       slug: "randwijck",
-      name: "Randwijck",
+      name: "Tennispark Randwijck",
       kind: "club",
+      addressLine1: "Barend van Dorenweerdelaan 16",
+      postalCode: "1181 BK",
+      city: "Amstelveen",
+      mapUrl:
+        "https://maps.google.com/?q=Tennispark+Randwijck+Barend+van+Dorenweerdelaan+16+Amstelveen",
       clubId: clubs.randwijck.id,
     },
-    update: { clubId: clubs.randwijck.id, kind: "club", isActive: true },
+    update: {
+      name: "Tennispark Randwijck",
+      addressLine1: "Barend van Dorenweerdelaan 16",
+      postalCode: "1181 BK",
+      city: "Amstelveen",
+      mapUrl:
+        "https://maps.google.com/?q=Tennispark+Randwijck+Barend+van+Dorenweerdelaan+16+Amstelveen",
+      clubId: clubs.randwijck.id,
+      kind: "club",
+      isActive: true,
+    },
   });
 
   await prisma.venue.upsert({
@@ -317,14 +377,14 @@ async function seedBookingSettings(clubs: {
     update: { startTimeConstraint: "on_the_half_hour" },
   });
 
-  // Randwijck: paid, 2/day, 08:00–22:00, 2-day cancel cutoff, auto_email
+  // Randwijck: paid, 2/day, 09:00–22:00, 2-day cancel cutoff, auto_email
   await prisma.bookingSettings.upsert({
     where: { clubId: clubs.randwijck.id },
     create: {
       clubId: clubs.randwijck.id,
       bookingDurationMinutes: 60,
       startTimeConstraint: "on_the_half_hour",
-      opensAtLocalTime: new Date("1970-01-01T08:00:00Z"),
+      opensAtLocalTime: new Date("1970-01-01T09:00:00Z"),
       closesAtLocalTime: new Date("1970-01-01T22:00:00Z"),
       earliestBookingOffsetMinutes: 10,
       latestBookingOffsetDays: 7,
@@ -340,7 +400,10 @@ async function seedBookingSettings(clubs: {
       dailyOverviewEmail: "higginstennisnloffice@gmail.com",
       reminderOffsetMinutes: 60,
     },
-    update: { startTimeConstraint: "on_the_half_hour" },
+    update: {
+      startTimeConstraint: "on_the_half_hour",
+      opensAtLocalTime: new Date("1970-01-01T09:00:00Z"),
+    },
   });
 }
 
@@ -359,7 +422,7 @@ async function seedPrograms() {
       defaultClassType: "group_lesson" as const,
       displayOrder: 10,
       descriptionPublic:
-        "STUB · Weekly group lessons for kids ages 4–16. Small groups, friendly coaches, and the same court every week so progress sticks.",
+        "Weekly group lessons for kids ages 4–16. Small groups, friendly coaches, and the same court every week so progress sticks.",
       coverImageUrl: null,
     },
     {
@@ -369,7 +432,7 @@ async function seedPrograms() {
       defaultClassType: "group_lesson" as const,
       displayOrder: 20,
       descriptionPublic:
-        "STUB · Adult group sessions for every level — from first-racket to club-team players. Show up, hit balls, leave smiling.",
+        "Adult group sessions for every level — from first-racket to club-team players. Show up, hit balls, leave smiling.",
       coverImageUrl: null,
     },
     {
@@ -379,7 +442,7 @@ async function seedPrograms() {
       defaultClassType: "high_performance" as const,
       displayOrder: 30,
       descriptionPublic:
-        "STUB · Performance track for committed juniors aged 8–14. Multiple sessions per week, technique focus, and competitive matchplay.",
+        "Performance track for committed juniors aged 8–14. Multiple sessions per week, technique focus, and competitive matchplay.",
       coverImageUrl: null,
     },
     {
@@ -389,7 +452,7 @@ async function seedPrograms() {
       defaultClassType: "school_pickup" as const,
       displayOrder: 40,
       descriptionPublic:
-        "STUB · Coach-led pickup from BSA, IFS, AICS and AMITY straight to court. We handle the gocab; you handle the rest of your day.",
+        "Coach-led pickup from BSA, IFS, AICS and AMITY straight to court. We handle the gocab; you handle the rest of your day.",
       coverImageUrl: null,
     },
     {
@@ -399,7 +462,7 @@ async function seedPrograms() {
       defaultClassType: "camp" as const,
       displayOrder: 50,
       descriptionPublic:
-        "STUB · Half-day and full-day holiday camps. Tennis, games, lunch, repeat. Best way to spend a school break.",
+        "Half-day and full-day holiday camps. Tennis, games, lunch, repeat. Best way to spend a school break.",
       coverImageUrl: null,
     },
     {
@@ -409,7 +472,7 @@ async function seedPrograms() {
       defaultClassType: "private_individual" as const,
       displayOrder: 60,
       descriptionPublic:
-        "STUB · One-on-one or small-group private lessons matched to your goals. Email the office to set one up.",
+        "One-on-one or small-group private lessons matched to your goals. Email the office to set one up.",
       coverImageUrl: null,
     },
     {
@@ -509,6 +572,29 @@ async function seedKorfballBlocks(courts: { id: string; clubId: string; name: st
 /**
  * One CMS row per skill level for "What's my level?" pages. Idempotent.
  */
+async function seedMedalLevelContent() {
+  for (const [i, level] of MEDAL_CURRICULUM.entries()) {
+    await prisma.medalLevelContent.upsert({
+      where: { medalLevel: level.medalLevel },
+      create: {
+        medalLevel: level.medalLevel,
+        title: level.title,
+        shortDescription: `Ages ${level.typicalAge}`,
+        longDescription: curriculumLongDescription(level),
+        howToGraduate: level.graduateTo,
+        sortOrder: i,
+      },
+      update: {
+        title: level.title,
+        shortDescription: `Ages ${level.typicalAge}`,
+        longDescription: curriculumLongDescription(level),
+        howToGraduate: level.graduateTo,
+        sortOrder: i,
+      },
+    });
+  }
+}
+
 async function seedLevelContent() {
   await prisma.levelContent.createMany({
     data: KIDS_LEVELS.map((l, i) => ({
@@ -552,6 +638,9 @@ async function main() {
 
   console.log("Seeding level content (skill level descriptions)…");
   await seedLevelContent();
+
+  console.log("Seeding medal level content (medals guide)…");
+  await seedMedalLevelContent();
 
   console.log("Seeding clubs…");
   const clubs = await seedClubs();

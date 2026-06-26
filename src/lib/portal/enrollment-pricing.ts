@@ -73,6 +73,11 @@ export interface EnrollmentPricingInput {
    * Daily drop-ins never include or auto-grant memberships.
    */
   campSelectionKind?: "full_week" | "daily_drop_in" | null;
+  /**
+   * Event-mode override. When set, charge this flat amount for one
+   * occurrence (next upcoming date) instead of season proration.
+   */
+  eventOccurrencePrice?: number | null;
 }
 
 export interface EnrollmentPricingBreakdown {
@@ -112,6 +117,23 @@ export function computeEnrollmentPricing(
     (s) => s.startsAt.getTime() <= input.now.getTime(),
   ).length;
   const remainingSessions = Math.max(0, totalSessions - pastSessions);
+
+  if (input.eventOccurrencePrice != null) {
+    const payableLesson = roundEur(input.eventOccurrencePrice);
+    const addOn = membershipAddOnFor(input);
+    return {
+      totalSessions: 1,
+      pastSessions: 0,
+      remainingSessions: 1,
+      pricePerSession: payableLesson,
+      fullSeriesPrice: payableLesson,
+      missedDeduction: 0,
+      payableLesson,
+      membershipAddOn: addOn,
+      total: payableLesson + (addOn ?? 0),
+      policy: "starts_at",
+    };
+  }
 
   if (input.campSelectionPrice != null) {
     const payableLesson = roundEur(input.campSelectionPrice);

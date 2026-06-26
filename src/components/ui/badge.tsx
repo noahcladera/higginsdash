@@ -15,19 +15,21 @@ const badgeVariants = cva(
   [
     "inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap",
     "rounded-full px-2.5 py-0.5 text-xs font-medium",
+    "border border-[var(--glass-border-subtle)]",
     "transition-colors",
+    "shadow-[var(--highlight-inset-subtle)]",
     "[&>svg]:pointer-events-none [&>svg]:size-3",
   ].join(" "),
   {
     variants: {
       tone: {
         neutral: "bg-[var(--surface-strong)] text-[var(--foreground)]",
-        triaz: "bg-[var(--triaz-soft)] text-[var(--triaz-ink)]",
-        randwijck: "bg-[var(--randwijck-soft)] text-[var(--randwijck-ink)]",
-        joint: "bg-[var(--joint-soft)] text-[var(--joint-ink)]",
-        success: "bg-[var(--success-soft)] text-[var(--triaz-ink)]",
-        warning: "bg-[var(--warning-soft)] text-[oklch(0.42_0.13_75)]",
-        danger: "bg-[var(--danger-soft)] text-[var(--destructive)]",
+        triaz: "bg-[var(--triaz-soft)] text-[var(--triaz-ink)] shadow-[0_2px_8px_-2px_oklch(0.42_0.13_155_/_0.2)]",
+        randwijck: "bg-[var(--randwijck-soft)] text-[var(--randwijck-ink)] shadow-[0_2px_8px_-2px_oklch(0.52_0.16_40_/_0.2)]",
+        joint: "bg-[var(--joint-soft)] text-[var(--joint-ink)] shadow-[0_2px_8px_-2px_oklch(0.40_0.13_260_/_0.2)]",
+        success: "bg-[var(--success-soft)] text-[var(--success-ink)]",
+        warning: "bg-[var(--warning-soft)] text-[var(--warning-ink)]",
+        danger: "bg-[var(--danger-soft)] text-[var(--danger-ink)]",
       },
       variant: {
         soft: "",

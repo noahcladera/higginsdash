@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-06-25T16:01:29.633905+00:00",
+  "source": "higginstennisnloffice@gmail.com (Google Takeout)",
+  "messagesScanned": 71689,
+  "parentInboundMessages": 24013,
+  "scorecard": [
+    {
+      "rank": 1,
+      "themeKey": "schedule_holidays",
+      "label": "Schedule, holidays & timing",
+      "frequency": 11731,
+      "portalReadiness": "medium",
+      "effort": "medium",
+      "portalRoute": "/portal/classes",
+      "parentInboundShare": 0.4885
+    },
+    {
+      "rank": 2,
+      "themeKey": "rain_cancel_makeup",
+      "label": "Rain, cancellations & makeups",
+      "frequency": 8385,
+      "portalReadiness": "medium",
+      "effort": "medium",
+      "portalRoute": "/portal/inbox",
+      "parentInboundShare": 0.3492
+    },
+    {
+      "rank": 3,
+      "themeKey": "payment_invoice_refund",
+      "label": "Payments, invoices & refunds",
+      "frequency": 8271,
+      "portalReadiness": "high",
+      "effort": "medium",
+      "portalRoute": "/portal/payments",
+      "parentInboundShare": 0.3444
+    },
+    {
+      "rank": 4,
+      "themeKey": "registration_waitlist",
+      "label": "Registration, waitlist & camp spots",
+      "frequency": 8133,
+      "portalReadiness": "high",
+      "effort": "medium",
+      "portalRoute": "/portal/programs",
+      "parentInboundShare": 0.3387
+    },
+    {
+      "rank": 5,
+      "themeKey": "lesson_availability",
+      "label": "Lesson availability & what to join",
+      "frequency": 5650,
+      "portalReadiness": "high",
+      "effort": "low",
+      "portalRoute": "/get-started",
+      "parentInboundShare": 0.2353
+    },
+    {
+      "rank": 6,
+      "themeKey": "court_access_ladder",
+      "label": "Court access, gate & ladder",
+      "frequency": 3705,
+      "portalReadiness": "medium",
+      "effort": "medium",
+      "portalRoute": "/portal/book",
+      "parentInboundShare": 0.1543
+    },
+    {
+      "rank": 7,
+      "themeKey": "medals_progress",
+      "label": "Medals & progress",
+      "frequency": 3528,
+      "portalReadiness": "medium",
+      "effort": "low",
+      "portalRoute": "/portal/classes",
+      "parentInboundShare": 0.1469
+    },
+    {
+      "rank": 8,
+      "themeKey": "whatsapp_comms",
+      "label": "WhatsApp / missed group messages",
+      "frequency": 1674,
+      "portalReadiness": "medium",
+      "effort": "low",
+      "portalRoute": "/portal/inbox",
+      "parentInboundShare": 0.0697
+    },
+    {
+      "rank": 9,
+      "themeKey": "membership_renewal",
+      "label": "Membership renewals & status",
+      "frequency": 1077,
+      "portalReadiness": "high",
+      "effort": "low",
+      "portalRoute": "/portal/membership#buy",
+      "parentInboundShare": 0.0449
+    }
+  ]
+}

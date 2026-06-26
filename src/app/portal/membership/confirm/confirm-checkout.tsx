@@ -7,7 +7,16 @@ import { Button } from "@/components/ui/button";
 import { ArrowRightIcon } from "@/components/icons";
 import { startCheckout as beginCheckout } from "@/lib/payments/start-checkout";
 import { getMollieAccountForMembership } from "@/lib/payments/mollie-accounts";
+import { portalPurchaseSuccessUrl } from "@/lib/portal/purchase-success-url";
 import type { ClubSlug } from "@/lib/pricing";
+
+function membershipSuccessUrl(amountEur?: number) {
+  return portalPurchaseSuccessUrl({
+    kind: "membership",
+    next: "/portal/membership",
+    amountEur,
+  });
+}
 
 type RandwijckBundle = "summer" | "late_season";
 
@@ -110,7 +119,7 @@ export function ConfirmCheckoutButton({
             assignedPersonId: assignedPersonId ?? undefined,
             randwijckPortion,
             description: `${headline} · Randwijck portion`,
-            returnUrl: "/portal/membership",
+            returnUrl: membershipSuccessUrl(totalEur),
           };
           try {
             sessionStorage.setItem(
@@ -149,7 +158,7 @@ export function ConfirmCheckoutButton({
         {
           amountEur: totalEur,
           description: headline,
-          returnUrl: "/portal/membership",
+          returnUrl: membershipSuccessUrl(totalEur),
           mollieAccount: getMollieAccountForMembership({ clubSlug: targetClub }),
           action: {
             kind: "membership_create",

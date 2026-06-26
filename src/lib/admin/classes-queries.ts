@@ -1,4 +1,4 @@
-import type { DayOfWeek, Prisma, ProgramTargetAudience } from "@prisma/client";
+import type { ClassType, DayOfWeek, Prisma, ProgramTargetAudience } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_NO_COACH_PERSON_ID } from "@/lib/system-ids";
 import { computeClassTiming, type ClassDeliveryMode as TimingMode } from "@/lib/classes/timing";
@@ -82,6 +82,22 @@ export function buildClassSeriesWhere(
     parts.push({ status: filters.seriesStatus });
   }
 
+  if (filters.dayOfWeek) {
+    parts.push({ dayOfWeek: filters.dayOfWeek });
+  }
+
+  if (filters.seriesId) {
+    parts.push({ id: filters.seriesId });
+  } else {
+    if (filters.programSlug) {
+      parts.push({ program: { slug: filters.programSlug } });
+    }
+
+    if (filters.seasonId) {
+      parts.push({ seasonId: filters.seasonId });
+    }
+  }
+
   // Free-text search
   const q = filters.q.trim();
   if (q) {
@@ -121,10 +137,12 @@ export type AdminCalendarSession = {
   seriesName: string;
   programName: string;
   programTargetAudience: ProgramTargetAudience;
+  classType: ClassType;
   deliveryMode: TimingMode;
   venueName: string;
   clubId: string | null;
   clubName: string | null;
+  clubSlug: string | null;
   schoolName: string | null;
   dayOfWeek: DayOfWeek | null;
   leaveAt: Date | null;
@@ -225,13 +243,13 @@ function toSummary(
   };
 }
 
-const CLASS_SERIES_FOR_SESSION = {
+export const CLASS_SERIES_FOR_SESSION = {
   program: { select: { name: true, targetAudience: true } },
   season: { select: { name: true } },
   venue: {
     select: {
       name: true,
-      club: { select: { id: true, name: true } },
+      club: { select: { id: true, name: true, slug: true } },
     },
   },
   school: {
@@ -270,6 +288,50 @@ const CLASS_SERIES_FOR_SESSION = {
   },
 } satisfies Prisma.ClassSeriesInclude;
 
+type ClassSessionWithSeries = Prisma.ClassSessionGetPayload<{
+  include: { classSeries: { include: typeof CLASS_SERIES_FOR_SESSION } };
+}>;
+
+export function classSessionToAdminCalendarRow(
+  s: ClassSessionWithSeries,
+): AdminCalendarSession {
+  const series = s.classSeries;
+  const timing = computeClassTiming({
+    session: { startsAt: s.startsAt, endsAt: s.endsAt },
+    series: {
+      deliveryMode: series.deliveryMode as TimingMode,
+      pickupAt: series.pickupAt,
+    },
+    school: series.school
+      ? { coachArriveAtHubMinutes: series.school.coachArriveAtHubMinutes }
+      : null,
+  });
+
+  const excludedCount = series.excludedDates?.length ?? 0;
+  const summary = toSummary(series as SeriesForSummary, excludedCount);
+
+  return {
+    sessionId: s.id,
+    classSeriesId: series.id,
+    seriesName: series.name,
+    programName: series.program.name,
+    programTargetAudience: series.program.targetAudience,
+    classType: series.classType,
+    deliveryMode: series.deliveryMode as TimingMode,
+    venueName: series.venue.name,
+    clubId: series.venue.club?.id ?? null,
+    clubName: series.venue.club?.name ?? null,
+    clubSlug: series.venue.club?.slug ?? null,
+    schoolName: series.school?.name ?? null,
+    dayOfWeek: series.dayOfWeek,
+    leaveAt: timing.coachArriveAt ?? null,
+    pickupAt: timing.pickupAt ?? null,
+    classStartAt: timing.classStartAt,
+    classEndAt: timing.classEndAt,
+    summary,
+  };
+}
+
 /**
  * Sessions in `[rangeStart, rangeEnd)` matching admin filters, with timing
  * anchors for the calendar grid.
@@ -296,45 +358,7 @@ export async function listSessionsForAdmin(
     },
   });
 
-  const out: AdminCalendarSession[] = [];
-
-  for (const s of rows) {
-    const series = s.classSeries;
-    const timing = computeClassTiming({
-      session: { startsAt: s.startsAt, endsAt: s.endsAt },
-      series: {
-        deliveryMode: series.deliveryMode as TimingMode,
-        pickupAt: series.pickupAt,
-      },
-      school: series.school
-        ? { coachArriveAtHubMinutes: series.school.coachArriveAtHubMinutes }
-        : null,
-    });
-
-    const excludedCount = series.excludedDates?.length ?? 0;
-    const summary = toSummary(series as SeriesForSummary, excludedCount);
-
-    out.push({
-      sessionId: s.id,
-      classSeriesId: series.id,
-      seriesName: series.name,
-      programName: series.program.name,
-      programTargetAudience: series.program.targetAudience,
-      deliveryMode: series.deliveryMode as TimingMode,
-      venueName: series.venue.name,
-      clubId: series.venue.club?.id ?? null,
-      clubName: series.venue.club?.name ?? null,
-      schoolName: series.school?.name ?? null,
-      dayOfWeek: series.dayOfWeek,
-      leaveAt: timing.coachArriveAt ?? null,
-      pickupAt: timing.pickupAt ?? null,
-      classStartAt: timing.classStartAt,
-      classEndAt: timing.classEndAt,
-      summary,
-    });
-  }
-
-  return out;
+  return rows.map(classSessionToAdminCalendarRow);
 }
 
 /** Class series rows for the admin list table. */
@@ -347,8 +371,8 @@ export async function listSeriesForAdmin(
   return prisma.classSeries.findMany({
     where,
     include: {
-      program: { select: { name: true } },
-      season: { select: { name: true } },
+      program: { select: { name: true, slug: true, targetAudience: true } },
+      season: { select: { id: true, name: true } },
       venue: { select: { name: true, kind: true } },
       school: { select: { name: true } },
       coaches: {
@@ -365,7 +389,12 @@ export async function listSeriesForAdmin(
         select: { enrollments: { where: { status: "active" } }, sessions: true },
       },
     },
-    orderBy: [{ startsOn: "desc" }, { name: "asc" }],
+    orderBy: [
+      { program: { name: "asc" } },
+      { season: { name: "asc" } },
+      { dayOfWeek: "asc" },
+      { startTime: "asc" },
+    ],
     take: 100,
   });
 }
@@ -426,4 +455,32 @@ export async function listSchoolsForAdminFilter() {
     orderBy: { name: "asc" },
     select: { slug: true, name: true },
   });
+}
+
+/** Active programs for filter dropdown. */
+export async function listProgramsForAdminFilter() {
+  return prisma.program.findMany({
+    where: { isActive: true },
+    orderBy: { name: "asc" },
+    select: { slug: true, name: true },
+  });
+}
+
+/** Seasons that have at least one non-archived class series. */
+export async function listSeasonsForAdminFilter() {
+  const rows = await prisma.season.findMany({
+    where: {
+      isActive: true,
+      archivedAt: null,
+      classSeries: {
+        some: {
+          archivedAt: null,
+          classType: { notIn: ["event", "camp"] },
+        },
+      },
+    },
+    orderBy: [{ startsOn: "desc" }, { name: "asc" }],
+    select: { id: true, name: true },
+  });
+  return rows;
 }

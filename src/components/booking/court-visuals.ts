@@ -6,7 +6,6 @@
  *   - surfaceTintClass: very subtle surface tint applied to free cells and
  *                       the column header so you can read court type at a
  *                       glance (greenish for grass, terracotta for clay)
- *   - headerHintClass:  optional hint colour for the column header text
  *
  * These are pure helpers (no React) so they work for both day and week
  * views and any future renderer.
@@ -29,6 +28,67 @@ export function getCourtVisual(court: CourtLike): CourtVisual {
   return { widthClass, surfaceTintClass };
 }
 
+const DAY_NAMES =
+  "Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday";
+
+/** One clock time or a range, e.g. `10:30`, `4-5:30PM`, `10:30-12:00PM`. */
+const CLOCK =
+  String.raw`\d{1,2}(?::\d{2})?(?:\s*[-–]\s*\d{1,2}(?::\d{2})?)?(?:\s*(?:AM|PM))?`;
+
+/** Strip redundant bits for compact admin court-grid labels. */
+export function shortenAdminClassLabel(label: string): string {
+  const original = label.trim();
+  let s = original
+    .replace(/\s+S\.V\.\s*Triaz\s+\d{4}$/i, "")
+    .replace(/\s+Tennispark\s+Randwijck\s+\d{4}$/i, "")
+    .replace(/\s+Triaz\s+\d{4}$/i, "")
+    .replace(/\s+Randwijck\s+\d{4}$/i, "")
+    .replace(/\s+\d{4}$/, "")
+    .trim();
+
+  // Season prefix is visible from the date column (Spring 2, Spring 2026, …).
+  s = s.replace(
+    /^(?:Spring|Summer|Fall|Winter|Autumn)(?:\s+\d+)?(?:\s+\d{4})?(?:\s*·\s*)?/i,
+    "",
+  );
+
+  // Day + session time — the row already shows this slot's time range.
+  const dayTime = new RegExp(
+    String.raw`\s*\.?\s*(?:${DAY_NAMES})\.?\s+${CLOCK}(?:\s*[-–]\s*${CLOCK})?`,
+    "gi",
+  );
+  s = s.replace(dayTime, " ");
+
+  // Venue / delivery hints — the grid is grouped by club.
+  s = s
+    .replace(/\s+(?:S\.V\.\s*)?(?:Triaz|Tennispark Randwijck|Randwijck)\b/gi, " ")
+    .replace(/\b(?:on-site|pickup(?:\s*→\s*Triaz)?)\b/gi, " ");
+
+  s = s.replace(/\s*·\s*/g, " ").replace(/\s+/g, " ").trim();
+
+  const MAX = 28;
+  if (s.length > MAX) {
+    s = `${s.slice(0, MAX - 1).trimEnd()}…`;
+  }
+
+  return s || original;
+}
+
+/** Extra min-width when a column's longest label exceeds thresholds. */
+export function contentMinWidthClass(labelLength: number): string {
+  if (labelLength > 36) return "min-w-[12rem]";
+  if (labelLength > 24) return "min-w-[10rem]";
+  if (labelLength > 18) return "min-w-[8rem]";
+  return "";
+}
+
+export function mergeCourtWidthClasses(
+  baseWidth: string,
+  contentMinWidth: string,
+): string {
+  return contentMinWidth ? `${baseWidth} ${contentMinWidth}` : baseWidth;
+}
+
 function widthFor(court: CourtLike): string {
   if (!court.isBookable) return "w-7"; // walk-on: ~28px — vertical label
   switch (court.qualityTier) {
@@ -48,14 +108,12 @@ function widthFor(court: CourtLike): string {
 function surfaceTintFor(court: CourtLike): string {
   switch (court.surface) {
     case "grass":
-      // Very faint emerald wash for grass courts (Triaz 3/4).
-      return "bg-emerald-50/60";
+      return "bg-[var(--triaz-soft)]/60";
     case "clay":
-      // Subtle terracotta wash for red-clay courts (Randwijck).
-      return "bg-orange-50/70";
+      return "bg-[var(--randwijck-soft)]/70";
     case "indoor_hard":
     case "hard":
-      return "bg-sky-50/40";
+      return "bg-[var(--delivery-onsite-soft)]/40";
     case "multi_use":
     case "other":
     default:

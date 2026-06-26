@@ -2,8 +2,14 @@ import Link from "next/link";
 import { Section } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { ArrowRightIcon } from "@/components/icons";
+import {
+  MaterialTile,
+  MaterialTileImageFooter,
+} from "@/components/ui/material-tile";
 import { cn } from "@/lib/utils";
 import type { ProgramRec } from "@/lib/portal/recommend";
+import { coverImageObjectPosition } from "@/lib/uploads/cover-image-focus";
+import { stripStubPrefix } from "@/lib/classes/clean-text";
 
 /**
  * "What's right for you" strip on the portal home.
@@ -50,7 +56,7 @@ export function RecommendedPrograms({
         )}
         {more.length > 0 && (
           <div>
-            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+            <h3 className="mb-3 text-sm font-medium text-[var(--foreground)]/80">
               More to explore
             </h3>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -72,62 +78,89 @@ function ProgramCard({
   rec: ProgramRec;
   variant: "hero" | "more";
 }) {
-  const href = `/portal/programs/${rec.program.slug}`;
+  const href =
+    rec.program.slug === "events"
+      ? "/portal/events"
+      : `/portal/programs/${rec.program.slug}`;
   const isHero = variant === "hero";
 
+  const imageNode =
+    rec.program.coverImageUrl ? (
+      <div
+        className={cn(
+          "relative w-full overflow-hidden bg-[var(--surface-strong)]",
+          isHero ? "aspect-[16/9]" : "aspect-[16/9]",
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={rec.program.coverImageUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+          style={{
+            objectPosition: coverImageObjectPosition(
+              rec.program.coverImageFocusY,
+            ),
+          }}
+        />
+        {isHero && (
+          <MaterialTileImageFooter>
+            <span className="rounded-full bg-[var(--card)]/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground)] backdrop-blur-sm">
+              {bucketLabel(rec.bucket)}
+            </span>
+          </MaterialTileImageFooter>
+        )}
+      </div>
+    ) : undefined;
+
   return (
-    <Link
+    <MaterialTile
       href={href}
-      className={cn(
-        "group flex flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] transition-all",
-        "hover:border-[var(--triaz)]/40 hover:shadow-[var(--shadow-md)]",
-        isHero ? "p-5 sm:p-6" : "p-4",
-      )}
+      tone={isHero ? "triaz" : "neutral"}
+      image={imageNode}
+      className={cn(!isHero && "p-0", !rec.program.coverImageUrl && "p-0")}
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span
+      <div className={cn(!isHero && "p-4")}>
+        {!isHero && (
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="rounded-full border border-[var(--glass-border-subtle)] bg-[var(--surface-strong)]/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground)]">
+              {bucketLabel(rec.bucket)}
+            </span>
+            <ArrowRightIcon className="opacity-50 transition-opacity group-hover:opacity-100" />
+          </div>
+        )}
+
+        <h3
           className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
-            rec.bucket === "kids" &&
-              "bg-[var(--triaz-soft)] text-[var(--triaz-ink)]",
-            rec.bucket === "adults" &&
-              "bg-[var(--randwijck-soft)] text-[var(--randwijck-ink)]",
-            rec.bucket === "mixed" &&
-              "bg-[var(--surface-strong)] text-[var(--foreground)]",
+            "font-display tracking-tight",
+            isHero ? "text-xl font-medium sm:text-2xl" : "text-base font-medium",
           )}
         >
-          {bucketLabel(rec.bucket)}
-        </span>
-        <ArrowRightIcon className="opacity-50 transition-opacity group-hover:opacity-100" />
-      </div>
-
-      <h3
-        className={cn(
-          "font-display tracking-tight",
-          isHero ? "text-xl font-medium sm:text-2xl" : "text-base font-medium",
-        )}
-      >
-        {rec.program.name}
-      </h3>
-      <p
-        className={cn(
-          "mt-1 text-sm text-[var(--muted-foreground)]",
-          isHero ? "" : "line-clamp-2",
-        )}
-      >
-        {rec.reason}
-      </p>
-
-      {isHero && rec.program.descriptionPublic && (
-        <p className="mt-3 line-clamp-3 text-sm text-[var(--foreground)]/80">
-          {rec.program.descriptionPublic}
+          {rec.program.name}
+        </h3>
+        <p
+          className={cn(
+            "mt-1 text-sm text-[var(--muted-foreground)]",
+            isHero ? "" : "line-clamp-2",
+          )}
+        >
+          {rec.reason}
         </p>
-      )}
 
-      <div className="mt-4 flex items-center text-xs font-semibold text-[var(--triaz-ink)]">
-        See classes <span className="ml-1 transition-transform group-hover:translate-x-0.5">→</span>
+        {isHero && rec.program.descriptionPublic && (
+          <p className="mt-3 line-clamp-3 text-sm text-[var(--foreground)]/80">
+            {stripStubPrefix(rec.program.descriptionPublic)}
+          </p>
+        )}
+
+        <div className="mt-4 flex items-center text-xs font-semibold text-[var(--triaz-ink)]">
+          See classes{" "}
+          <span className="ml-1 transition-transform group-hover:translate-x-0.5">
+            →
+          </span>
+        </div>
       </div>
-    </Link>
+    </MaterialTile>
   );
 }
 

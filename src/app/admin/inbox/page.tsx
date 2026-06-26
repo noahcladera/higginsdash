@@ -105,7 +105,7 @@ export default async function AdminInboxPage() {
             {open.map((q) => (
               <li
                 key={q.href}
-                className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-4 shadow-[var(--shadow-sm)]"
+                className="elev-card p-4"
               >
                 <Link
                   href={q.href}

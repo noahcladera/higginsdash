@@ -6,8 +6,7 @@ import { Toaster as SonnerToaster } from "sonner";
  * Single global toaster for the whole app. Mounted once in the root
  * layout — every `toast(...)` call from anywhere bubbles here.
  *
- * Visual choices follow the "Quiet Confidence" tokens in
- * `globals.css`:
+ * Visual choices follow Liquid Paper tokens in `globals.css`:
  *
  *   - Top-right placement on desktop so feedback doesn't fight the
  *     thumb zone, but Sonner already collapses to bottom-center on
@@ -27,7 +26,7 @@ export function Toaster() {
       toastOptions={{
         classNames: {
           toast:
-            "!rounded-[var(--radius-md)] !shadow-[var(--shadow-md)] !border-[var(--border)]",
+            "glass-panel-strong !rounded-[var(--radius-md)] !border-[var(--glass-border-subtle)]",
           title: "!font-medium",
           description: "!text-[var(--muted-foreground)]",
         },

@@ -62,7 +62,7 @@ export default async function PortalCreditsPage() {
             description="Once we credit your household — for example after a class transfer — you'll see the running ledger here."
           />
         ) : (
-          <ul className="divide-y divide-[var(--border)] rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
+          <ul className="elev-card divide-y divide-[var(--border)]">
             {entries.map((e) => (
               <LedgerRow key={e.id} entry={e} />
             ))}

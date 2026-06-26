@@ -8,11 +8,14 @@ import { cn } from "@/lib/utils";
  */
 export function Avatar({
   name,
+  src,
   size = "md",
   tone,
   className,
 }: {
   name: string;
+  /** When set, shows a photo instead of initials. */
+  src?: string | null;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   tone?: "triaz" | "randwijck" | "joint" | "neutral";
   className?: string;
@@ -39,6 +42,21 @@ export function Avatar({
         : t === "joint"
           ? "bg-[var(--joint-soft)] text-[var(--joint-ink)]"
           : "bg-[var(--surface-strong)] text-[var(--foreground)]";
+
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={name}
+        className={cn(
+          "inline-flex shrink-0 rounded-full object-cover",
+          sizeCls,
+          className,
+        )}
+      />
+    );
+  }
 
   return (
     <div

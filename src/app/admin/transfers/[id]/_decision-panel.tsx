@@ -145,7 +145,7 @@ export function DecisionPanel({
       </div>
 
       {tab === "approve" ? (
-        <div className="space-y-4 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+        <div className="space-y-4 elev-card p-5">
           <div className="space-y-2">
             <Label htmlFor="approve-search" className="text-sm">
               Pick the target class
@@ -327,7 +327,7 @@ export function DecisionPanel({
           </div>
         </div>
       ) : (
-        <div className="space-y-3 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+        <div className="space-y-3 elev-card p-5">
           <Label className="text-sm">Reason for rejection (sent to household)</Label>
           <Textarea
             rows={3}

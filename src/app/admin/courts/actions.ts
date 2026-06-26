@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import type { SimpleActionResult } from "@/lib/feedback/types";
 
 const CourtSurfaceSchema = z.enum([
   "clay",
@@ -62,6 +63,7 @@ function parseDbUniqueError(err: unknown): boolean {
 function revalidateCourts() {
   revalidatePath("/admin/courts");
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
 }
 
 export async function createCourt(formData: FormData) {
@@ -109,7 +111,7 @@ export async function createCourt(formData: FormData) {
   revalidateCourts();
 }
 
-export async function updateCourt(formData: FormData) {
+export async function updateCourt(formData: FormData): Promise<SimpleActionResult> {
   await requireAdmin();
   const parsed = UpdateSchema.safeParse({
     courtId: formData.get("courtId"),
@@ -121,14 +123,17 @@ export async function updateCourt(formData: FormData) {
     notes: formData.get("notes") ?? undefined,
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input");
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid input",
+    };
   }
 
   const existing = await prisma.court.findUnique({
     where: { id: parsed.data.courtId },
     select: { id: true },
   });
-  if (!existing) throw new Error("Court not found");
+  if (!existing) return { ok: false, error: "Court not found" };
 
   try {
     await prisma.court.update({
@@ -144,12 +149,16 @@ export async function updateCourt(formData: FormData) {
     });
   } catch (err) {
     if (parseDbUniqueError(err)) {
-      throw new Error("A court with this name already exists at that club");
+      return {
+        ok: false,
+        error: "A court with this name already exists at that club",
+      };
     }
-    throw err;
+    return { ok: false, error: "Could not save court — try again." };
   }
 
   revalidateCourts();
+  return { ok: true, message: "Court saved" };
 }
 
 export async function archiveCourt(formData: FormData) {

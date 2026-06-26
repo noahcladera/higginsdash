@@ -185,7 +185,7 @@ function Card() {
       </Field>
 
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-md border border-[var(--danger)]/50 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-ink)]">
           {error}
         </div>
       )}
@@ -218,7 +218,7 @@ function Field({
     <div className="space-y-1">
       <Label>
         {label}
-        {required && <span className="ml-1 text-red-600">*</span>}
+        {required && <span className="ml-1 text-[var(--danger)]">*</span>}
       </Label>
       {children}
     </div>

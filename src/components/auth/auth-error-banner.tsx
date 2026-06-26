@@ -12,7 +12,7 @@ import {
 const VARIANT_CLASSES: Record<ErrorVariant, string> = {
   destructive:
     "border-[var(--destructive)] bg-[var(--card)] text-[var(--destructive)]",
-  amber: "border-amber-300 bg-amber-50 text-amber-900",
+  amber: "border-[var(--warning)]/50 bg-[var(--warning-soft)] text-[var(--warning-ink)]",
 };
 
 interface BannerProps {

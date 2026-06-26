@@ -37,9 +37,9 @@ export default async function NewClassPage() {
       select: { id: true, name: true },
     }),
     prisma.court.findMany({
-      where: { isActive: true },
+      where: { isActive: true, isBookable: true },
       orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, clubId: true },
+      select: { id: true, name: true, clubId: true, isBookable: true },
     }),
     prisma.coach.findMany({
       where: {

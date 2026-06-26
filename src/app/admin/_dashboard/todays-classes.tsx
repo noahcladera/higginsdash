@@ -27,7 +27,7 @@ export function TodaysClasses({ classes }: { classes: DashboardClassRow[] }) {
   }
 
   return (
-    <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
+    <ul className="divide-y divide-[var(--border)] elev-card overflow-hidden rounded-[var(--radius-md)]">
       {classes.map((c) => {
         const venueLine =
           c.deliveryMode === "pickup" && c.schoolName

@@ -73,7 +73,7 @@ export default async function CoachReceiptPage({
         <PrintReceiptButton />
       </div>
 
-      <article className="mx-auto max-w-2xl rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-8 shadow-[var(--shadow-sm)] print:border-0 print:shadow-none">
+      <article className="mx-auto max-w-2xl elev-card p-8 print:border-0 print:shadow-none">
         <header className="flex items-start justify-between gap-6 border-b border-[var(--border)] pb-6">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">

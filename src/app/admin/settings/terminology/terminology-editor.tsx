@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TERM_KEY_PATHS } from "@/lib/tenant/terms";
+import { useActionFeedback } from "@/lib/feedback";
 
 import { resetOrgTerms, updateOrgTerms } from "../actions";
 
@@ -173,34 +174,22 @@ export function TerminologyEditor({
   readOnly?: boolean;
 }) {
   const [values, setValues] = React.useState<Record<string, string>>(initial);
-  const [status, setStatus] = React.useState<
-    | { kind: "idle" }
-    | { kind: "saving" }
-    | { kind: "saved" }
-    | { kind: "error"; message: string }
-  >({ kind: "idle" });
+  const { run, pending, error } = useActionFeedback({
+    success: "Saved",
+    successDescription: "Reload any open tab to see it everywhere.",
+  });
 
   function read(path: string): string {
     return values[path] ?? initial[path] ?? "";
   }
 
-  async function onSave() {
-    setStatus({ kind: "saving" });
+  function onSave() {
     const form = new FormData();
     for (const { path } of TERM_KEY_PATHS) {
       const v = values[path] ?? "";
       form.set(path, v);
     }
-    try {
-      const result = await updateOrgTerms(form);
-      if (result.ok) setStatus({ kind: "saved" });
-      else setStatus({ kind: "error", message: result.error });
-    } catch {
-      setStatus({
-        kind: "error",
-        message: "Save failed. Check your connection and try again.",
-      });
-    }
+    run(() => updateOrgTerms(form));
   }
 
   async function onReset() {
@@ -211,40 +200,25 @@ export function TerminologyEditor({
     ) {
       return;
     }
-    setStatus({ kind: "saving" });
-    try {
+    run(async () => {
       const result = await resetOrgTerms();
-      if (result.ok) {
-        setStatus({ kind: "saved" });
-        window.location.reload();
-      } else setStatus({ kind: "error", message: result.error });
-    } catch {
-      setStatus({
-        kind: "error",
-        message: "Reset failed. Check your connection and try again.",
-      });
-    }
+      if (result.ok) window.location.reload();
+      return result;
+    });
   }
 
   return (
     <div className="space-y-8">
       {!readOnly && (
         <div className="sticky top-2 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
-          {status.kind === "saved" && (
-            <span className="text-xs text-[var(--muted-foreground)]">
-              Saved. Reload any open tab to see it everywhere.
-            </span>
+          {error && (
+            <span className="text-xs text-[var(--destructive)]">{error}</span>
           )}
-          {status.kind === "error" && (
-            <span className="text-xs text-[var(--destructive)]">
-              {status.message}
-            </span>
-          )}
-          <Button variant="ghost" type="button" onClick={onReset}>
+          <Button variant="ghost" type="button" onClick={onReset} disabled={pending}>
             Reset to preset defaults
           </Button>
-          <Button type="button" onClick={onSave} disabled={status.kind === "saving"}>
-            {status.kind === "saving" ? "Saving…" : "Save terminology"}
+          <Button type="button" onClick={onSave} disabled={pending}>
+            {pending ? "Saving…" : "Save terminology"}
           </Button>
         </div>
       )}

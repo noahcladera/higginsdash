@@ -290,12 +290,12 @@ export function DateField({
       <div
         ref={anchorRef}
         className={cn(
-          "flex min-w-0 items-center gap-0.5 border border-transparent bg-[var(--surface)] px-2 text-sm transition-all duration-150",
+          "flex min-w-0 items-center gap-0.5 border border-[var(--border)] bg-[var(--control)] px-2 text-sm transition-all duration-150",
           size === "compact"
             ? "h-9 rounded-full"
             : "h-11 rounded-[var(--radius-md)]",
-          "hover:bg-[var(--surface-strong)]",
-          "focus-within:border-[var(--triaz)]/40 focus-within:bg-[var(--card)] focus-within:ring-2 focus-within:ring-[var(--ring)] focus-within:ring-offset-1 focus-within:ring-offset-[var(--background)]",
+          "hover:border-[var(--border-strong)]",
+          "focus-within:border-[var(--triaz)]/50 focus-within:ring-2 focus-within:ring-[var(--ring)] focus-within:ring-offset-1 focus-within:ring-offset-[var(--background)]",
           disabled && "pointer-events-none opacity-50",
           outOfRange && "border-[var(--destructive)]/40",
         )}

@@ -78,7 +78,7 @@ export function CourtRateCard({
   };
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+    <div className="elev-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-display text-lg font-medium tracking-tight">
@@ -123,7 +123,7 @@ export function CourtRateCard({
         </button>
       </div>
 
-      {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="mt-2 text-sm text-[var(--danger-ink)]">{error}</p>}
 
       <p className="mt-4 text-xs text-[var(--muted-foreground)]">
         Currently billed at{" "}

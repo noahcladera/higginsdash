@@ -39,7 +39,7 @@ export function RoutePageSkeleton({
         {Array.from({ length: rows }).map((_, i) => (
           <div
             key={i}
-            className="h-16 animate-pulse rounded-[var(--radius-lg)] bg-[var(--surface)]"
+            className="h-16 animate-pulse elev-panel"
           />
         ))}
       </div>

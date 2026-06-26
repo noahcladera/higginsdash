@@ -85,6 +85,7 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     url.pathname.startsWith("/login") ||
     url.pathname.startsWith("/signup") ||
+    url.pathname.startsWith("/forgot-password") ||
     url.pathname.startsWith("/auth");
 
   if (isProtectedRoute && !identity) {
@@ -101,7 +102,9 @@ export async function updateSession(request: NextRequest) {
   if (
     isAuthRoute &&
     identity &&
-    (url.pathname === "/login" || url.pathname === "/signup")
+    (url.pathname === "/login" ||
+      url.pathname === "/signup" ||
+      url.pathname.startsWith("/forgot-password"))
   ) {
     const nextParam = url.searchParams.get("next");
     if (url.pathname === "/login" && isSafeInternalPath(nextParam)) {

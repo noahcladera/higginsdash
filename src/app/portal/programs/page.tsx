@@ -40,6 +40,7 @@ import { BrowseAll, type BrowseAllParams } from "./_components/browse-all";
 import { AudiencePromoStrip } from "./_components/audience-promo";
 import { getCurrentOrg } from "@/lib/tenant";
 import { householdHasLiveEnrollment } from "@/lib/portal/trial-eligibility";
+import { getMarketingImages } from "@/lib/uploads/marketing-images";
 
 export default async function ProgramsCatalogPage({
   searchParams,
@@ -53,7 +54,7 @@ export default async function ProgramsCatalogPage({
   const { person, householdId } = await requireMember();
   const sp = await searchParams;
 
-  const [recs, prices, memberships, creditBalanceCents, org, hasLiveEnrollment] =
+  const [recs, prices, memberships, creditBalanceCents, org, hasLiveEnrollment, marketingImages] =
     await Promise.all([
       getRecommendationsForViewer(person.id, householdId),
       getCheapestSeriesPriceByBucket(),
@@ -61,6 +62,7 @@ export default async function ProgramsCatalogPage({
       householdId ? getHouseholdCreditBalanceCents(householdId) : Promise.resolve(0),
       getCurrentOrg(),
       householdHasLiveEnrollment({ personId: person.id, householdId }),
+      getMarketingImages(),
     ]);
   const { brand, terms, features } = org;
 
@@ -97,7 +99,7 @@ export default async function ProgramsCatalogPage({
         actions={
           <Link
             href="#browse"
-            className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--triaz-ink)] underline-offset-4 hover:underline"
+            className="text-sm font-semibold text-[var(--triaz-ink)] underline-offset-4 hover:underline"
           >
             Skip to browse →
           </Link>
@@ -121,9 +123,9 @@ export default async function ProgramsCatalogPage({
       )}
 
       {showTrialCta && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--triaz)]/30 bg-[var(--surface)] px-4 py-4 text-sm shadow-[var(--shadow-sm)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 elev-panel border-[var(--triaz)]/30 px-4 py-4 text-sm">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--triaz-ink)]">
+            <p className="text-sm font-semibold text-[var(--triaz-ink)]">
               New here?
             </p>
             <p className="text-[var(--foreground)]">
@@ -147,7 +149,11 @@ export default async function ProgramsCatalogPage({
         title="Who are you enrolling?"
         description="Pick a starting point — we'll filter the catalog below."
       >
-        <AudiencePromoStrip prices={prices} hasChildren={hasChildren} />
+        <AudiencePromoStrip
+          prices={prices}
+          hasChildren={hasChildren}
+          marketingImages={marketingImages}
+        />
       </Section>
 
       <Section
@@ -155,7 +161,7 @@ export default async function ProgramsCatalogPage({
         title={`Browse all ${terms.class.plural.toLowerCase()}`}
         description="Tell us who you're enrolling and we'll narrow it down."
       >
-        <BrowseAll params={filters} hasChildren={hasChildren} />
+        <BrowseAll params={filters} hasChildren={hasChildren} skipAudiencePicker />
       </Section>
 
       {brand.officeEmail ? (

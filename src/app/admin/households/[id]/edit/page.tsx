@@ -35,7 +35,7 @@ export default async function EditHouseholdPage({
 
   async function action(formData: FormData) {
     "use server";
-    await updateHousehold(id, formData);
+    return updateHousehold(id, formData);
   }
 
   return (
@@ -54,6 +54,7 @@ export default async function EditHouseholdPage({
       <HouseholdForm
         submitLabel="Save changes"
         action={action}
+        returnTo={`/admin/households/${household.id}`}
         householdId={household.id}
         primaryContactRestrictedToMembers
         defaults={{

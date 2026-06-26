@@ -44,6 +44,11 @@ const TABS: ReadonlyArray<{ href: string; label: string; description: string }> 
     description: "Logo + display name.",
   },
   {
+    href: "/admin/settings/photos",
+    label: "Photos",
+    description: "Club tiles, promo strips, membership accents.",
+  },
+  {
     href: "/admin/settings/levels",
     label: "Level descriptions",
     description: "Curriculum copy.",

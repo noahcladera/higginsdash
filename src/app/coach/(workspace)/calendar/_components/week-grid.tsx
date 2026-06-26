@@ -1,4 +1,8 @@
 import Link from "next/link";
+import {
+  CALENDAR_AXIS_END_HOUR,
+  CALENDAR_AXIS_START_HOUR,
+} from "@/lib/booking/time";
 import { format } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type {
@@ -6,6 +10,7 @@ import type {
   CoachCalendarEvent,
   CoachCalendarSession,
 } from "@/lib/coach/calendar-queries";
+import { coachSessionBlockClasses } from "@/lib/admin/schedule-slot-colors";
 import type { Terms } from "@/lib/tenant/terms";
 
 /**
@@ -15,11 +20,11 @@ import type { Terms } from "@/lib/tenant/terms";
  * their on-the-clock hours actually start.
  *
  * The grid uses 1px per minute for trivial positioning math. Axis is
- * 08:00 → 22:00 (14h) by default; blocks that land outside get clamped.
+ * 09:00 → 22:00 (13h) by default; blocks that land outside get clamped.
  */
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const AXIS_START_HOUR = 8;
-const AXIS_END_HOUR = 22;
+const AXIS_START_HOUR = CALENDAR_AXIS_START_HOUR;
+const AXIS_END_HOUR = CALENDAR_AXIS_END_HOUR;
 const PX_PER_MIN = 1;
 const GRID_HEIGHT_PX = (AXIS_END_HOUR - AXIS_START_HOUR) * 60 * PX_PER_MIN;
 
@@ -44,9 +49,9 @@ export function WeekGrid({
   }
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)]">
+    <div className="elev-panel overflow-hidden">
       {/* Day header row */}
-      <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[var(--border)] bg-[var(--surface)]">
+      <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[var(--glass-border-subtle)] bg-[var(--surface)]/90">
         <div />
         {days.map((d, i) => {
           const isToday = amsterdamDayKey(d) === todayKey;
@@ -148,11 +153,10 @@ function SessionBlock({
   const isPickup = session.deliveryMode === "pickup";
   const isAssistant = session.role === "assistant";
 
-  const toneBorder = isPickup
-    ? "border-[var(--joint-ink)]/40 bg-[var(--joint-soft)]"
-    : session.deliveryMode === "onsite"
-      ? "border-[var(--warning-soft)] bg-[var(--warning-soft)]"
-      : "border-[var(--triaz-ink)]/30 bg-[var(--triaz-soft)]";
+  const toneBorder = coachSessionBlockClasses({
+    deliveryMode: session.deliveryMode,
+    clubSlug: session.clubSlug,
+  });
 
   return (
     <Link

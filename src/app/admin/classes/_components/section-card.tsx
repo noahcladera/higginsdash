@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/lib/feedback";
 
 /**
  * Shell for an editable section on the locked class-edit page.
@@ -48,6 +49,7 @@ export function SectionCard({
     startTransition(async () => {
       try {
         await action(formData);
+        toast.success("Changes saved");
         setIsEditing(false);
         setEditKey((k) => k + 1);
       } catch (err) {

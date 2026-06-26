@@ -73,7 +73,7 @@ export function SkipSessionButton({
             </DialogDescription>
           </DialogHeader>
           {unmark.error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded-md bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-ink)]">
               {unmark.error}
             </p>
           )}
@@ -131,7 +131,7 @@ export function SkipSessionButton({
           />
         </div>
         {mark.error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-ink)]">
             {mark.error}
           </p>
         )}

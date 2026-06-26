@@ -192,7 +192,7 @@ export function AdminCreateBookingDialog({
           {
             amountEur: priceDueEur,
             description: `${courtName} · ${clubName} · ${member!.name} · ${slot.startsAtLocal.replace("T", " ")}`,
-            returnUrl: "/admin/bookings",
+            returnUrl: "/admin?panel=schedule",
             action: {
               kind: "court_booking_create",
               payload: bookingInput,
@@ -437,7 +437,7 @@ export function AdminCreateBookingDialog({
           </div>
 
           {error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded-md bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-ink)]">
               {error}
             </p>
           )}

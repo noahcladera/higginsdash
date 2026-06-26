@@ -21,7 +21,7 @@ export function RecentSignups({ signups }: { signups: DashboardSignupRow[] }) {
   }
 
   return (
-    <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
+    <ul className="divide-y divide-[var(--border)] elev-card overflow-hidden rounded-[var(--radius-md)]">
       {signups.map((p) => (
         <li key={p.id}>
           <Link

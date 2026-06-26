@@ -29,7 +29,7 @@ export function RefundForm({
   const error = localError ?? actionError;
 
   return (
-    <div className="space-y-4 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+    <div className="space-y-4 elev-card p-5">
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor="refund-amount">Amount ({currency})</Label>

@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useActionFeedback } from "@/lib/feedback";
 import {
   markAllNotificationsRead,
@@ -70,17 +71,17 @@ export function InboxFeed({
 
   if (optimisticItems.length === 0) {
     return (
-      <div className="rounded-[var(--radius-lg)] bg-[var(--surface)] p-10 text-center text-sm text-[var(--muted)] shadow-[var(--shadow-sm)]">
-        Nothing here yet. We&rsquo;ll drop a note in your inbox whenever
-        something needs your attention.
-      </div>
+      <EmptyState
+        title="Nothing here yet"
+        description="We'll drop a note in your inbox whenever something needs your attention."
+      />
     );
   }
 
   return (
     <div className="space-y-3">
       {unread.length > 0 && (
-        <div className="flex items-center justify-between rounded-[var(--radius-md)] bg-[var(--surface)] px-4 py-2.5 shadow-[var(--shadow-sm)]">
+        <div className="elev-panel flex items-center justify-between rounded-[var(--radius-md)] px-4 py-2.5">
           <p className="text-sm">
             <strong>{unread.length}</strong>{" "}
             {unread.length === 1 ? "new update" : "new updates"}
@@ -113,7 +114,7 @@ export function InboxFeed({
             <li
               key={item.id}
               className={
-                "rounded-[var(--radius-lg)] p-4 shadow-[var(--shadow-sm)] " +
+                "elev-card p-4 " +
                 (item.readAt
                   ? "bg-[var(--surface-muted,_var(--surface))] opacity-80"
                   : "bg-[var(--surface)]")
@@ -237,6 +238,15 @@ function linkForRelated(
     if (t === "coach_sub_requests") return `/coach`;
     if (t === "court_bookings") return `/coach/bookings`;
     if (t === "recurring_blocks") return `/coach/bookings`;
+    if (t === "class_series") {
+      return seriesId ? `/coach/classes/${seriesId}` : `/coach/classes`;
+    }
+    if (
+      item.templateKey === "coach.levels.reminder.medals" ||
+      item.templateKey === "coach.levels.reminder.skills"
+    ) {
+      return seriesId ? `/coach/classes/${seriesId}` : `/coach/classes`;
+    }
     if (t === "enrollments") {
       return seriesId ? `/coach/classes/${seriesId}` : `/coach/classes`;
     }

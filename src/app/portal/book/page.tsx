@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { getTerms } from "@/lib/tenant";
 import { MembershipGate } from "./membership-gate";
+import { getMarketingImages } from "@/lib/uploads/marketing-images";
 import { getActiveMembershipCoverage } from "@/lib/memberships/coverage";
 import { BookingDateJumpForm } from "@/components/booking/booking-date-jump-form";
 import { CalendarPagerTransition } from "../_components/calendar-pager-transition";
@@ -66,7 +67,10 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
     // No active membership — show the rich "choose a club" gate instead
     // of an empty card. We display every active club, not just the ones
     // the household covers, so first-time visitors can browse + buy.
-    const allClubs = allActiveClubs;
+    const [allClubs, marketingImages] = await Promise.all([
+      Promise.resolve(allActiveClubs),
+      getMarketingImages(),
+    ]);
     return (
       <div className="space-y-8">
         <PageHeader
@@ -74,7 +78,7 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
           title={`${t.bookVerb} a ${t.court.singular.toLowerCase()}`}
           description={`Pick a ${t.club.singular.toLowerCase()}, then a slot. To ${t.bookVerb.toLowerCase()}, you'll need an active ${t.membership.singular.toLowerCase()} at that ${t.club.singular.toLowerCase()}.`}
         />
-        <MembershipGate clubs={allClubs} />
+        <MembershipGate clubs={allClubs} marketingImages={marketingImages} />
       </div>
     );
   }
@@ -122,7 +126,7 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
                 className={cn(
                   "rounded-full px-4 py-1.5 text-sm transition-colors",
                   active
-                    ? "bg-[var(--card)] text-[var(--foreground)] shadow-[var(--shadow-sm)] font-medium"
+                    ? "control-well text-[var(--foreground)] shadow-[var(--shadow-elevated)] font-medium"
                     : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
                 )}
               >
@@ -191,7 +195,7 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[var(--radius-lg)] bg-[var(--surface)] p-2 shadow-[var(--shadow-sm)] sm:p-4">
+      <div className="elev-panel overflow-hidden p-2 sm:p-4">
         {/* Re-key on the (club, date) pair so the slide plays both
          * when stepping days and when switching clubs. ISO date sorts
          * lexicographically, club slug ties broken alphabetically —

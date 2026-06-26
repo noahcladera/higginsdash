@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import type { SimpleActionResult } from "@/lib/feedback/types";
 
 const SKILL_LEVELS = [
   "red_1",
@@ -46,31 +47,43 @@ const UpdateLevelContentSchema = z.object({
     .transform((v) => (v?.trim() === "" ? null : v?.trim())),
 });
 
-export async function updateLevelContent(formData: FormData) {
+export async function updateLevelContent(formData: FormData): Promise<SimpleActionResult> {
   const { person } = await requireAdmin();
 
-  const parsed = UpdateLevelContentSchema.parse({
-    skillLevel: formData.get("skillLevel"),
-    title: formData.get("title"),
-    shortDescription: formData.get("shortDescription") ?? undefined,
-    longDescription: formData.get("longDescription") ?? "",
-    howToGraduate: formData.get("howToGraduate") ?? undefined,
-    sortOrder: formData.get("sortOrder"),
-    videoUrl: formData.get("videoUrl") ?? undefined,
-  });
+  let parsed;
+  try {
+    parsed = UpdateLevelContentSchema.parse({
+      skillLevel: formData.get("skillLevel"),
+      title: formData.get("title"),
+      shortDescription: formData.get("shortDescription") ?? undefined,
+      longDescription: formData.get("longDescription") ?? "",
+      howToGraduate: formData.get("howToGraduate") ?? undefined,
+      sortOrder: formData.get("sortOrder"),
+      videoUrl: formData.get("videoUrl") ?? undefined,
+    });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return { ok: false, error: err.issues[0]?.message ?? "Invalid input" };
+    }
+    return { ok: false, error: "Invalid input" };
+  }
 
-  await prisma.levelContent.update({
-    where: { skillLevel: parsed.skillLevel },
-    data: {
-      title: parsed.title,
-      shortDescription: parsed.shortDescription ?? null,
-      longDescription: parsed.longDescription,
-      howToGraduate: parsed.howToGraduate,
-      sortOrder: parsed.sortOrder,
-      videoUrl: parsed.videoUrl,
-      updatedByPersonId: person.id,
-    },
-  });
+  try {
+    await prisma.levelContent.update({
+      where: { skillLevel: parsed.skillLevel },
+      data: {
+        title: parsed.title,
+        shortDescription: parsed.shortDescription ?? null,
+        longDescription: parsed.longDescription,
+        howToGraduate: parsed.howToGraduate,
+        sortOrder: parsed.sortOrder,
+        videoUrl: parsed.videoUrl,
+        updatedByPersonId: person.id,
+      },
+    });
+  } catch {
+    return { ok: false, error: "Could not save level — try again." };
+  }
 
   revalidatePath("/levels/kids");
   revalidatePath("/levels/adults");
@@ -78,6 +91,7 @@ export async function updateLevelContent(formData: FormData) {
   revalidatePath("/admin/settings/levels/kids");
   revalidatePath("/admin/settings/levels/adults");
   revalidatePath(`/admin/settings/levels/${parsed.skillLevel}`);
+  return { ok: true, message: "Level saved" };
 }
 
 // ---------------------------------------------------------------------

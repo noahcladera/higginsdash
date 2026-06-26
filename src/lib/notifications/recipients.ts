@@ -89,3 +89,65 @@ export async function getBookingStakeholders(args: {
     primaryEmail: p.emails[0]?.address ?? null,
   }));
 }
+
+/**
+ * Students enrolled in a series plus each household's primary contact.
+ * Used when a session is cancelled so every affected family gets an
+ * in-app (+ email) notice — the main deflection for rain/cancel threads.
+ */
+export async function getSeriesEnrollmentStakeholders(
+  classSeriesId: string,
+): Promise<Array<{ id: string; primaryEmail: string | null }>> {
+  const enrollments = await prisma.enrollment.findMany({
+    where: {
+      classSeriesId,
+      status: { in: ["active", "pending_payment", "waitlist"] },
+    },
+    select: {
+      student: {
+        select: {
+          person: {
+            select: {
+              id: true,
+              emails: {
+                where: { isPrimary: true, archivedAt: null },
+                select: { address: true },
+                take: 1,
+              },
+              householdMember: {
+                select: {
+                  household: { select: { primaryContactPersonId: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const ids = new Set<string>();
+  for (const e of enrollments) {
+    ids.add(e.student.person.id);
+    const primaryId =
+      e.student.person.householdMember?.household.primaryContactPersonId;
+    if (primaryId) ids.add(primaryId);
+  }
+  if (ids.size === 0) return [];
+
+  const people = await prisma.person.findMany({
+    where: { id: { in: [...ids] } },
+    select: {
+      id: true,
+      emails: {
+        where: { isPrimary: true, archivedAt: null },
+        select: { address: true },
+        take: 1,
+      },
+    },
+  });
+  return people.map((p) => ({
+    id: p.id,
+    primaryEmail: p.emails[0]?.address ?? null,
+  }));
+}

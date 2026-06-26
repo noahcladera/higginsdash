@@ -1,6 +1,9 @@
 /**
  * Seed the parent-portal catalog with ~28 GoTimmy-shaped class series.
  *
+ * @deprecated Use `npm run db:seed-spring-demo` for Spring 2026 calendar-sourced
+ * demo data. This script remains for legacy GoTimmy-shaped catalog testing.
+ *
  * Source data: every series name below is taken verbatim (or near-
  * verbatim) from `Registration_Report (1).xls` — the GoTimmy export of
  * Higgins' real catalog. The names are kept in their messy original

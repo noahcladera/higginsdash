@@ -27,6 +27,10 @@ import { getStudentContactsBulk } from "@/lib/contacts/queries";
 import { ContactButton } from "@/components/contacts/contact-button";
 import { getCurrentBrand } from "@/lib/tenant";
 import { PostClassUpdateForm } from "@/components/class-updates/post-class-update-form";
+import {
+  PickupVenueLocationLink,
+  VenueLocationLink,
+} from "@/components/venue/venue-location-link";
 
 /**
  * Coach view of one specific class occurrence: timing breakdown, venue,
@@ -73,10 +77,23 @@ export default async function CoachSessionPage({
           ? "triaz"
           : "neutral";
 
+  const venueFields = {
+    name: series.venue.name,
+    mapUrl: series.venue.mapUrl,
+    addressLine1: series.venue.addressLine1,
+    postalCode: series.venue.postalCode,
+    city: series.venue.city,
+  };
+
   const venueLine =
-    series.deliveryMode === "pickup" && series.school
-      ? `${series.school.name} → ${series.venue.name}`
-      : series.venue.name;
+    series.deliveryMode === "pickup" && series.school ? (
+      <PickupVenueLocationLink
+        schoolName={series.school.name}
+        venue={venueFields}
+      />
+    ) : (
+      <VenueLocationLink venue={venueFields} />
+    );
 
   const studentIds = series.enrollments.map((e) => e.studentPersonId);
   const [roles, plannedAbsences, subRequest, filledSubRow, contactGroups, attendanceRows] = await Promise.all([
@@ -179,7 +196,7 @@ export default async function CoachSessionPage({
       />
 
       {isCancelled && (
-        <div className="fade-in flex items-start gap-3 rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[oklch(0.30_0.10_75)]">
+        <div className="fade-in flex items-start gap-3 rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[var(--warning-ink)]">
           <CalendarIcon size={18} />
           <div>
             <div className="font-medium">This session is cancelled.</div>

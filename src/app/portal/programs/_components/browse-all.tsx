@@ -48,6 +48,11 @@ export interface BrowseAllProps {
   params: BrowseAllParams;
   /** Whether the household has at least one child. Drives the Youth lock. */
   hasChildren: boolean;
+  /**
+   * When true, step 1 (audience tiles) is omitted — the page-level
+   * AudiencePromoStrip already provides those entry points.
+   */
+  skipAudiencePicker?: boolean;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -60,15 +65,18 @@ function deriveStep(p: BrowseAllParams): Step {
   return 4;
 }
 
-export async function BrowseAll({ params, hasChildren }: BrowseAllProps) {
+export async function BrowseAll({
+  params,
+  hasChildren,
+  skipAudiencePicker = false,
+}: BrowseAllProps) {
   const step = deriveStep(params);
 
-  // The page-level <Section> now owns the "Browse all classes" title.
-  // We keep the per-step subline inline so it can update as the user
-  // walks the wizard without re-rendering the surrounding Section.
   const stepSubline =
     step === 1
-      ? null
+      ? skipAudiencePicker
+        ? "Pick a tile above to start, or browse everything below."
+        : null
       : step === 2
         ? "Pick how your child should get to class."
         : step === 3
@@ -85,7 +93,11 @@ export async function BrowseAll({ params, hasChildren }: BrowseAllProps) {
 
       <div className="fade-in" key={`step-${step}-${params.audience ?? ""}-${params.delivery ?? ""}-${params.school ?? ""}`}>
         {step === 1 ? (
-          <StepAudience hasChildren={hasChildren} />
+          skipAudiencePicker ? (
+            <StepAudienceRedirect />
+          ) : (
+            <StepAudience hasChildren={hasChildren} />
+          )
         ) : step === 2 ? (
           <StepFormat />
         ) : step === 3 ? (
@@ -95,6 +107,25 @@ export async function BrowseAll({ params, hasChildren }: BrowseAllProps) {
         )}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Step 1 — Audience (minimal when promo strip is shown above)
+// ---------------------------------------------------------------------------
+
+function StepAudienceRedirect() {
+  return (
+    <p className="text-center text-sm text-[var(--muted-foreground)]">
+      Just looking around?{" "}
+      <Link
+        href="?audience=all#browse"
+        scroll={false}
+        className="font-semibold text-[var(--foreground)] underline-offset-4 hover:underline"
+      >
+        Browse every class →
+      </Link>
+    </p>
   );
 }
 

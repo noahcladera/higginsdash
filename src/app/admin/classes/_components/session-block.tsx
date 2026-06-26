@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { AdminClassesFilters } from "@/lib/admin/classes-filters";
 import type { AdminCalendarSession } from "@/lib/admin/classes-queries";
+import { adminClassesHrefPatch } from "@/lib/admin/classes-href";
 import { Button } from "@/components/ui/button";
 import { useTerms } from "@/components/tenant/terms-provider";
 import type { Terms } from "@/lib/tenant/terms";
@@ -15,20 +17,48 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ClassSummaryCard } from "./class-summary-card";
+import {
+  adminCalendarBlockClasses,
+  classSlotColorClasses,
+  clubVenueFillClasses,
+  classDeliveryBorderClasses,
+} from "@/lib/admin/schedule-slot-colors";
 
-type ChipTone = "triaz" | "randwijck" | "joint";
-
-function audienceTone(audience: AdminCalendarSession["programTargetAudience"]): ChipTone {
-  if (audience === "kids") return "triaz";
-  if (audience === "adults") return "randwijck";
-  return "joint";
+export function calendarBlockClasses(session: AdminCalendarSession): string {
+  return adminCalendarBlockClasses({
+    clubSlug: session.clubSlug,
+    deliveryMode: session.deliveryMode,
+    classType: session.classType,
+  });
 }
 
-const TONE_BORDER: Record<ChipTone, string> = {
-  triaz: "border-[var(--triaz-ink)]/30 bg-[var(--triaz-soft)]",
-  randwijck: "border-[var(--randwijck-ink)]/30 bg-[var(--randwijck-soft)]",
-  joint: "border-[var(--joint-ink)]/40 bg-[var(--joint-soft)]",
-};
+export function sessionBlockClasses(
+  session: AdminCalendarSession,
+  colorMode: "venue" | "schedule" = "venue",
+  clubOutlines = false,
+): string {
+  if (clubOutlines) return calendarBlockClasses(session);
+  if (colorMode === "schedule") {
+    return classSlotColorClasses({
+      deliveryMode: session.deliveryMode,
+      classType: session.classType,
+    });
+  }
+  return cn(
+    clubVenueFillClasses(session.clubSlug),
+    classDeliveryBorderClasses({
+      deliveryMode: session.deliveryMode,
+      classType: session.classType,
+    }),
+  );
+}
+
+export function audienceBlockClasses(
+  session: AdminCalendarSession,
+  colorMode: "venue" | "schedule" = "venue",
+): string {
+  return sessionBlockClasses(session, colorMode, false);
+}
 
 function blockTooltip(s: AdminCalendarSession, t: Terms): string {
   const lines: string[] = [];
@@ -120,22 +150,53 @@ function PickupSegments({
   );
 }
 
-function SingleSegment({ session }: { session: AdminCalendarSession }) {
+function SingleSegment({
+  session,
+  mode,
+}: {
+  session: AdminCalendarSession;
+  mode: "full" | "compact" | "timeOnly";
+}) {
+  const timeLabel = `${format.time(session.classStartAt)}–${format.time(session.classEndAt)}`;
+
+  if (mode === "timeOnly") {
+    return (
+      <div className="flex h-full items-center px-1 py-0.5">
+        <span className="tabular truncate whitespace-nowrap text-[10px] font-semibold text-[var(--foreground)]">
+          {format.time(session.classStartAt)}
+        </span>
+      </div>
+    );
+  }
+
+  if (mode === "compact") {
+    return (
+      <div className="flex h-full flex-col gap-0.5 px-1 py-1">
+        <div className="tabular truncate whitespace-nowrap text-[10px] font-semibold leading-tight text-[var(--foreground)]">
+          {timeLabel}
+        </div>
+        <div className="line-clamp-2 text-[10px] leading-snug text-[var(--foreground)]">
+          {session.seriesName}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col gap-0.5 px-1.5 py-1">
-      <div className="tabular truncate whitespace-nowrap font-semibold text-[var(--foreground)]">
-        {format.time(session.classStartAt)}–{format.time(session.classEndAt)}
+      <div className="tabular truncate whitespace-nowrap text-[10px] font-semibold leading-tight text-[var(--foreground)]">
+        {timeLabel}
       </div>
-      <div className="truncate text-[10px] text-[var(--muted-foreground)]">
+      <div className="line-clamp-2 text-[10px] leading-snug text-[var(--foreground)]">
         {session.seriesName}
       </div>
       <div className="mt-auto flex items-center justify-between gap-1">
-        <span className="min-w-0 truncate text-[10px] text-[var(--muted-foreground)]">
+        <span className="min-w-0 truncate text-[9px] text-[var(--muted-foreground)]">
           {session.venueName}
         </span>
         {session.clubName && (
           <span
-            className="shrink-0 rounded px-1 text-[9px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]"
+            className="shrink-0 rounded px-1 text-[8px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]"
             title={session.clubName}
           >
             {session.clubName.slice(0, 3)}
@@ -146,20 +207,209 @@ function SingleSegment({ session }: { session: AdminCalendarSession }) {
   );
 }
 
+export function AdminSessionOverflowChip({
+  filters,
+  dayISO,
+  count,
+  top,
+  height,
+  leftPct,
+  widthPct,
+  overflowMode = "link",
+  hiddenSessions = [],
+  onExpandDay,
+  colorMode = "venue",
+  clubOutlines = false,
+}: {
+  filters: AdminClassesFilters;
+  dayISO: string;
+  count: number;
+  top: number;
+  height: number;
+  leftPct: number;
+  widthPct: number;
+  overflowMode?: "link" | "preview";
+  hiddenSessions?: AdminCalendarSession[];
+  onExpandDay?: () => void;
+  colorMode?: "venue" | "schedule";
+  clubOutlines?: boolean;
+}) {
+  const [hoverOpen, setHoverOpen] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
+
+  const openPreview = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => setHoverOpen(true), 150);
+  };
+
+  const closePreview = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => setHoverOpen(false), 120);
+  };
+
+  const keepPreviewOpen = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setHoverOpen(true);
+  };
+
+  const chipPositionStyle = {
+    top,
+    height,
+    left: `${leftPct}%`,
+    width: `${widthPct}%`,
+  };
+
+  const expandDay = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setHoverOpen(false);
+    onExpandDay?.();
+  };
+
+  if (overflowMode === "link") {
+    return (
+      <Link
+        href={adminClassesHrefPatch(filters, { span: 1, fromISO: dayISO })}
+        scroll={false}
+        title={`${count} more session${count === 1 ? "" : "s"} — open day view`}
+        className={cn(
+          "absolute flex items-center justify-center overflow-hidden rounded-md border border-[var(--border-strong)]",
+          "bg-[var(--surface-strong)] text-[10px] font-semibold text-[var(--foreground)]",
+          "shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--surface)]",
+        )}
+        style={chipPositionStyle}
+      >
+        +{count} more
+      </Link>
+    );
+  }
+
+  return (
+    <div className="absolute z-20" style={chipPositionStyle}>
+      <div
+        className="relative h-full w-full"
+        onMouseEnter={openPreview}
+        onMouseLeave={closePreview}
+      >
+        <button
+          type="button"
+          className={cn(
+            "relative z-40 flex h-full w-full items-center justify-center rounded-md border border-[var(--border-strong)]",
+            "bg-[var(--surface-strong)] text-[10px] font-semibold text-[var(--foreground)]",
+            "shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--surface)]",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+          )}
+          title={`${count} more session${count === 1 ? "" : "s"} — click to expand`}
+          onClick={(e) => {
+            e.stopPropagation();
+            expandDay();
+          }}
+        >
+          +{count} more
+        </button>
+        {hoverOpen && hiddenSessions.length > 0 && (
+          <>
+            <div
+              className="absolute left-full top-0 z-30 h-full w-2"
+              aria-hidden
+              onMouseEnter={keepPreviewOpen}
+              onMouseLeave={closePreview}
+            />
+            <button
+              type="button"
+              className={cn(
+                "absolute left-[calc(100%+0.5rem)] top-0 z-30 w-56 rounded-md border border-[var(--border)] bg-[var(--card)] p-1.5 text-left shadow-[var(--shadow-md)]",
+                "cursor-pointer transition-colors hover:bg-[var(--surface)]",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+              )}
+              title={`${count} more session${count === 1 ? "" : "s"} — click to expand this day`}
+              onMouseEnter={keepPreviewOpen}
+              onMouseLeave={closePreview}
+              onClick={(e) => {
+                e.stopPropagation();
+                expandDay();
+              }}
+            >
+              <p className="mb-1 px-1 text-[9px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+                Hidden classes
+              </p>
+              <ul className="max-h-48 space-y-1 overflow-y-auto">
+                {hiddenSessions.map((session) => (
+                  <li
+                    key={session.sessionId}
+                    className={cn(
+                      "rounded px-2 py-1.5 text-[10px]",
+                      sessionBlockClasses(session, colorMode, clubOutlines),
+                    )}
+                  >
+                    <div className="tabular font-semibold">
+                      {format.time(session.classStartAt)}–
+                      {format.time(session.classEndAt)}
+                    </div>
+                    <div className="line-clamp-2 leading-snug">{session.seriesName}</div>
+                    {session.clubName && (
+                      <div className="mt-0.5 text-[9px] opacity-75">
+                        {session.clubName}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 px-1 text-[9px] text-[var(--muted-foreground)]">
+                Click to expand this day
+              </p>
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AdminSessionGridBlock({
   session,
   top,
   height,
+  leftPct = 0,
+  widthPct = 100,
+  laneCount = 1,
+  colorMode = "venue",
+  showPickupSegments = false,
+  preferFullLabels = false,
+  clubOutlines = false,
 }: {
   session: AdminCalendarSession;
   top: number;
   height: number;
+  leftPct?: number;
+  widthPct?: number;
+  laneCount?: number;
+  colorMode?: "venue" | "schedule";
+  showPickupSegments?: boolean;
+  preferFullLabels?: boolean;
+  clubOutlines?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const terms = useTerms();
-  const tone = audienceTone(session.programTargetAudience);
+  const blockColors = sessionBlockClasses(session, colorMode, clubOutlines);
   const isPickup =
     session.deliveryMode === "pickup" && session.leaveAt && session.pickupAt;
+
+  const segmentMode: "full" | "compact" | "timeOnly" = (() => {
+    if (height < 32) return "timeOnly";
+    if (preferFullLabels) {
+      return widthPct < 14 ? "compact" : "full";
+    }
+    if (widthPct < 22 || height < 36 || laneCount > 3) return "timeOnly";
+    return "full";
+  })();
+
+  const compact = segmentMode !== "full";
 
   return (
     <>
@@ -168,15 +418,20 @@ export function AdminSessionGridBlock({
         title={blockTooltip(session, terms)}
         onClick={() => setOpen(true)}
         className={cn(
-          "absolute inset-x-1 overflow-hidden rounded-md border text-left text-[11px] shadow-[var(--shadow-sm)] transition-colors hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
-          TONE_BORDER[tone],
+          "absolute overflow-hidden rounded-md border text-left text-[11px] shadow-[var(--shadow-sm)] transition-colors hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+          blockColors,
         )}
-        style={{ top, height }}
+        style={{
+          top,
+          height,
+          left: `${leftPct}%`,
+          width: `${widthPct}%`,
+        }}
       >
-        {isPickup ? (
+        {showPickupSegments && isPickup && !compact ? (
           <PickupSegments session={session} height={height} terms={terms} />
         ) : (
-          <SingleSegment session={session} />
+          <SingleSegment session={session} mode={segmentMode} />
         )}
       </button>
 
@@ -200,9 +455,17 @@ export function AdminSessionGridBlock({
 }
 
 /** Compact row for mobile stacked layout. */
-export function AdminSessionRow({ session }: { session: AdminCalendarSession }) {
+export function AdminSessionRow({
+  session,
+  colorMode = "venue",
+  clubOutlines = false,
+}: {
+  session: AdminCalendarSession;
+  colorMode?: "venue" | "schedule";
+  clubOutlines?: boolean;
+}) {
   const [open, setOpen] = useState(false);
-  const tone = audienceTone(session.programTargetAudience);
+  const rowColors = sessionBlockClasses(session, colorMode, clubOutlines);
 
   return (
     <>
@@ -211,7 +474,7 @@ export function AdminSessionRow({ session }: { session: AdminCalendarSession }) 
         onClick={() => setOpen(true)}
         className={cn(
           "flex w-full flex-col gap-0.5 rounded-md border px-3 py-2 text-left text-sm shadow-[var(--shadow-sm)] transition-colors hover:brightness-105",
-          TONE_BORDER[tone],
+          rowColors,
         )}
       >
         <div className="flex items-baseline justify-between gap-2">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 /**
  * "Active / Archived" toggle for list pages. Driven by the `?archived=1`
@@ -22,24 +23,26 @@ export function ArchivedToggle({
   const archivedHref = `?${archivedParams.toString()}`;
 
   return (
-    <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface)] p-0.5 text-xs">
+    <div className="inline-flex shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] p-0.5 text-xs">
       <Link
         href={activeHref}
-        className={`rounded-full px-3 py-1.5 transition-colors ${
+        className={cn(
+          "rounded-full px-3 py-1.5 transition-colors",
           !showArchived
-            ? "bg-[var(--triaz-soft)] font-medium text-[var(--triaz-ink)]"
-            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-        }`}
+            ? "control-well font-medium text-[var(--foreground)] shadow-[var(--shadow-elevated)]"
+            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+        )}
       >
         Active
       </Link>
       <Link
         href={archivedHref}
-        className={`rounded-full px-3 py-1.5 transition-colors ${
+        className={cn(
+          "rounded-full px-3 py-1.5 transition-colors",
           showArchived
-            ? "bg-[var(--triaz-soft)] font-medium text-[var(--triaz-ink)]"
-            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-        }`}
+            ? "control-well font-medium text-[var(--foreground)] shadow-[var(--shadow-elevated)]"
+            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+        )}
       >
         Archived
       </Link>

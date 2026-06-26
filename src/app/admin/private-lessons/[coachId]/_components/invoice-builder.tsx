@@ -176,7 +176,7 @@ export function InvoiceBuilder({
         </div>
         <div className="flex items-center gap-3">
           {error && (
-            <span className="text-sm text-red-700">{error}</span>
+            <span className="text-sm text-[var(--danger-ink)]">{error}</span>
           )}
           <Button
             onClick={handleGenerate}

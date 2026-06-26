@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useActionFeedback } from "@/lib/feedback";
 
 import { updateProgramPresentation } from "../actions";
 
@@ -24,40 +25,33 @@ import { updateProgramPresentation } from "../actions";
 export function ProgramPresentationForm({
   programId,
   defaultCoverImageUrl,
+  defaultCoverImageFocusY,
   defaultDescriptionPublic,
 }: {
   programId: string;
   defaultCoverImageUrl: string;
+  defaultCoverImageFocusY: number;
   defaultDescriptionPublic: string;
 }) {
   const [coverImageUrl, setCoverImageUrl] = React.useState(defaultCoverImageUrl);
+  const [coverImageFocusY, setCoverImageFocusY] = React.useState(
+    defaultCoverImageFocusY,
+  );
   const [descriptionPublic, setDescriptionPublic] = React.useState(
     defaultDescriptionPublic,
   );
-  const [status, setStatus] = React.useState<
-    | { kind: "idle" }
-    | { kind: "saving" }
-    | { kind: "saved" }
-    | { kind: "error"; message: string }
-  >({ kind: "idle" });
+  const { run, pending, error } = useActionFeedback({
+    success: "Saved",
+  });
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setStatus({ kind: "saving" });
     const form = new FormData();
     form.set("id", programId);
     form.set("coverImageUrl", coverImageUrl);
+    form.set("coverImageFocusY", String(coverImageFocusY));
     form.set("descriptionPublic", descriptionPublic);
-    try {
-      const result = await updateProgramPresentation(form);
-      if (result.ok) setStatus({ kind: "saved" });
-      else setStatus({ kind: "error", message: result.error });
-    } catch {
-      setStatus({
-        kind: "error",
-        message: "Save failed. Check your connection and try again.",
-      });
-    }
+    run(() => updateProgramPresentation(form));
   }
 
   return (
@@ -70,6 +64,9 @@ export function ProgramPresentationForm({
         label="Cover image"
         helpText="Shown at the top of the program page parents see when deciding whether to sign up. Landscape photos work best — 1600×900 or larger."
         onChange={(next) => setCoverImageUrl(next)}
+        focusYName="coverImageFocusY"
+        defaultFocusY={defaultCoverImageFocusY}
+        onFocusYChange={setCoverImageFocusY}
       />
 
       <div className="space-y-2">
@@ -89,18 +86,11 @@ export function ProgramPresentationForm({
       </div>
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={status.kind === "saving"}>
-          {status.kind === "saving" ? "Saving…" : "Save"}
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save"}
         </Button>
-        {status.kind === "saved" && (
-          <span className="text-sm text-[var(--muted-foreground)]">
-            Saved.
-          </span>
-        )}
-        {status.kind === "error" && (
-          <span className="text-sm text-[var(--destructive)]">
-            {status.message}
-          </span>
+        {error && (
+          <span className="text-sm text-[var(--destructive)]">{error}</span>
         )}
       </div>
     </form>

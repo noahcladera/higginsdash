@@ -67,7 +67,7 @@ export function TransferRequestForm({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+      <div className="space-y-3 elev-card p-5">
         <Label htmlFor="transfer-search" className="text-sm">
           Search the catalog (optional)
         </Label>
@@ -126,7 +126,7 @@ export function TransferRequestForm({
         </ul>
       </div>
 
-      <div className="space-y-3 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)]">
+      <div className="space-y-3 elev-card p-5">
         <Label htmlFor="transfer-note" className="text-sm">
           Anything we should know? (optional)
         </Label>

@@ -163,7 +163,8 @@ export default function DemoMolliePage({
         // doesn't have to know about per-action shapes.
         let returnUrl = intent.returnUrl;
         if (
-          intent.action.kind === "enrollment_create" &&
+          (intent.action.kind === "enrollment_create" ||
+            intent.action.kind === "enrollment_create_lesson_only") &&
           (result.enrollmentId || result.paymentId)
         ) {
           const ret = new URL(returnUrl, window.location.origin);
@@ -178,6 +179,12 @@ export default function DemoMolliePage({
           returnUrl = intent.returnUrl.startsWith("/")
             ? ret.pathname + ret.search + ret.hash
             : ret.toString();
+        }
+
+        if (returnUrl.startsWith("/portal/success")) {
+          router.replace(returnUrl);
+          router.refresh();
+          return;
         }
 
         const url = new URL("/demo/mollie/success", window.location.origin);

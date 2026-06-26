@@ -34,6 +34,7 @@ export default async function AdminProgramEditPage({
       targetAudience: true,
       descriptionPublic: true,
       coverImageUrl: true,
+      coverImageFocusY: true,
       _count: { select: { classSeries: true } },
     },
   });
@@ -58,6 +59,7 @@ export default async function AdminProgramEditPage({
       <ProgramPresentationForm
         programId={program.id}
         defaultCoverImageUrl={program.coverImageUrl ?? ""}
+        defaultCoverImageFocusY={program.coverImageFocusY}
         defaultDescriptionPublic={program.descriptionPublic ?? ""}
       />
 

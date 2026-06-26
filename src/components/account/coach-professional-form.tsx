@@ -73,7 +73,7 @@ export function CoachProfessionalStaffForm({
             something looks wrong.
           </p>
         </header>
-        <div className="grid gap-4 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] sm:p-6">
+        <div className="grid gap-4 elev-card p-5 sm:p-6">
           <ReadOnlyRow
             label="Employment"
             value={
@@ -117,7 +117,7 @@ export function CoachProfessionalStaffForm({
             and the coach directory.
           </p>
         </header>
-        <div className="grid gap-4 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] sm:p-6">
+        <div className="grid gap-4 elev-card p-5 sm:p-6">
           <div className="space-y-1.5 sm:col-span-2">
             <Label
               htmlFor="bio"
@@ -219,7 +219,7 @@ export function CoachProfessionalZzpForm({
             Managed by the office — contact them to update.
           </p>
         </header>
-        <div className="grid gap-4 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] sm:p-6">
+        <div className="grid gap-4 elev-card p-5 sm:p-6">
           <ReadOnlyRow
             label="Default court rental rate"
             value={readOnly.defaultCourtRentalRate ?? "—"}
@@ -258,7 +258,7 @@ export function CoachProfessionalZzpForm({
             Your invoicing identity as an independent coach.
           </p>
         </header>
-        <div className="grid gap-4 rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-sm)] sm:grid-cols-2 sm:p-6">
+        <div className="grid gap-4 elev-card p-5 sm:grid-cols-2 sm:p-6">
           <div className="space-y-1.5 sm:col-span-2">
             <Label
               htmlFor="businessName"

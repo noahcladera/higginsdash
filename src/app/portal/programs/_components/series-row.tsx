@@ -12,7 +12,13 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { badgeToneForVenueSlug } from "@/lib/club-theme";
+import {
+  formatPublicAgeLabel,
+  programTargetToAudience,
+} from "@/lib/classes/age-band";
 import type { CatalogSeriesCard } from "@/lib/portal/catalog-queries";
+import { coverImageObjectPosition } from "@/lib/uploads/cover-image-focus";
 
 export function SeriesRow({
   series,
@@ -24,68 +30,128 @@ export function SeriesRow({
 }) {
   const href = `/portal/programs/${series.programSlug}/${series.id}`;
   const slotsLeft = Math.max(series.maxStudents - series.enrolledCount, 0);
+  const isEvent = series.classType === "event";
+  const isCamp = series.classType === "camp";
+  const scheduleLabel = `${formatDow(series.dayOfWeek)} ${series.startTimeHHMM}–${series.endTimeHHMM}`;
+  const cardTitle =
+    isEvent || isCamp ? series.name : scheduleLabel;
+  const hasMemberPricing =
+    !isEvent &&
+    series.memberPrice != null &&
+    series.nonMemberPrice != null;
+  const ageLabel = formatPublicAgeLabel({
+    minAge: series.minAge,
+    maxAge: series.maxAge,
+    audience: programTargetToAudience(series.programTargetAudience),
+    isEvent: series.classType === "event",
+    withAgesPrefix: true,
+  });
 
   return (
     <li>
       <Link
         href={href}
-        className="group flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-5 transition-all hover:border-[var(--triaz)]/40 hover:shadow-[var(--shadow-md)] sm:flex-row sm:items-center sm:justify-between"
+        className="group flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-4 transition-all hover:border-[var(--triaz)]/40 hover:shadow-[var(--shadow-md)] sm:flex-row sm:items-stretch sm:gap-4"
       >
-        <div className="min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
+        <div
+          className="relative aspect-[16/9] w-full shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--triaz)]/10 sm:w-28 sm:aspect-[4/3]"
+        >
+          {series.coverImageUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={series.coverImageUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+              style={{
+                objectPosition: coverImageObjectPosition(series.coverImageFocusY),
+              }}
+            />
+          ) : (
+            <div
+              className="absolute inset-0 bg-gradient-to-br from-[var(--triaz)]/15 to-[var(--randwijck)]/10"
+              aria-hidden
+            />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-2">
+          <h3 className="font-display text-lg font-medium tracking-tight">
+            {cardTitle}
+          </h3>
+          <div className="flex flex-wrap items-center gap-1.5">
             {showProgramTag && (
-              <Badge
-                variant="soft"
-                tone={
-                  series.programTargetAudience === "adults"
-                    ? "randwijck"
-                    : series.programTargetAudience === "kids"
-                      ? "triaz"
-                      : "neutral"
-                }
-              >
+              <Badge variant="soft" tone="neutral">
                 {series.programName}
               </Badge>
             )}
-            <h3 className="font-display text-lg font-medium tracking-tight">
-              {series.name}
-            </h3>
             {series.seasonName && (
               <Badge tone="neutral">{series.seasonName}</Badge>
             )}
+            <Badge
+              tone={badgeToneForVenueSlug(
+                series.venueClubSlug ?? series.venueSlug,
+              )}
+            >
+              {series.venueName}
+            </Badge>
+            {ageLabel ? (
+              <Badge tone="neutral">{ageLabel}</Badge>
+            ) : null}
+            {series.levelLabels.length > 0 &&
+              series.levelLabels.map((label) => (
+                <Badge key={label} tone="neutral">{label}</Badge>
+              ))}
             {series.schoolName && (
-              <Badge tone="joint">{series.schoolName} pickup</Badge>
+              <Badge tone="joint">School pickup</Badge>
             )}
           </div>
-          <p className="text-sm text-[var(--muted-foreground)]">
-            {formatDow(series.dayOfWeek)} · {series.startTimeHHMM}–
-            {series.endTimeHHMM} · {series.venueName}
-          </p>
           <p className="tabular text-xs text-[var(--muted-foreground)]">
+            {isEvent || isCamp ? `${scheduleLabel} · ` : ""}
             {formatDateRange(series.startsOn, series.endsOn)}
-            {series.minAge != null &&
-              series.maxAge != null &&
-              ` · Age ${series.minAge}–${series.maxAge}`}
-            {series.pricePerSeries != null &&
-              ` · €${series.pricePerSeries.toFixed(0)}`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {series.isFull ? (
-            <Badge tone="warning">Waitlist only</Badge>
-          ) : (
-            <span className="tabular text-sm font-semibold text-[var(--triaz-ink)]">
-              {slotsLeft} {slotsLeft === 1 ? "spot" : "spots"} left
-            </span>
-          )}
-          <Button asChild variant="outline" tone="neutral" size="sm">
-            <span>
-              {series.isFull ? "Join waitlist" : "Enroll"}{" "}
-              <span className="ml-1 transition-transform group-hover:translate-x-0.5">
-                →
+
+        <div className="flex shrink-0 flex-col items-end justify-between gap-3 sm:min-w-[148px] sm:pl-2">
+          <div className="text-right">
+            {hasMemberPricing ? (
+              <div className="space-y-0.5">
+                <p className="tabular text-base font-semibold text-[var(--foreground)]">
+                  Member €{series.memberPrice!.toFixed(0)}
+                </p>
+                <p className="tabular text-xs text-[var(--muted-foreground)]">
+                  Non-members €{series.nonMemberPrice!.toFixed(0)}
+                </p>
+              </div>
+            ) : series.pricePerSeries != null ? (
+              <p className="tabular text-base font-semibold text-[var(--foreground)]">
+                €{series.pricePerSeries.toFixed(0)}
+                <span className="text-xs font-normal text-[var(--muted-foreground)]">
+                  {" "}
+                  / {isEvent ? "event" : isCamp ? "week" : "season"}
+                </span>
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
+            {series.isFull ? (
+              <span className="text-sm font-bold text-[var(--triaz-ink)]">
+                Waitlist only
               </span>
-            </span>
-          </Button>
+            ) : (
+              <span className="text-sm font-bold text-[var(--triaz-ink)]">
+                {slotsLeft} {slotsLeft === 1 ? "spot" : "spots"} left
+              </span>
+            )}
+            <Button asChild variant="outline" tone="neutral" size="sm">
+              <span>
+                {series.isFull ? "Join waitlist" : "Enroll"}{" "}
+                <span className="ml-1 transition-transform group-hover:translate-x-0.5">
+                  →
+                </span>
+              </span>
+            </Button>
+          </div>
         </div>
       </Link>
     </li>

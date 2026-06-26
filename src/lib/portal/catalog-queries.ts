@@ -7,6 +7,8 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { venueMapUrl } from "@/lib/maps";
+import { resolveCoverImageFocusY } from "@/lib/uploads/cover-image-focus";
 import { getCurrentBrand, getTerms } from "@/lib/tenant";
 import type {
   ClassDeliveryMode,
@@ -15,15 +17,18 @@ import type {
   DayOfWeek,
   Prisma,
   ProgramTargetAudience,
+  SkillLevel,
 } from "@prisma/client";
 import {
   parsePricingTiers,
   type PricingTier,
 } from "@/lib/classes/pricing-tiers";
+import { formatSkillLevel } from "@/lib/skill-levels";
 import {
   parseCampOptions,
   type CampOptionsConfig,
 } from "@/lib/classes/camp-options";
+import { getNextEventOccurrence } from "@/lib/classes/event-occurrence";
 
 /**
  * Should a parent be able to see this series in `/portal/programs/*`?
@@ -58,6 +63,20 @@ export const PORTAL_CATALOG_EVENT_WHERE = {
   classType: "event" as const,
 };
 
+/** Canonical program slugs whose series use a dedicated classType filter. */
+export const PORTAL_CATALOG_CAMP_WHERE = {
+  classType: "camp" as const,
+};
+
+/** Pick the classType slice for a program list page. */
+export function catalogClassTypeWhereForProgramSlug(
+  programSlug: string,
+): typeof PORTAL_CATALOG_NON_EVENT_WHERE | typeof PORTAL_CATALOG_EVENT_WHERE | typeof PORTAL_CATALOG_CAMP_WHERE {
+  if (programSlug === "events") return PORTAL_CATALOG_EVENT_WHERE;
+  if (programSlug === "camps") return PORTAL_CATALOG_CAMP_WHERE;
+  return PORTAL_CATALOG_NON_EVENT_WHERE;
+}
+
 export interface CatalogSeriesCard {
   id: string;
   name: string;
@@ -73,11 +92,18 @@ export interface CatalogSeriesCard {
   deliveryMode: ClassDeliveryMode;
   venueName: string;
   venueSlug: string;
+  venueAddressLine1: string | null;
+  venuePostalCode: string | null;
+  venueCity: string | null;
+  venueMapUrl: string | null;
   schoolSlug: string | null;
   schoolName: string | null;
   minAge: number | null;
   maxAge: number | null;
   pricePerSeries: number | null;
+  memberPrice: number | null;
+  nonMemberPrice: number | null;
+  levelLabels: string[];
   /** active + pending_payment count (waitlisted not included). */
   enrolledCount: number;
   maxStudents: number;
@@ -88,6 +114,13 @@ export interface CatalogSeriesCard {
   enrollmentClosesAt: Date | null;
   /** Computed: can a parent enroll right now (not closed, not future-only)? */
   enrollmentOpenNow: boolean;
+  /** Series cover, falling back to program cover when unset. */
+  coverImageUrl: string | null;
+  /** Vertical crop for `coverImageUrl` (0 = top, 100 = bottom). */
+  coverImageFocusY: number;
+  /** Club hosting this series, when known (from venue → club or venue slug). */
+  venueClubSlug: "triaz" | "randwijck" | null;
+  classType: ClassType;
 }
 
 // Shared `include` shape so toCard() always sees the same fields.
@@ -95,10 +128,26 @@ export interface CatalogSeriesCard {
 // the status `in` clause.
 const CATALOG_INCLUDE = {
   program: {
-    select: { name: true, slug: true, targetAudience: true },
+    select: {
+      name: true,
+      slug: true,
+      targetAudience: true,
+      coverImageUrl: true,
+      coverImageFocusY: true,
+    },
   },
   season: { select: { name: true } },
-  venue: { select: { name: true, slug: true } },
+  venue: {
+    select: {
+      name: true,
+      slug: true,
+      addressLine1: true,
+      postalCode: true,
+      city: true,
+      mapUrl: true,
+      club: { select: { slug: true } },
+    },
+  },
   school: { select: { slug: true, name: true } },
   _count: {
     select: {
@@ -153,11 +202,38 @@ export async function listVisibleEvents(): Promise<CatalogSeriesCard[]> {
       ...PORTAL_CATALOG_EVENT_WHERE,
       endsOn: { gte: now },
     },
-    include: CATALOG_INCLUDE,
+    include: {
+      ...CATALOG_INCLUDE,
+      sessions: {
+        where: { status: { not: "cancelled" } },
+        select: { startsAt: true },
+        orderBy: { startsAt: "asc" },
+      },
+    },
     orderBy: [{ startsOn: "asc" }, { name: "asc" }],
   });
 
-  return rows.filter((s) => isEnrollmentReachable(s, now)).map((s) => toCard(s, now));
+  const filtered = rows.filter((s) => isEnrollmentReachable(s, now));
+  const cards = await Promise.all(
+    filtered.map(async (s) => {
+      const card = toCard(s, now);
+      const next = getNextEventOccurrence(s.sessions, now);
+      if (!next) return card;
+      const occurrenceEnrolled = await prisma.enrollment.count({
+        where: {
+          classSeriesId: s.id,
+          status: { in: ["active", "pending_payment"] },
+          eventOccurrenceDate: next.occurrenceDate,
+        },
+      });
+      return {
+        ...card,
+        enrolledCount: occurrenceEnrolled,
+        isFull: occurrenceEnrolled >= s.maxStudents,
+      };
+    }),
+  );
+  return cards;
 }
 
 /**
@@ -171,7 +247,7 @@ export async function listVisibleSeriesForProgram(
   const rows = await prisma.classSeries.findMany({
     where: {
       ...PORTAL_VISIBLE_WHERE,
-      ...PORTAL_CATALOG_NON_EVENT_WHERE,
+      ...catalogClassTypeWhereForProgramSlug(programSlug),
       endsOn: { gte: now },
       program: { slug: programSlug, isActive: true, isPubliclyListed: true },
     },
@@ -340,8 +416,10 @@ export interface CatalogSeriesDetail extends CatalogSeriesCard {
   publicNotes: string | null;
   programDescription: string | null;
   coverImageUrl: string | null;
+  coverImageFocusY: number;
   pickupAtHHMM: string | null;
   coachNames: string[];
+  coaches: Array<{ name: string; photoUrl: string | null }>;
   /**
    * Optional WhatsApp group invite link. Only surfaced to *enrolled*
    * members in the page UI — non-members shouldn't see it. Stored on
@@ -351,6 +429,11 @@ export interface CatalogSeriesDetail extends CatalogSeriesCard {
   whatsappUrl: string | null;
   /** Upcoming + scheduled sessions for this series, in order. */
   sessions: { id: string; startsAt: Date; endsAt: Date }[];
+  /** Next sellable occurrence for event series. */
+  nextEventOccurrence: {
+    occurrenceDate: Date;
+    startsAt: Date;
+  } | null;
   waitlistedCount: number;
   /**
    * The slug of the club hosting this series, when it can be inferred
@@ -401,6 +484,7 @@ export async function getVisibleSeriesById(
           targetAudience: true,
           descriptionPublic: true,
           coverImageUrl: true,
+          coverImageFocusY: true,
         },
       },
       season: { select: { name: true } },
@@ -408,6 +492,10 @@ export async function getVisibleSeriesById(
         select: {
           name: true,
           slug: true,
+          addressLine1: true,
+          postalCode: true,
+          city: true,
+          mapUrl: true,
           club: { select: { slug: true } },
         },
       },
@@ -416,6 +504,7 @@ export async function getVisibleSeriesById(
         include: {
           coach: {
             select: {
+              photoUrl: true,
               person: { select: { firstName: true, lastName: true } },
             },
           },
@@ -460,24 +549,49 @@ export async function getVisibleSeriesById(
 
   if (!s) return null;
 
+  const nextEventOccurrence =
+    s.classType === "event"
+      ? getNextEventOccurrence(s.sessions, now)
+      : null;
+
   const waitlisted = await prisma.enrollment.count({
-    where: { classSeriesId: s.id, status: "waitlist" },
+    where: {
+      classSeriesId: s.id,
+      status: "waitlist",
+      ...(nextEventOccurrence
+        ? { eventOccurrenceDate: nextEventOccurrence.occurrenceDate }
+        : {}),
+    },
   });
 
-  const card = toCard(s, now);
+  let card = toCard(s, now);
 
-  const coachNames = s.coaches.map((c) =>
-    [c.coach.person.firstName, c.coach.person.lastName]
-      .filter(Boolean)
-      .join(" ")
-      .trim() || fallbackCoachLabel,
-  );
+  if (nextEventOccurrence) {
+    const occurrenceEnrolled = await prisma.enrollment.count({
+      where: {
+        classSeriesId: s.id,
+        status: { in: ["active", "pending_payment"] },
+        eventOccurrenceDate: nextEventOccurrence.occurrenceDate,
+      },
+    });
+    card = {
+      ...card,
+      enrolledCount: occurrenceEnrolled,
+      isFull: occurrenceEnrolled >= s.maxStudents,
+    };
+  }
 
-  const rawClubSlug = s.venue.club?.slug.toLowerCase() ?? null;
-  const venueClubSlug: "triaz" | "randwijck" | null =
-    rawClubSlug === "triaz" || rawClubSlug === "randwijck"
-      ? rawClubSlug
-      : null;
+  const coachEntries = s.coaches.map((c) => {
+    const name =
+      [c.coach.person.firstName, c.coach.person.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || fallbackCoachLabel;
+    return { name, photoUrl: c.coach.photoUrl };
+  });
+  const coachNames = coachEntries.map((c) => c.name);
+
+  const venueClubSlug = resolveVenueClubSlug(s.venue);
 
   return {
     ...card,
@@ -486,11 +600,18 @@ export async function getVisibleSeriesById(
     campOptions: parseCampOptions(s.campOptions),
     publicNotes: s.publicNotes,
     programDescription: s.program.descriptionPublic,
-    coverImageUrl: s.program.coverImageUrl,
+    coverImageUrl: s.coverImageUrl ?? s.program.coverImageUrl,
+    coverImageFocusY: resolveCoverImageFocusY({
+      seriesCoverUrl: s.coverImageUrl,
+      seriesFocusY: s.coverImageFocusY,
+      programFocusY: s.program.coverImageFocusY,
+    }),
     pickupAtHHMM: s.pickupAt ? timeToHHMM(s.pickupAt) : null,
     coachNames,
+    coaches: coachEntries,
     whatsappUrl: s.whatsappUrl,
     sessions: s.sessions,
+    nextEventOccurrence,
     waitlistedCount: waitlisted,
     venueClubSlug,
     groups: s.groups.map((g) => ({
@@ -533,6 +654,7 @@ export async function getCheapestSeriesPriceByBucket(): Promise<
   const rows = await prisma.classSeries.findMany({
     where: {
       ...PORTAL_VISIBLE_WHERE,
+      ...PORTAL_CATALOG_NON_EVENT_WHERE,
       endsOn: { gte: now },
       pricePerSeries: { not: null },
       program: { isActive: true, isPubliclyListed: true },
@@ -584,6 +706,7 @@ export async function getProgramBySlug(slug: string) {
       slug: true,
       descriptionPublic: true,
       coverImageUrl: true,
+      coverImageFocusY: true,
       targetAudience: true,
       isActive: true,
       isPubliclyListed: true,
@@ -601,9 +724,25 @@ function toCard(
   s: {
     id: string;
     name: string;
-    program: { name: string; slug: string; targetAudience: ProgramTargetAudience };
+    coverImageUrl?: string | null;
+    coverImageFocusY?: number;
+    program: {
+      name: string;
+      slug: string;
+      targetAudience: ProgramTargetAudience;
+      coverImageUrl?: string | null;
+      coverImageFocusY?: number;
+    };
     season: { name: string } | null;
-    venue: { name: string; slug: string };
+    venue: {
+      name: string;
+      slug: string;
+      addressLine1: string | null;
+      postalCode: string | null;
+      city: string | null;
+      mapUrl: string | null;
+      club?: { slug: string } | null;
+    };
     school: { slug: string; name: string } | null;
     dayOfWeek: DayOfWeek | null;
     startTime: Date;
@@ -611,9 +750,12 @@ function toCard(
     startsOn: Date;
     endsOn: Date;
     deliveryMode: ClassDeliveryMode;
+    classType: ClassType;
     minAge: number | null;
     maxAge: number | null;
     pricePerSeries: { toNumber: () => number } | null;
+    pricingTiers: unknown;
+    eligibleSkillLevels: SkillLevel[];
     maxStudents: number;
     waitlistEnabled: boolean;
     enrollmentOpensAt: Date | null;
@@ -630,6 +772,15 @@ function toCard(
   const enrolled = s._count.enrollments;
   const isFull = enrolled >= s.maxStudents;
 
+  const tiers = parsePricingTiers(s.pricingTiers);
+  const isEvent = s.classType === "event";
+  const memberTier = !isEvent ? tiers?.find((t) => t.forMembers) : null;
+  const nonMemberPrice = s.pricePerSeries ? Number(s.pricePerSeries) : null;
+  const memberPrice = memberTier?.amountEur ?? null;
+  const levelLabels = s.eligibleSkillLevels.map((level) =>
+    formatSkillLevel(level),
+  );
+
   return {
     id: s.id,
     name: s.name,
@@ -645,11 +796,18 @@ function toCard(
     deliveryMode: s.deliveryMode,
     venueName: s.venue.name,
     venueSlug: s.venue.slug.toLowerCase(),
+    venueAddressLine1: s.venue.addressLine1,
+    venuePostalCode: s.venue.postalCode,
+    venueCity: s.venue.city,
+    venueMapUrl: venueMapUrl(s.venue),
     schoolSlug: s.school?.slug.toLowerCase() ?? null,
     schoolName: s.school?.name ?? null,
     minAge: s.minAge,
     maxAge: s.maxAge,
-    pricePerSeries: s.pricePerSeries ? Number(s.pricePerSeries) : null,
+    pricePerSeries: nonMemberPrice,
+    memberPrice,
+    nonMemberPrice,
+    levelLabels,
     enrolledCount: enrolled,
     maxStudents: s.maxStudents,
     isFull,
@@ -657,7 +815,25 @@ function toCard(
     enrollmentOpensAt: opens,
     enrollmentClosesAt: closes,
     enrollmentOpenNow,
+    coverImageUrl: s.coverImageUrl ?? s.program.coverImageUrl ?? null,
+    coverImageFocusY: resolveCoverImageFocusY({
+      seriesCoverUrl: s.coverImageUrl,
+      seriesFocusY: s.coverImageFocusY,
+      programFocusY: s.program.coverImageFocusY,
+    }),
+    venueClubSlug: resolveVenueClubSlug(s.venue),
+    classType: s.classType,
   };
+}
+
+function resolveVenueClubSlug(venue: {
+  slug: string;
+  club?: { slug: string } | null;
+}): "triaz" | "randwijck" | null {
+  const raw = venue.club?.slug.toLowerCase() ?? venue.slug.toLowerCase();
+  if (raw === "triaz") return "triaz";
+  if (raw === "randwijck") return "randwijck";
+  return null;
 }
 
 function timeToHHMM(d: Date): string {

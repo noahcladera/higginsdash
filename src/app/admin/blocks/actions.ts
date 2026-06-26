@@ -216,6 +216,7 @@ export async function createBlock(
   const result = await prisma.recurringBlock.createMany({ data: rows });
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/admin/blocks");
   revalidatePath("/coach/book");
   revalidatePath("/portal/book");
@@ -411,6 +412,7 @@ export async function createBlocksFromSelection(
   const result = await prisma.recurringBlock.createMany({ data: rows });
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/admin/blocks");
   revalidatePath("/coach/book");
   revalidatePath("/portal/book");
@@ -458,6 +460,7 @@ export async function cancelBlock(
   });
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/admin/blocks");
   revalidatePath("/coach/book");
   revalidatePath("/portal/book");
@@ -508,6 +511,7 @@ export async function updateBlockScope(
   });
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/admin/blocks");
   revalidatePath("/coach/book");
   revalidatePath("/portal/book");

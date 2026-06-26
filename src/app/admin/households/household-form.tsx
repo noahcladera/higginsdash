@@ -1,12 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PersonPicker } from "@/components/admin/person-picker";
 import { useActionFeedback } from "@/lib/feedback";
+import type { SimpleActionResult } from "@/lib/feedback/types";
 
 export type HouseholdFormValues = {
   displayName: string;
@@ -26,23 +27,29 @@ export function HouseholdForm({
   submitLabel,
   householdId,
   primaryContactRestrictedToMembers = false,
+  returnTo,
 }: {
   defaults: HouseholdFormValues;
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<SimpleActionResult | void>;
   submitLabel: string;
   householdId?: string;
   primaryContactRestrictedToMembers?: boolean;
+  returnTo?: string;
 }) {
-  const router = useRouter();
   const { run, pending, error } = useActionFeedback({
     success: "Household saved",
     errorTitle: "Couldn't save household",
+    returnTo,
   });
 
   function onSubmit(formData: FormData) {
+    if (returnTo) {
+      run(() => action(formData) as Promise<SimpleActionResult>);
+      return;
+    }
     run(async () => {
       await action(formData);
-      return { ok: true };
+      return { ok: true as const };
     });
   }
 
@@ -146,14 +153,11 @@ export function HouseholdForm({
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : submitLabel}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => router.back()}
-          disabled={pending}
-        >
-          Cancel
-        </Button>
+        {returnTo ? (
+          <Button asChild type="button" variant="ghost" disabled={pending}>
+            <Link href={returnTo}>Cancel</Link>
+          </Button>
+        ) : null}
       </div>
     </form>
   );

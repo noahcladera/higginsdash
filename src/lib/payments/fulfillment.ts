@@ -106,6 +106,7 @@ export async function fulfillCheckoutAction(
       revalidatePath("/portal/bookings");
       revalidatePath("/portal/book");
       revalidatePath("/admin/bookings");
+      revalidatePath("/admin");
       return { ok: true };
     }
   }

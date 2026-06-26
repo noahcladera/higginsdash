@@ -43,7 +43,7 @@ type VenueOption = {
   clubId?: string | null;
 };
 type SchoolOption = { id: string; name: string };
-type CourtOption = { id: string; name: string; clubId: string };
+type CourtOption = { id: string; name: string; clubId: string; isBookable?: boolean };
 type SeasonOption = {
   id: string;
   name: string;
@@ -296,7 +296,7 @@ export function ScheduleSectionEditor({
     useState(false);
   const courtOptions = useMemo(() => {
     if (venueKind !== "club" || !venueClubId) return [];
-    return courts.filter((court) => court.clubId === venueClubId);
+    return courts.filter((court) => court.clubId === venueClubId && court.isBookable !== false);
   }, [courts, venueKind, venueClubId]);
 
   // Mirror the Naming editor's audience-fallback rule: filter to the
@@ -548,11 +548,11 @@ export function ScheduleSectionEditor({
       )}
       <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3">
         <FieldBlock
-          label="Court (optional)"
-          optional
+          label={venueKind === "club" ? "Court" : "Court (club venues only)"}
+          optional={venueKind !== "club"}
           hint={
             venueKind === "club"
-              ? "Select a court to reserve it for this class. Leave empty to avoid blocking a court."
+              ? "Required — which court this class uses on the schedule."
               : "Court selection is only available for club venues."
           }
         >
@@ -568,8 +568,13 @@ export function ScheduleSectionEditor({
             }}
             className={selectClass}
             disabled={venueKind !== "club"}
+            required={venueKind === "club"}
           >
-            <option value="">No court selected</option>
+            {venueKind === "club" ? (
+              <option value="">Select a court…</option>
+            ) : (
+              <option value="">No court selected</option>
+            )}
             {courtOptions.map((court) => (
               <option key={court.id} value={court.id}>
                 {court.name}
@@ -577,7 +582,7 @@ export function ScheduleSectionEditor({
             ))}
           </select>
         </FieldBlock>
-        {courtId && (
+        {courtId ? (
           <>
             <div className="grid gap-4 sm:grid-cols-2">
               <FieldBlock
@@ -616,7 +621,7 @@ export function ScheduleSectionEditor({
               only conflicting dates.
             </label>
           </>
-        )}
+        ) : null}
       </div>
       {!isCamp && (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -705,6 +710,7 @@ export function CoachesSectionEditor({
 export function AgeAndLevelSectionEditor({
   classSeriesId,
   audience,
+  hideAgeBand = false,
   defaultMinAge,
   defaultMaxAge,
   defaultLevels,
@@ -712,6 +718,7 @@ export function AgeAndLevelSectionEditor({
 }: {
   classSeriesId: string;
   audience: "kids" | "adults" | "mixed";
+  hideAgeBand?: boolean;
   defaultMinAge: number | null;
   defaultMaxAge: number | null;
   defaultLevels: SkillLevelValue[];
@@ -722,6 +729,7 @@ export function AgeAndLevelSectionEditor({
       <input type="hidden" name="classSeriesId" value={classSeriesId} />
       <AgeAndLevelField
         audience={audience}
+        hideAgeBand={hideAgeBand}
         minAgeDefault={defaultMinAge ?? ""}
         maxAgeDefault={defaultMaxAge ?? ""}
         levelsDefault={defaultLevels}
@@ -888,6 +896,7 @@ export function RosterLimitsSectionEditor({
   defaultNotes,
   defaultWhatsappUrl,
   defaultCoverImageUrl,
+  defaultCoverImageFocusY,
 }: {
   classSeriesId: string;
   defaultMax: number;
@@ -895,6 +904,7 @@ export function RosterLimitsSectionEditor({
   defaultNotes: string | null;
   defaultWhatsappUrl: string | null;
   defaultCoverImageUrl: string | null;
+  defaultCoverImageFocusY: number;
 }) {
   return (
     <>
@@ -950,6 +960,8 @@ export function RosterLimitsSectionEditor({
         aspect="16/9"
         label="Cover image"
         helpText="Shown at the top of the class page parents see when deciding whether to sign up. Leave blank to inherit the program's cover image."
+        focusYName="coverImageFocusY"
+        defaultFocusY={defaultCoverImageFocusY}
       />
     </>
   );
@@ -1027,6 +1039,8 @@ export function EventPricingSectionEditor({
   return (
     <>
       <input type="hidden" name="classSeriesId" value={classSeriesId} />
+      {/* Events price via pricingTiersJson, not this field — empty keeps schema happy. */}
+      <input type="hidden" name="pricePerSessionEur" value="" />
       <EventPricingField defaultTiers={defaultTiers} />
     </>
   );

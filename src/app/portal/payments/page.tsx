@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
@@ -5,6 +6,7 @@ import { Section } from "@/components/ui/section";
 import { Stat, MetricStrip } from "@/components/ui/stat";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CardIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
@@ -106,7 +108,12 @@ export default async function PortalPaymentsPage({
         <EmptyState
           icon={<CardIcon size={20} />}
           title="Nothing here yet"
-          description="Receipts from portal checkouts and office-issued invoices appear here after your first payment."
+          description="Your first receipt appears here after checkout — memberships, lessons, and court bookings all land in this timeline."
+          action={
+            <Button asChild tone="triaz" size="sm">
+              <Link href="/portal/membership#buy">Get a membership</Link>
+            </Button>
+          }
         />
       ) : (
         <>
@@ -141,7 +148,7 @@ export default async function PortalPaymentsPage({
             title="Timeline"
             description="Most recent first. Receipts and invoices in one stream."
           >
-            <ul className="rounded-[var(--radius-lg)] bg-[var(--surface)] shadow-[var(--shadow-sm)] divide-y divide-[var(--border)]">
+            <ul className="elev-card divide-y divide-[var(--border)]">
               {timeline.map((t) => {
                 const isHighlighted =
                   highlightId != null && t.key === `p-${highlightId}`;
@@ -195,7 +202,8 @@ export default async function PortalPaymentsPage({
       )}
 
       <p className="text-xs text-[var(--muted-foreground)]">
-        Need a copy of an invoice? Email the office and we'll send it over.
+        Need a copy of an invoice? Check here first after checkout — or email
+        the office and we&apos;ll send it over.
       </p>
     </div>
   );

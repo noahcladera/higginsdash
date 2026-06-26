@@ -9,6 +9,7 @@ import {
   type FeatureFlagGroup,
   type FeatureFlags,
 } from "@/lib/tenant/features";
+import { useActionFeedback } from "@/lib/feedback";
 
 import { resetOrgFeatures, updateOrgFeatures } from "../actions";
 
@@ -35,12 +36,10 @@ export function FeaturesEditor({
   readOnly?: boolean;
 }) {
   const [state, setState] = React.useState<FeatureFlags>(features);
-  const [status, setStatus] = React.useState<
-    | { kind: "idle" }
-    | { kind: "saving" }
-    | { kind: "saved" }
-    | { kind: "error"; message: string }
-  >({ kind: "idle" });
+  const { run, pending, error } = useActionFeedback({
+    success: "Saved",
+    successDescription: "Reload any open tab to see it everywhere.",
+  });
 
   function toggle(key: keyof FeatureFlags, on: boolean) {
     setState((prev) => ({ ...prev, [key]: on }));
@@ -51,22 +50,12 @@ export function FeaturesEditor({
     return flag.requires.every((dep) => state[dep]);
   }
 
-  async function onSave() {
-    setStatus({ kind: "saving" });
+  function onSave() {
     const form = new FormData();
     for (const [key, value] of Object.entries(state)) {
       if (value) form.set(key, "on");
     }
-    try {
-      const result = await updateOrgFeatures(form);
-      if (result.ok) setStatus({ kind: "saved" });
-      else setStatus({ kind: "error", message: result.error });
-    } catch {
-      setStatus({
-        kind: "error",
-        message: "Save failed. Check your connection and try again.",
-      });
-    }
+    run(() => updateOrgFeatures(form));
   }
 
   async function onReset() {
@@ -77,20 +66,11 @@ export function FeaturesEditor({
     ) {
       return;
     }
-    setStatus({ kind: "saving" });
-    try {
+    run(async () => {
       const result = await resetOrgFeatures();
-      if (result.ok) {
-        setStatus({ kind: "saved" });
-        // Reload so the form re-fetches the now-clean defaults from the server.
-        window.location.reload();
-      } else setStatus({ kind: "error", message: result.error });
-    } catch {
-      setStatus({
-        kind: "error",
-        message: "Reset failed. Check your connection and try again.",
-      });
-    }
+      if (result.ok) window.location.reload();
+      return result;
+    });
   }
 
   const enabledCount = Object.values(state).filter(Boolean).length;
@@ -147,25 +127,14 @@ export function FeaturesEditor({
           <strong>{enabledCount}</strong> of {totalCount} features enabled.
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {status.kind === "saved" && (
-            <span className="text-xs text-[var(--muted-foreground)]">
-              Saved. Reload any open tab to see it everywhere.
-            </span>
+          {error && (
+            <span className="text-xs text-[var(--destructive)]">{error}</span>
           )}
-          {status.kind === "error" && (
-            <span className="text-xs text-[var(--destructive)]">
-              {status.message}
-            </span>
-          )}
-          <Button variant="ghost" type="button" onClick={onReset}>
+          <Button variant="ghost" type="button" onClick={onReset} disabled={pending}>
             Reset to preset
           </Button>
-          <Button
-            type="button"
-            onClick={onSave}
-            disabled={status.kind === "saving"}
-          >
-            {status.kind === "saving" ? "Saving…" : "Save features"}
+          <Button type="button" onClick={onSave} disabled={pending}>
+            {pending ? "Saving…" : "Save features"}
           </Button>
         </div>
       </div>

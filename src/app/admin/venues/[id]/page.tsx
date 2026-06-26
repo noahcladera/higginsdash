@@ -36,7 +36,7 @@ export default async function EditVenuePage({
       />
 
       {!venue.isActive && (
-        <div className="rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[oklch(0.30_0.10_75)]">
+        <div className="rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[var(--warning-ink)]">
           This venue is archived. New classes can't be created here until it's
           unarchived.
         </div>
@@ -45,6 +45,7 @@ export default async function EditVenuePage({
       <VenueForm
         action={updateVenue}
         submitLabel="Save changes"
+        returnTo="/admin/venues"
         venue={{
           id: venue.id,
           slug: venue.slug,
@@ -57,6 +58,8 @@ export default async function EditVenuePage({
           country: venue.country,
           clubId: venue.clubId,
           notes: venue.notes,
+          coverImageUrl: venue.coverImageUrl,
+          coverImageFocusY: venue.coverImageFocusY,
         }}
       />
 

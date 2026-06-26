@@ -6,9 +6,16 @@ import { Prisma } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 import { v5 as uuidv5 } from "uuid";
 import { prisma } from "@/lib/prisma";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SYSTEM_PERSON_IDS } from "@/lib/system-ids";
 import { shouldGrantFirstUserAdmin } from "@/lib/auth/ensure-person";
+import { defaultRouteForPerson } from "@/lib/auth/role-routing";
 import { checkRateLimitByIp } from "@/lib/rate-limit";
+import {
+  countrySchema,
+  phoneSchemaWithCountry,
+  postalCodeSchema,
+} from "@/lib/validation/address";
 
 /** Same RFC 4122 NS_DNS namespace the seed script uses for deterministic ids. */
 const CHILD_ID_NAMESPACE = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
@@ -48,11 +55,7 @@ const SignUpSchema = z
       .max(72),
     firstName: z.string().trim().min(1, "First name is required").max(100),
     lastName: z.string().trim().min(1, "Last name is required").max(100),
-    phone: z
-      .string()
-      .trim()
-      .optional()
-      .transform((v) => (v ? v : null)),
+    phone: z.string().trim().min(1, "Phone number is required"),
     dateOfBirth: z.string().trim().min(1, "Date of birth is required"),
     gender: z
       .string()
@@ -69,9 +72,9 @@ const SignUpSchema = z
       .trim()
       .optional()
       .transform((v) => (v ? v : null)),
-    postalCode: z.string().trim().min(1, "Postal code is required").max(20),
+    postalCode: z.string().trim(),
     city: z.string().trim().min(1, "City is required").max(100),
-    country: z.string().trim().min(1).max(2).default("NL"),
+    country: countrySchema,
     children: z.array(ChildSchema).default([]),
   })
   .superRefine((val, ctx) => {
@@ -82,6 +85,35 @@ const SignUpSchema = z
         message: "Add at least one child to continue",
       });
     }
+
+    const postalParsed = postalCodeSchema(val.country).safeParse(val.postalCode);
+    if (!postalParsed.success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["postalCode"],
+        message:
+          postalParsed.error.issues[0]?.message ?? "Postal code is required",
+      });
+    }
+
+    const phoneParsed = phoneSchemaWithCountry(val.country).safeParse(val.phone);
+    if (!phoneParsed.success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["phone"],
+        message:
+          phoneParsed.error.issues[0]?.message ?? "Phone number is required",
+      });
+    }
+  })
+  .transform((val) => {
+    const phoneParsed = phoneSchemaWithCountry(val.country).parse(val.phone);
+    const postalParsed = postalCodeSchema(val.country).parse(val.postalCode);
+    return {
+      ...val,
+      phone: phoneParsed,
+      postalCode: postalParsed,
+    };
   });
 
 export type SignUpInput = z.input<typeof SignUpSchema>;
@@ -145,14 +177,13 @@ export async function signUp(input: SignUpInput): Promise<SignUpResult> {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // 1. Create the auth user. Email is NOT pre-confirmed — Supabase sends a
-  //    verification email and the user cannot sign in until they confirm.
-  //    (Requires email confirmations enabled + SMTP configured in Supabase.)
+  // 1. Create the auth user with email pre-confirmed so the account is
+  //    usable immediately (no verification email / SMTP dependency).
   const { data: created, error: createErr } =
     await admin.auth.admin.createUser({
       email: data.email,
       password: data.password,
-      email_confirm: false,
+      email_confirm: true,
     });
   if (createErr || !created.user) {
     // Surface friendly message for "already registered" without leaking details.
@@ -288,10 +319,18 @@ export async function signUp(input: SignUpInput): Promise<SignUpResult> {
     return { ok: false, error: msg };
   }
 
-  // 3. Do NOT auto-sign-in. The account must verify its email first; Supabase
-  //    rejects sign-in until confirmed. Send them to login with a friendly
-  //    "check your inbox" nudge.
-  redirect("/login?verify_email=1");
+  // 3. Sign the user in so the session cookie is on the response.
+  const supabase = await createSupabaseServerClient();
+  const { error: signInErr } = await supabase.auth.signInWithPassword({
+    email: data.email,
+    password: data.password,
+  });
+  if (signInErr) {
+    // Account exists; nudge to login with the existing friendly banner.
+    redirect("/login?error=signup_succeeded_signin_failed");
+  }
+
+  redirect(await defaultRouteForPerson(authUserId));
 }
 
 function parseDate(value: string): Date | null {

@@ -41,7 +41,7 @@ export function PageHeader({
     >
       <div className="space-y-2">
         {kicker && (
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--triaz-ink)]">
+          <div className="kicker-pill text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--triaz-ink)]">
             {kicker}
           </div>
         )}

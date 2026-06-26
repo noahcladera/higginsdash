@@ -36,7 +36,7 @@ export default async function EditSchoolPage({
       />
 
       {!school.isActive && (
-        <div className="rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[oklch(0.30_0.10_75)]">
+        <div className="rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[var(--warning-ink)]">
           This school is archived. New pickup classes can't be created here
           until it's unarchived.
         </div>
@@ -45,6 +45,7 @@ export default async function EditSchoolPage({
       <SchoolForm
         action={updateSchool}
         submitLabel="Save changes"
+        returnTo="/admin/schools"
         school={{
           id: school.id,
           slug: school.slug,

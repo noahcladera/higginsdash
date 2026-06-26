@@ -12,7 +12,7 @@ const LABEL: Record<RecurringBlockScope, string> = {
 };
 
 const TONE: Record<RecurringBlockScope, string> = {
-  full: "border-amber-300 bg-amber-50 text-amber-900",
+  full: "border-[var(--warning)]/50 bg-[var(--warning-soft)] text-[var(--warning-ink)]",
   members_only: "border-sky-300 bg-sky-50 text-sky-900",
 };
 
