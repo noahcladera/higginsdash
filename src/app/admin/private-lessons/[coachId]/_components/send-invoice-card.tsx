@@ -124,6 +124,7 @@ export function SendInvoiceCard({
           <Button
             type="button"
             onClick={handleSend}
+            loading={isPending}
             disabled={isPending || !email}
             size="sm"
           >

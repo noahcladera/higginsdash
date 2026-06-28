@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
@@ -151,7 +151,7 @@ export default async function PortalClassesPage() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <PortalPageHeader
         kicker={t.class.plural}
         title={
           enrollableSelf
@@ -347,7 +347,7 @@ export default async function PortalClassesPage() {
             description="They'll appear here once enrollment is confirmed."
           />
         ) : (
-          <ul className="elev-card divide-y divide-[var(--border)]">
+          <ul className="grouped-section list-none divide-y divide-[var(--content-separator)] p-0 m-0">
             {upcoming.map((s, i) => {
               const timing = computeClassTiming({
                 session: { startsAt: s.startsAt, endsAt: s.endsAt },
@@ -392,7 +392,7 @@ export default async function PortalClassesPage() {
                           ? "randwijck"
                           : "triaz"
                   }
-                  className="flex items-center gap-4 px-5 py-4"
+                  className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:gap-4"
                 >
                   <div className="w-20 shrink-0">
                     <div className="tabular text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
@@ -439,7 +439,7 @@ export default async function PortalClassesPage() {
 
       {recentPast.length > 0 && (
         <Section title="Recent attendance" description="Last six sessions.">
-          <ul className="elev-card divide-y divide-[var(--border)]">
+          <ul className="grouped-section list-none divide-y divide-[var(--content-separator)] p-0 m-0">
             {recentPast.map((a) => (
               <li
                 key={a.id}

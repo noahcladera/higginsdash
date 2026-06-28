@@ -119,7 +119,7 @@ export function DeletionRequestCard({ booking }: Props) {
         <Button
           tone="triaz"
           onClick={() => decide("approve")}
-          disabled={isPending}
+          loading={isPending}
         >
           {isPending ? "..." : "Approve & cancel"}
         </Button>

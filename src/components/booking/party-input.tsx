@@ -78,7 +78,16 @@ export function PartyInput({
   const [matches, setMatches] = useState<PartnerCandidate[]>([]);
   const [searching, setSearching] = useState(false);
   const lastQueryRef = useRef<string>("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const atCap = value.length >= max;
+
+  /** Read the live field value — ref first so mobile taps work if React state lags. */
+  const readDraftValue = () =>
+    (inputRef.current?.value ?? draft).trim();
+
+  const syncDraft = (next: string) => {
+    setDraft(next);
+  };
 
   // Debounced lookup; clear when input shrinks below 2 chars.
   useEffect(() => {
@@ -111,6 +120,38 @@ export function PartyInput({
     onChange([...value, entry]);
     setDraft("");
     setMatches([]);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  /** Commit the draft field — used by Add, Enter, and mobile pointer taps. */
+  const commitDraft = () => {
+    const trimmed = readDraftValue();
+    if (!trimmed || atCap) return;
+    if (membersOnly) {
+      if (matches[0]) {
+        addEntry({
+          partnerName: matches[0].name,
+          personId: matches[0].personId,
+        });
+      }
+      return;
+    }
+    const exactMatch = lookup
+      ? matches.find(
+          (m) =>
+            m.name.localeCompare(trimmed, undefined, {
+              sensitivity: "accent",
+            }) === 0,
+        )
+      : undefined;
+    if (exactMatch) {
+      addEntry({
+        partnerName: exactMatch.name,
+        personId: exactMatch.personId,
+      });
+    } else {
+      addEntry({ partnerName: trimmed });
+    }
   };
 
   const remove = (idx: number) => {
@@ -165,21 +206,18 @@ export function PartyInput({
         <div className="space-y-1">
           <div className="flex gap-2">
             <Input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              ref={inputRef}
+              key={value.length}
+              defaultValue=""
+              onChange={(e) => syncDraft(e.target.value)}
+              onInput={(e) => syncDraft(e.currentTarget.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  if (lookup && matches[0]) {
-                    addEntry({
-                      partnerName: matches[0].name,
-                      personId: matches[0].personId,
-                    });
-                  } else if (!membersOnly && draft.trim()) {
-                    addEntry({ partnerName: draft.trim() });
-                  }
+                  commitDraft();
                 }
               }}
+              className="min-w-0 w-auto flex-1"
               placeholder={
                 placeholder ??
                 (membersOnly
@@ -193,17 +231,17 @@ export function PartyInput({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  if (lookup && matches[0]) {
-                    addEntry({
-                      partnerName: matches[0].name,
-                      personId: matches[0].personId,
-                    });
-                  } else {
-                    addEntry({ partnerName: draft.trim() });
-                  }
+                data-testid="party-add"
+                className={cn(
+                  "min-h-11 shrink-0 touch-manipulation",
+                  !draft.trim() && "opacity-50",
+                )}
+                onPointerDown={(e) => {
+                  if (!readDraftValue()) return;
+                  e.preventDefault();
+                  commitDraft();
                 }}
-                disabled={!draft.trim()}
+                onClick={commitDraft}
               >
                 Add
               </Button>
@@ -241,13 +279,21 @@ export function PartyInput({
                     <li key={m.personId}>
                       <button
                         type="button"
+                        onPointerDown={(e) => {
+                          if (e.button !== 0) return;
+                          e.preventDefault();
+                          addEntry({
+                            partnerName: m.name,
+                            personId: m.personId,
+                          });
+                        }}
                         onClick={() =>
                           addEntry({
                             partnerName: m.name,
                             personId: m.personId,
                           })
                         }
-                        className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-[var(--muted)]/40"
+                        className="flex min-h-11 w-full touch-manipulation items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-[var(--muted)]/40"
                       >
                         <span
                           aria-hidden="true"

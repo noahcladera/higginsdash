@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireCoach } from "@/lib/auth/require-coach";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { Section } from "@/components/ui/section";
 import { CheckpointGrid } from "@/components/medals/coach/checkpoint-grid";
 import { CoachMedalLevelHeader } from "@/components/medals/coach/coach-medal-level-header";
@@ -37,7 +37,7 @@ export default async function CoachMedalLevelPage({
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <ShellPageHeader
         kicker="Medal level"
         title={level.title}
         actions={

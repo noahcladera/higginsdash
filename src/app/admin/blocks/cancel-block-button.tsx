@@ -39,7 +39,7 @@ export function CancelBlockButton({ id }: { id: string }) {
       <Button
         size="sm"
         variant="destructive"
-        disabled={isPending}
+        loading={isPending}
         onClick={() => run(() => cancelBlock({ id }))}
       >
         {isPending ? "..." : "Confirm"}

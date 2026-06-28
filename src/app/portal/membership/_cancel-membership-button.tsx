@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/sheet-dialog";
 import { useActionFeedback } from "@/lib/feedback";
 import { requestMembershipCancellation } from "@/lib/memberships/actions";
 
@@ -72,8 +72,8 @@ export function CancelMembershipButton({
             Keep membership
           </Button>
           <Button
-            tone="danger"
-            disabled={pending}
+            variant="destructive"
+            loading={pending}
             onClick={() => {
               setLocalError(null);
               if (reason.trim().length < 5) {

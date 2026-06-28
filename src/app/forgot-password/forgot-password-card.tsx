@@ -19,11 +19,14 @@ export function ForgotPasswordCard({
   const [sent, setSent] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    const emailVal = String(new FormData(e.currentTarget).get("email") ?? email).trim();
+    if (!emailVal) return;
+
     startTransition(async () => {
-      const res = await requestPasswordReset(email);
+      const res = await requestPasswordReset(emailVal);
       if (!res.ok) {
         setError(res.error);
         return;
@@ -68,10 +71,12 @@ export function ForgotPasswordCard({
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
+              name="email"
               type="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onInput={(e) => setEmail(e.currentTarget.value)}
               required
               autoComplete="email"
               autoFocus
@@ -83,11 +88,7 @@ export function ForgotPasswordCard({
             <p className="text-sm text-[var(--destructive)]">{error}</p>
           )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isPending || !email}
-          >
+          <Button type="submit" className="w-full" loading={isPending}>
             {isPending ? "Sending…" : "Send reset link"}
           </Button>
 

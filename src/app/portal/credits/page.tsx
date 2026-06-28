@@ -1,5 +1,5 @@
 import { requireMember } from "@/lib/auth/require-member";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
 import { Stat, MetricStrip } from "@/components/ui/stat";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -32,7 +32,7 @@ export default async function PortalCreditsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
+      <PortalPageHeader
         kicker="Household account"
         title="Lesson credit"
         description="Money on file you can spend on future lessons. We never refund a class without offering a credit option first."
@@ -62,7 +62,7 @@ export default async function PortalCreditsPage() {
             description="Once we credit your household — for example after a class transfer — you'll see the running ledger here."
           />
         ) : (
-          <ul className="elev-card divide-y divide-[var(--border)]">
+          <ul className="grouped-section list-none divide-y divide-[var(--content-separator)] p-0 m-0">
             {entries.map((e) => (
               <LedgerRow key={e.id} entry={e} />
             ))}

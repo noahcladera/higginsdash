@@ -5,7 +5,7 @@ import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
 import { isGuardianOf } from "@/lib/portal/queries";
 import { listAllVisibleSeries } from "@/lib/portal/catalog-queries";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,7 +78,7 @@ export default async function PortalTransferRequestPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PortalPageHeader
         kicker="Classes"
         title={`Request a transfer for ${studentName}`}
         description="Pick the class you'd like to switch into. The office will review and confirm the financial outcome (credit, refund, or a top-up if the new class costs more)."

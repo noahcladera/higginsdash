@@ -23,6 +23,7 @@ export function PageHeader({
   actions,
   className,
   align = "left",
+  compact = false,
 }: {
   kicker?: React.ReactNode;
   title: React.ReactNode;
@@ -30,6 +31,8 @@ export function PageHeader({
   actions?: React.ReactNode;
   className?: string;
   align?: "left" | "center";
+  /** Tighter mobile layout — shorter title, description hidden below md. */
+  compact?: boolean;
 }) {
   return (
     <header
@@ -45,17 +48,34 @@ export function PageHeader({
             {kicker}
           </div>
         )}
-        <h1 className="font-display text-[2.25rem] font-medium leading-[1.05] tracking-[-0.02em] sm:text-[2.75rem]">
+        <h1
+          className={cn(
+            "font-display font-medium leading-[1.05] tracking-[-0.02em]",
+            compact
+              ? "text-2xl sm:text-[2.75rem]"
+              : "text-[2.25rem] sm:text-[2.75rem]",
+          )}
+        >
           {title}
         </h1>
         {description && (
-          <p className="max-w-prose text-base text-[var(--muted-foreground)]">
+          <p
+            className={cn(
+              "max-w-prose text-base text-[var(--muted-foreground)]",
+              compact && "hidden md:block",
+            )}
+          >
             {description}
           </p>
         )}
       </div>
       {actions && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+        <div
+          className={cn(
+            "flex shrink-0 flex-wrap items-center gap-2 sm:justify-end",
+            compact && "hidden md:flex",
+          )}
+        >
           {actions}
         </div>
       )}

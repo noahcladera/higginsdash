@@ -4,8 +4,9 @@ import { parseAdminClassesFilters } from "@/lib/admin/classes-filters";
 import { listSeriesForAdmin } from "@/lib/admin/classes-queries";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusIcon } from "@/components/icons";
+import { PlusIcon, CalendarIcon } from "@/components/icons";
 import { Section } from "@/components/ui/section";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 
@@ -36,9 +37,11 @@ export default async function AdminCampsPage({
       />
       <Section title={`${series.length} camp${series.length === 1 ? "" : "s"}`}>
         {series.length === 0 ? (
-          <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--muted-foreground)]">
-            No camps yet. Use "New camp" to create one.
-          </div>
+          <EmptyState
+            icon={<CalendarIcon size={20} />}
+            title="No camps yet"
+            description="Use “New camp” to create one."
+          />
         ) : (
           <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)]">
             <table className="w-full text-left text-sm">

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { requireCoach } from "@/lib/auth/require-coach";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { Section } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -18,15 +18,13 @@ import {
   weekParamOf,
 } from "@/lib/calendar/week";
 import { WeekGrid } from "./_components/week-grid";
+import { CoachCalendarMobileList } from "./_components/coach-calendar-mobile-list";
+import { CoachWeekPager } from "../_components/coach-week-pager";
+import { CalendarPagerTransition } from "@/app/portal/_components/calendar-pager-transition";
 import { getTerms } from "@/lib/tenant";
 
 /**
  * Coach calendar — week view of the signed-in coach's own sessions.
- * Pickup classes show the full leave → pickup → class → end block so
- * hours-on-the-clock are visually obvious; at-club / onsite classes
- * show a single class block (coach arrival = class start).
- *
- * ?week=YYYY-MM-DD snaps to that date's Monday; defaults to this week.
  */
 export default async function CoachCalendarPage({
   searchParams,
@@ -60,15 +58,30 @@ export default async function CoachCalendarPage({
   const prevParam = weekParamOf(shiftWeeks(weekStart, -1));
   const nextParam = weekParamOf(shiftWeeks(weekStart, 1));
   const thisWeekParam = weekParamOf(today);
+  const weekLabel = formatWeekRange(weekStart);
+
+  const description =
+    events.length === 0
+      ? "Nothing scheduled this week."
+      : [
+          sessionCount > 0
+            ? `${sessionCount} session${sessionCount === 1 ? "" : "s"}`
+            : null,
+          bookingCount > 0
+            ? `${bookingCount} booking${bookingCount === 1 ? "" : "s"}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className="space-y-10">
+      <ShellPageHeader
         kicker={terms.coach.role}
         title="My calendar"
-        description="Every session with your name on it this week. Pickup-mode sessions show the full leave-base to session-end block so you can see your on-the-clock hours at a glance."
+        description="Every session with your name on it this week."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden flex-wrap items-center gap-2 lg:flex">
             <AddToCalendarDialog
               origin={origin}
               hasHousehold={false}
@@ -94,31 +107,45 @@ export default async function CoachCalendarPage({
         }
       />
 
-      <Section
-        title={formatWeekRange(weekStart)}
-        description={
-          events.length === 0
-            ? "Nothing scheduled this week."
-            : [
-                sessionCount > 0
-                  ? `${sessionCount} session${sessionCount === 1 ? "" : "s"}`
-                  : null,
-                bookingCount > 0
-                  ? `${bookingCount} booking${bookingCount === 1 ? "" : "s"}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")
-        }
-      >
+      <div className="lg:hidden">
+        <AddToCalendarDialog
+          origin={origin}
+          hasHousehold={false}
+          allowedScopes={["coach"]}
+          defaultScope="coach"
+          initialTokens={calendarTokens}
+          variant="coach"
+        />
+      </div>
+
+      <CoachWeekPager
+        className="lg:hidden"
+        label={weekLabel}
+        prevHref={`/coach/calendar?week=${prevParam}`}
+        nextHref={`/coach/calendar?week=${nextParam}`}
+        thisWeekHref={`/coach/calendar?week=${thisWeekParam}`}
+        isThisWeek={isThisWeek}
+      />
+
+      <Section title={weekLabel} description={description}>
         {events.length === 0 ? (
           <EmptyState
             icon={<CalendarIcon size={20} />}
             title="Clear week"
-            description="No classes or bookings on the roster. Check next week or your hours log."
+            description="No classes or bookings on the roster."
           />
         ) : (
-          <WeekGrid days={days} events={events} terms={terms} />
+          <>
+            <CoachCalendarMobileList days={days} events={events} terms={terms} />
+            <CalendarPagerTransition
+              pagerKey={weekParamOf(weekStart)}
+              compareKind="lex"
+            >
+              <div className="hidden lg:block">
+                <WeekGrid days={days} events={events} terms={terms} />
+              </div>
+            </CalendarPagerTransition>
+          </>
         )}
       </Section>
     </div>

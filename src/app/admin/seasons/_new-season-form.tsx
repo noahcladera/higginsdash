@@ -86,7 +86,7 @@ export function NewSeasonForm() {
       </div>
 
       <div className="flex justify-end">
-        <Button type="submit" tone="triaz" disabled={pending || !name.trim()}>
+        <Button type="submit" tone="triaz" loading={pending} disabled={pending || !name.trim()}>
           {pending ? "Creating…" : "Create season"}
         </Button>
       </div>

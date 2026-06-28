@@ -215,7 +215,7 @@ function AddEmailForm({ personId }: { personId: string }) {
       )}
 
       <div className="flex items-center gap-2">
-        <Button type="submit" size="sm" disabled={pending}>
+        <Button type="submit" size="sm" loading={pending}>
           {pending ? "Adding…" : "Add email"}
         </Button>
         <Button

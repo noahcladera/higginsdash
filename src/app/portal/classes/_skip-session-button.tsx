@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/sheet-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -94,7 +94,7 @@ export function SkipSessionButton({
                   }),
                 )
               }
-              disabled={unmark.pending}
+              loading={unmark.pending}
             >
               {unmark.pending ? "..." : "Undo"}
             </Button>
@@ -107,7 +107,7 @@ export function SkipSessionButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" className="min-h-11">
           Can&apos;t make it
         </Button>
       </DialogTrigger>
@@ -154,7 +154,7 @@ export function SkipSessionButton({
                 }),
               )
             }
-            disabled={mark.pending}
+            loading={mark.pending}
           >
             {mark.pending ? "Sending..." : "Let coach know"}
           </Button>

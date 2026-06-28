@@ -217,7 +217,7 @@ export function TerminologyEditor({
           <Button variant="ghost" type="button" onClick={onReset} disabled={pending}>
             Reset to preset defaults
           </Button>
-          <Button type="button" onClick={onSave} disabled={pending}>
+          <Button type="button" onClick={onSave} loading={pending}>
             {pending ? "Saving…" : "Save terminology"}
           </Button>
         </div>

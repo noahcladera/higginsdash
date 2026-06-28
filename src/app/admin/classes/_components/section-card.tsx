@@ -101,7 +101,7 @@ export function SectionCard({
             >
               Cancel
             </Button>
-            <Button type="submit" tone="triaz" size="sm" disabled={pending}>
+            <Button type="submit" tone="triaz" size="sm" loading={pending}>
               {pending ? "Saving…" : submitLabel}
             </Button>
           </footer>

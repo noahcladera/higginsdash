@@ -1,7 +1,8 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { XIcon } from "lucide-react"
+import * as React from "react";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
@@ -51,21 +52,34 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  variant = "dialog",
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean
+  showCloseButton?: boolean;
+  /** On mobile (< md), `sheet` renders as a bottom sheet. */
+  variant?: "dialog" | "sheet";
 }) {
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const asSheet = variant === "sheet" && !isDesktop;
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "glass-panel-strong fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-5 rounded-[var(--radius-xl)] p-6 duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          asSheet
+            ? "glass-regular fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-[var(--radius-glass-inner)] border-b-0 pb-safe p-6 outline-none data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom duration-[var(--duration-base)] ease-[var(--glass-spring)] motion-reduce:duration-150"
+            : "glass-regular fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-5 rounded-[var(--radius-xl)] p-6 duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
           className
         )}
         {...props}
       >
+        {asSheet && (
+          <div className="mb-4 flex justify-center" aria-hidden>
+            <div className="h-1 w-10 rounded-full bg-[var(--muted-foreground)]/30" />
+          </div>
+        )}
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close

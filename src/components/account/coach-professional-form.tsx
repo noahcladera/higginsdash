@@ -174,7 +174,7 @@ export function CoachProfessionalStaffForm({
                 <CheckIcon size={16} /> Saved
               </span>
             ) : null}
-            <Button type="submit" tone="triaz" disabled={pending || !dirty}>
+            <Button type="submit" tone="triaz" loading={pending} disabled={pending || !dirty}>
               {pending ? "Saving…" : "Save changes"}
             </Button>
           </div>
@@ -315,7 +315,7 @@ export function CoachProfessionalZzpForm({
                 <CheckIcon size={16} /> Saved
               </span>
             ) : null}
-            <Button type="submit" tone="triaz" disabled={pending || !dirty}>
+            <Button type="submit" tone="triaz" loading={pending} disabled={pending || !dirty}>
               {pending ? "Saving…" : "Save changes"}
             </Button>
           </div>

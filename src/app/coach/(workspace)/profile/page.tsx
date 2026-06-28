@@ -1,6 +1,7 @@
 import { requireCoach } from "@/lib/auth/require-coach";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
+import { GroupedSection, GroupedRow } from "@/components/ui/grouped-list";
 import { ProfileForm } from "@/components/account/profile-form";
 import { updateMyProfileCoach } from "@/lib/account/profile-actions";
 
@@ -18,24 +19,21 @@ export default async function CoachProfilePage() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <ShellPageHeader
         kicker="Account"
         title="Your details"
         description="Keep your contact info current."
       />
 
       {primaryEmail && (
-        <div className="rounded-[var(--radius-md)] bg-[var(--surface)] px-5 py-4 text-sm">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
-            Sign-in email
-          </span>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
+        <GroupedSection header="Sign-in email">
+          <GroupedRow className="flex-col items-start gap-1 px-4 py-3">
             <span className="font-medium">{primaryEmail}</span>
             <span className="text-xs text-[var(--muted-foreground)]">
               Managed via your sign-in — contact the office to change it.
             </span>
-          </div>
-        </div>
+          </GroupedRow>
+        </GroupedSection>
       )}
 
       <ProfileForm

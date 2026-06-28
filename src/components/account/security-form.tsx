@@ -53,7 +53,7 @@ export function SecurityForm({
             the office if you need to change it.
           </p>
         </header>
-        <div className="elev-card p-5 sm:p-6">
+        <div className="grouped-section p-5 sm:p-6 md:elev-card">
           {primaryEmail ? (
             <p className="font-medium">{primaryEmail}</p>
           ) : (
@@ -76,9 +76,9 @@ export function SecurityForm({
         <form
           id="account-change-password-form"
           action={onPasswordSubmit}
-          className="grid gap-4 elev-card p-5 sm:grid-cols-2 sm:p-6"
+          className="grouped-section grid gap-4 p-5 sm:grid-cols-2 sm:p-6 md:elev-card"
         >
-          <div className="space-y-1.5 sm:col-span-2">
+          <div className="space-y-1.5 px-4 py-3 sm:col-span-2 md:px-0 md:py-0">
             <Label
               htmlFor="currentPassword"
               className="text-xs uppercase tracking-[0.12em] text-[var(--muted-foreground)]"
@@ -93,7 +93,7 @@ export function SecurityForm({
               required
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 px-4 py-3 md:px-0 md:py-0">
             <Label
               htmlFor="newPassword"
               className="text-xs uppercase tracking-[0.12em] text-[var(--muted-foreground)]"
@@ -109,7 +109,7 @@ export function SecurityForm({
               minLength={8}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 px-4 py-3 md:px-0 md:py-0">
             <Label
               htmlFor="confirmPassword"
               className="text-xs uppercase tracking-[0.12em] text-[var(--muted-foreground)]"
@@ -140,7 +140,7 @@ export function SecurityForm({
                 <CheckIcon size={16} /> Password updated
               </span>
             ) : null}
-            <Button type="submit" tone={submitTone} disabled={pwPending}>
+            <Button type="submit" variant="glassProminent" tone={submitTone} loading={pwPending}>
               {pwPending ? "Updating…" : "Update password"}
             </Button>
           </div>

@@ -8,8 +8,9 @@ import {
 import { listSeriesForAdmin } from "@/lib/admin/classes-queries";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusIcon } from "@/components/icons";
+import { PlusIcon, CalendarIcon } from "@/components/icons";
 import { Section } from "@/components/ui/section";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 
@@ -49,9 +50,11 @@ export default async function AdminEventsPage({
 
       <Section title={`${series.length} event${series.length === 1 ? "" : "s"}`}>
         {series.length === 0 ? (
-          <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--muted-foreground)]">
-            Nothing yet. Use “New event” to set the first one up.
-          </div>
+          <EmptyState
+            icon={<CalendarIcon size={20} />}
+            title="No events yet"
+            description="Use “New event” to set the first one up."
+          />
         ) : (
           <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)]">
             <table className="w-full text-left text-sm">

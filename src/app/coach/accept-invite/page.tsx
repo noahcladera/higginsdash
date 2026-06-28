@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
+import { GroupedSection, GroupedRow } from "@/components/ui/grouped-list";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { acceptCoachInvite } from "./actions";
 import { getCurrentBrand, getTerms } from "@/lib/tenant";
 import { ensurePersonForAuthUser } from "@/lib/auth/ensure-person";
@@ -45,7 +46,7 @@ export default async function CoachAcceptInvitePage({
   if (!token) {
     return (
       <div className="mx-auto max-w-lg space-y-6 px-4 py-16">
-        <PageHeader
+        <ShellPageHeader
           kicker={coachRole}
           title="Invalid invite link"
           description="Ask an admin for a coach login link from the Coaches screen."
@@ -67,7 +68,7 @@ export default async function CoachAcceptInvitePage({
   if (!invite || invite.revokedAt) {
     return (
       <div className="mx-auto max-w-lg space-y-6 px-4 py-16">
-        <PageHeader
+        <ShellPageHeader
           kicker={coachRole}
           title="Invite not found"
           description="This link is no longer valid."
@@ -126,7 +127,7 @@ export default async function CoachAcceptInvitePage({
 
   return (
     <div className="mx-auto max-w-lg space-y-6 px-4 py-16">
-      <PageHeader
+      <ShellPageHeader
         kicker={`${terms.coach.singular} invite`}
         title={`Your ${terms.coach.singular.toLowerCase()} portal access`}
         description={
@@ -137,25 +138,29 @@ export default async function CoachAcceptInvitePage({
       />
 
       {errorKey && errorMessages[errorKey] && (
-        <div className="rounded-md border border-[var(--destructive)] bg-[var(--card)] p-3 text-sm text-[var(--destructive)]">
-          {errorMessages[errorKey]}
-        </div>
+        <GroupedSection>
+          <GroupedRow className="bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--destructive)]">
+            {errorMessages[errorKey]}
+          </GroupedRow>
+        </GroupedSection>
       )}
 
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 text-sm space-y-2">
-        <div>
-          <span className="text-[var(--muted-foreground)]">Email</span>
-          <div className="font-medium">{invite.email}</div>
-        </div>
-        <div>
-          <span className="text-[var(--muted-foreground)]">Role</span>
-          <div className="font-medium">
-            {invite.role === "staff_coach"
-              ? "HTN staff coach (full access unless clubs were restricted)"
-              : "External (ZZP) coach"}
+      <GroupedSection className="grouped-section md:elev-card">
+        <GroupedRow className="flex-col items-stretch gap-3 px-4 py-4 text-sm">
+          <div>
+            <span className="text-[var(--muted-foreground)]">Email</span>
+            <div className="font-medium">{invite.email}</div>
           </div>
-        </div>
-      </div>
+          <div>
+            <span className="text-[var(--muted-foreground)]">Role</span>
+            <div className="font-medium">
+              {invite.role === "staff_coach"
+                ? "HTN staff coach (full access unless clubs were restricted)"
+                : "External (ZZP) coach"}
+            </div>
+          </div>
+        </GroupedRow>
+      </GroupedSection>
 
       {!user ? (
         <div className="space-y-3">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { PageHeader } from "@/components/ui/page-header";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getPendingCancellationRequests } from "@/lib/booking/queries";
 import { DeletionRequestCard } from "./deletion-request-card";
 
@@ -29,11 +30,15 @@ export default async function DeletionsQueuePage() {
       />
 
       {requests.length === 0 ? (
-        <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--muted-foreground)]">
-          Nothing pending. <Link href="/admin/bookings" className="underline">
-            Back to calendar
-          </Link>
-        </div>
+        <EmptyState
+          title="Nothing pending"
+          description="Coach-initiated deletion requests will appear here for approval."
+          action={
+            <Link href="/admin/bookings" className="underline underline-offset-4">
+              Back to calendar
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {requests.map((r) => (

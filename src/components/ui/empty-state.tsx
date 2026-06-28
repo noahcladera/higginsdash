@@ -28,12 +28,13 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "elev-card flex flex-col items-center justify-center gap-3 px-6 py-12 text-center",
+        "flex flex-col items-center justify-center gap-3 px-6 py-12 text-center",
+        "md:elev-card",
         className,
       )}
     >
       {icon && (
-        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--glass-border-subtle)] bg-[var(--surface-strong)] text-[var(--muted-foreground)] shadow-[var(--highlight-inset-subtle)]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--glass-border-subtle)] bg-[var(--surface-strong)] text-[var(--muted-foreground)] shadow-[var(--highlight-inset-subtle)] md:shadow-[var(--highlight-inset-subtle)]">
           {icon}
         </div>
       )}

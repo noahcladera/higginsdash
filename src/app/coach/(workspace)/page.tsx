@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireCoach } from "@/lib/auth/require-coach";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { Section } from "@/components/ui/section";
 import { Stat, MetricStrip } from "@/components/ui/stat";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,6 +12,9 @@ import {
   PlusIcon,
   ClockIcon,
   ArrowRightIcon,
+  TicketIcon,
+  UsersIcon,
+  InboxIcon,
 } from "@/components/icons";
 import {
   amsterdamMidnightUtc,
@@ -31,31 +34,67 @@ import {
   deliveryModeLabel,
 } from "@/lib/classes/timing";
 import { getCoachCalendarEvents } from "@/lib/coach/calendar-queries";
-import { getCurrentBrand, getTerms } from "@/lib/tenant";
+import { getCurrentBrand, getCurrentOrg, getTerms } from "@/lib/tenant";
 import {
   daysOfWeek,
   formatWeekRange,
   mondayOfWeekUtc,
+  resolveWeekStart,
+  shiftWeeks,
+  weekParamOf,
 } from "@/lib/calendar/week";
 import { MiniWeekGrid } from "./_components/mini-week-grid";
+import { MobileGroupedMetrics } from "@/app/portal/_components/mobile-grouped-metrics";
+import { MobileQuickActions } from "@/app/portal/_components/mobile-quick-actions";
+import {
+  NextUpCard,
+  type NextUpItem,
+} from "@/app/portal/_components/next-up-card";
+import { CalendarPagerTransition } from "@/app/portal/_components/calendar-pager-transition";
+import { CoachPendingBanner } from "./_components/coach-pending-banner";
+import {
+  CoachTodaySchedule,
+  CoachTodayTimelineDesktop,
+  type CoachScheduleItem,
+} from "./_components/coach-today-schedule";
+import { CoachWeekPager } from "./_components/coach-week-pager";
 
 /**
- * Coach landing page. Vertical timeline of today's bookings + a metric
- * strip with the daily summary (sessions, hours, students, pending deletions).
+ * Coach landing page — mobile-native grouped dashboard + desktop timeline.
  */
-export default async function CoachHomePage() {
+export default async function CoachHomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { person, allowedClubIds } = await requireCoach();
-  const [t, brand] = await Promise.all([getTerms(), getCurrentBrand()]);
+  const [t, brand, org] = await Promise.all([
+    getTerms(),
+    getCurrentBrand(),
+    getCurrentOrg(),
+  ]);
+  const f = org.features;
   const bookingClub = courtBookingClubFilter(allowedClubIds);
+  const sp = (await searchParams) ?? {};
 
   const today = formatLocalDate(new Date());
   const todayParts = parseLocalDate(today);
-  const todayStartUtc = amsterdamMidnightUtc(todayParts.year, todayParts.month, todayParts.day);
+  const todayStartUtc = amsterdamMidnightUtc(
+    todayParts.year,
+    todayParts.month,
+    todayParts.day,
+  );
   const todayEndUtc = addDays(todayStartUtc, 1);
-  const weekStart = mondayOfWeekUtc(new Date());
+  const weekStart = resolveWeekStart(
+    typeof sp.week === "string" ? sp.week : undefined,
+  );
+  const thisWeekStart = mondayOfWeekUtc(new Date());
+  const isThisWeek = weekStart.getTime() === thisWeekStart.getTime();
+  const prevParam = weekParamOf(shiftWeeks(weekStart, -1));
+  const nextParam = weekParamOf(shiftWeeks(weekStart, 1));
+  const thisWeekParam = weekParamOf(thisWeekStart);
 
-  const [todays, pendingMine, todaysClasses, weekEvents] =
-    await Promise.all([
+  const [todays, pendingMine, todaysClasses, weekEvents] = await Promise.all([
     prisma.courtBooking.findMany({
       where: {
         bookedByPersonId: person.id,
@@ -83,16 +122,15 @@ export default async function CoachHomePage() {
   );
   const weekDays = daysOfWeek(weekStart);
 
-  // "On today" = personal court bookings + classes assigned to this coach.
   const onTodayCount = todays.length + todaysClassRows.length;
 
   const courtMinutesToday = todays.reduce(
     (acc, b) => acc + minutesBetween(b.startsAt, b.endsAt),
     0,
   );
-  // On-court teaching minutes (class start→end), excluding pickup travel.
   const classMinutesToday = todaysClassRows.reduce(
-    (acc, { session }) => acc + minutesBetween(session.startsAt, session.endsAt),
+    (acc, { session }) =>
+      acc + minutesBetween(session.startsAt, session.endsAt),
     0,
   );
   const totalMinutesToday = courtMinutesToday + classMinutesToday;
@@ -102,8 +140,6 @@ export default async function CoachHomePage() {
     .reduce((acc, b) => acc + minutesBetween(b.startsAt, b.endsAt), 0);
   const coachingMinutesToday = coachingCourtMinutesToday + classMinutesToday;
 
-  // "This week" = on-court teaching minutes from class sessions + coaching
-  // court bookings, aligned to the Mon→Sun week shown in the grid below.
   const weekClassMinutes = weekSessions.reduce(
     (acc, s) => acc + minutesBetween(s.classStartAt, s.classEndAt),
     0,
@@ -122,36 +158,198 @@ export default async function CoachHomePage() {
     ? `${onTodayCount} thing${onTodayCount === 1 ? "" : "s"} on the books today.`
     : "Quiet day ahead. Want to add a session?";
 
+  const scheduleItems: CoachScheduleItem[] = [
+    ...todaysClassRows.map(({ series, session }) => {
+      const timing = computeClassTiming({
+        session,
+        series: {
+          deliveryMode: series.deliveryMode,
+          pickupAt: series.pickupAt,
+        },
+        school: series.school,
+      });
+      const modeTone =
+        series.deliveryMode === "pickup"
+          ? "joint"
+          : series.deliveryMode === "onsite"
+            ? "warning"
+            : series.venue.kind === "club"
+              ? "triaz"
+              : "neutral";
+      const headlineTime =
+        series.deliveryMode === "pickup" && timing.coachArriveAt
+          ? timing.coachArriveAt
+          : timing.classStartAt;
+      return {
+        id: `class-${session.id}`,
+        kind: "class" as const,
+        startsAt: headlineTime,
+        endsAt: session.endsAt,
+        href: `/coach/classes/${series.seriesId}/sessions/${session.id}`,
+        title: series.programName,
+        subtitle: `${formatTimingLine(timing, series.deliveryMode)} · ${series.venue.name}`,
+        badge: {
+          label: deliveryModeLabel(series.deliveryMode),
+          tone: modeTone as "triaz" | "joint" | "warning" | "neutral",
+        },
+      };
+    }),
+    ...todays.map((b) => ({
+      id: `booking-${b.id}`,
+      kind: "booking" as const,
+      startsAt: b.startsAt,
+      endsAt: b.endsAt,
+      href: "/coach/bookings",
+      title: `${b.club.name} · ${b.court.name}`,
+      subtitle:
+        b.purpose === "coaching"
+          ? t.privateLesson.singular
+          : "Personal court time",
+      badge: {
+        label:
+          b.purpose === "coaching" ? t.privateLesson.singular : "Personal",
+        tone: (b.purpose === "coaching" ? "joint" : "triaz") as
+          | "triaz"
+          | "joint",
+      },
+      warning:
+        b.status === "cancellation_requested" ? "Deletion pending" : undefined,
+    })),
+  ].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+
+  const nextUp: NextUpItem | null =
+    scheduleItems.length > 0
+      ? {
+          kind:
+            scheduleItems[0]!.kind === "class"
+              ? "session"
+              : "booking",
+          startsAt: scheduleItems[0]!.startsAt,
+          endsAt: scheduleItems[0]!.endsAt,
+          title: scheduleItems[0]!.title,
+          subtitle: scheduleItems[0]!.subtitle,
+          href: scheduleItems[0]!.href,
+        }
+      : null;
+
+  const quickActions = [
+    ...(f.coachPrivateLessonInvoicing || f.courtBookings
+      ? [
+          {
+            href: "/coach/book",
+            label: `${t.bookVerb} ${t.court.singular.toLowerCase()}`,
+            icon: <CalendarIcon size={18} />,
+            emphasis: true,
+          },
+        ]
+      : []),
+    {
+      href: "/coach/calendar",
+      label: "Open calendar",
+      icon: <CalendarIcon size={18} />,
+    },
+    ...(f.courtBookings
+      ? [
+          {
+            href: "/coach/bookings",
+            label: "My bookings",
+            icon: <TicketIcon size={18} />,
+          },
+        ]
+      : []),
+    ...(f.inbox
+      ? [
+          {
+            href: "/coach/inbox",
+            label: "Inbox",
+            icon: <InboxIcon size={18} />,
+          },
+        ]
+      : []),
+    ...(f.classes
+      ? [
+          {
+            href: "/coach/classes",
+            label: `My ${t.class.plural.toLowerCase()}`,
+            icon: <UsersIcon size={18} />,
+          },
+        ]
+      : []),
+    ...(f.coachPrivateLessonInvoicing
+      ? [
+          {
+            href: "/coach/hours",
+            label: "My hours",
+            icon: <ClockIcon size={18} />,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div className="space-y-10">
-      <PageHeader
+      <ShellPageHeader
         kicker={t.coach.role}
         title={greeting}
         description={subtitle}
         actions={
-          <Button asChild tone="triaz">
-            <Link href="/coach/book">
-              <PlusIcon /> {t.bookVerb} a {t.court.singular.toLowerCase()}
-            </Link>
-          </Button>
+          (f.coachPrivateLessonInvoicing || f.courtBookings) && (
+            <Button asChild tone="triaz">
+              <Link href="/coach/book">
+                <PlusIcon /> {t.bookVerb} a {t.court.singular.toLowerCase()}
+              </Link>
+            </Button>
+          )
         }
       />
 
-      {pendingMine > 0 && (
-        <div className="fade-in flex items-center justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[var(--warning-ink)]">
-          <span>
-            {pendingMine} deletion request{pendingMine === 1 ? "" : "s"}{" "}
-            awaiting an admin decision.
-          </span>
-          <Button asChild variant="ghost" size="sm" tone="neutral">
-            <Link href="/coach/bookings">
-              View bookings <ArrowRightIcon />
-            </Link>
-          </Button>
-        </div>
-      )}
+      <CoachPendingBanner count={pendingMine} />
 
-      <MetricStrip>
+      {nextUp && <NextUpCard item={nextUp} />}
+
+      <MobileGroupedMetrics
+        items={[
+          {
+            label: "On today",
+            value: onTodayCount || "—",
+            hint:
+              onTodayCount === 0
+                ? "Nothing scheduled"
+                : `${formatHours(totalMinutesToday)} on ${t.court.singular.toLowerCase()}`,
+          },
+          {
+            label: `${t.privateLesson.plural}`,
+            value:
+              coachingMinutesToday > 0
+                ? formatHours(coachingMinutesToday)
+                : "—",
+            hint:
+              coachingMinutesToday === 0
+                ? `No ${t.privateLesson.plural.toLowerCase()} or ${t.class.plural.toLowerCase()}`
+                : "billable today",
+          },
+          {
+            label: "This week",
+            value: formatHours(weekMinutes),
+            hint: "Mon–Sun teaching",
+          },
+          {
+            label: "Pending",
+            value: pendingMine || "—",
+            hint: pendingMine ? "deletion requests" : "all clear",
+          },
+        ]}
+      />
+
+      <MobileQuickActions items={quickActions} header="Quick actions" />
+
+      <CoachTodaySchedule
+        items={scheduleItems}
+        bookLabel={t.bookVerb}
+        courtSingular={t.court.singular.toLowerCase()}
+      />
+
+      <MetricStrip className="hidden lg:flex">
         <Stat
           label="On today"
           value={onTodayCount || "—"}
@@ -193,6 +391,7 @@ export default async function CoachHomePage() {
         <Section
           title={`Today's ${t.class.plural.toLowerCase()}`}
           description={`${todaysClassRows.length} ${todaysClassRows.length === 1 ? t.class.singular.toLowerCase() : t.class.plural.toLowerCase()} with your name on them.`}
+          className="hidden lg:block"
         >
           <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--surface)]">
             {todaysClassRows.map(({ series, session }) => {
@@ -242,7 +441,8 @@ export default async function CoachHomePage() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">
                         {series.programName}
-                        {series.seriesName && series.seriesName !== series.programName
+                        {series.seriesName &&
+                        series.seriesName !== series.programName
                           ? ` · ${series.seriesName}`
                           : ""}
                       </div>
@@ -250,8 +450,8 @@ export default async function CoachHomePage() {
                         {formatTimingLine(timing, series.deliveryMode)}
                       </div>
                       <div className="text-xs text-[var(--muted-foreground)]">
-                        {venueLine} · {series.enrolledCount}/{series.maxStudents}{" "}
-                        enrolled
+                        {venueLine} · {series.enrolledCount}/
+                        {series.maxStudents} enrolled
                       </div>
                     </div>
                     <div className="shrink-0">
@@ -276,15 +476,25 @@ export default async function CoachHomePage() {
           </Button>
         }
       >
-        {weekSessions.length === 0 ? (
-          <EmptyState
-            icon={<CalendarIcon size={20} />}
-            title="No teaching this week"
-            description="Nothing on your roster Monday through Sunday. Check next week from the calendar."
-          />
-        ) : (
-          <MiniWeekGrid days={weekDays} sessions={weekSessions} />
-        )}
+        <CoachWeekPager
+          className="mb-4 lg:hidden"
+          label={formatWeekRange(weekStart)}
+          prevHref={`/coach?week=${prevParam}`}
+          nextHref={`/coach?week=${nextParam}`}
+          thisWeekHref={`/coach?week=${thisWeekParam}`}
+          isThisWeek={isThisWeek}
+        />
+        <CalendarPagerTransition pagerKey={weekParamOf(weekStart)} compareKind="lex">
+          {weekSessions.length === 0 ? (
+            <EmptyState
+              icon={<CalendarIcon size={20} />}
+              title="No teaching this week"
+              description="Nothing on your roster Monday through Sunday."
+            />
+          ) : (
+            <MiniWeekGrid days={weekDays} sessions={weekSessions} />
+          )}
+        </CalendarPagerTransition>
       </Section>
 
       <Section
@@ -299,6 +509,7 @@ export default async function CoachHomePage() {
             <Link href="/coach/bookings">All bookings →</Link>
           </Button>
         }
+        className="hidden lg:block"
       >
         {todays.length === 0 ? (
           <EmptyState
@@ -314,58 +525,25 @@ export default async function CoachHomePage() {
             }
           />
         ) : (
-          <ol className="relative space-y-1 border-l-2 border-dashed border-[var(--border)] pl-6">
-            {todays.map((b) => (
-              <li key={b.id} className="relative">
-                <span
-                  className={cn(
-                    "absolute -left-[31px] top-3 h-3.5 w-3.5 rounded-full ring-4 ring-[var(--background)]",
-                    b.purpose === "coaching"
-                      ? "bg-[var(--joint)]"
-                      : "bg-[var(--triaz)]",
-                  )}
-                  aria-hidden
-                />
-                <div className="flex items-center gap-4 rounded-[var(--radius-md)] px-3 py-3 transition-colors hover:bg-[var(--surface)]">
-                  <div className="w-20 shrink-0">
-                    <div className="tabular font-display text-xl font-medium tracking-tight">
-                      {formatTime(b.startsAt)}
-                    </div>
-                    <div className="tabular text-xs text-[var(--muted-foreground)]">
-                      → {formatTime(b.endsAt)}
-                    </div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">
-                      {b.club.name} · {b.court.name}
-                    </div>
-                    {b.status === "cancellation_requested" && (
-                      <div className="text-xs text-[var(--warning-ink)]">
-                        Deletion pending
-                      </div>
-                    )}
-                  </div>
-                  <div className="shrink-0">
-                    <Badge
-                      tone={b.purpose === "coaching" ? "joint" : "triaz"}
-                      variant="soft"
-                      className="capitalize"
-                    >
-                      {b.purpose === "coaching"
-                        ? t.privateLesson.singular
-                        : "Personal"}
-                    </Badge>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ol>
+          <CoachTodayTimelineDesktop
+            bookings={todays.map((b) => ({
+              id: b.id,
+              startsAt: b.startsAt,
+              endsAt: b.endsAt,
+              clubName: b.club.name,
+              courtName: b.court.name,
+              purpose: b.purpose,
+              status: b.status,
+            }))}
+            privateLessonSingular={t.privateLesson.singular}
+          />
         )}
       </Section>
 
       <Section
         title="Weekly snapshot"
         description={`${formatHours(weekMinutes)} of ${t.privateLesson.plural.toLowerCase()} + ${t.class.plural.toLowerCase()} this week.`}
+        className="hidden lg:block"
       >
         <Link
           href="/coach/hours"

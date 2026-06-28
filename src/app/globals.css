@@ -147,6 +147,46 @@
   --duration-fast: 150ms;
   --duration-base: 240ms;
   --duration-slow: 380ms;
+
+  /* Liquid Glass — navigation / control layer only (see docs/design/liquid-glass.md) */
+  --glass-regular-bg: oklch(0.99 0.004 85 / 0.52);
+  --glass-regular-bg-scrolled: oklch(0.985 0.005 85 / 0.72);
+  --glass-regular-blur: 40px;
+  --glass-regular-saturate: 180%;
+  --glass-regular-border: oklch(1 0 0 / 0.28);
+  --glass-regular-highlight: inset 0 1px 0 oklch(1 0 0 / 0.22);
+  --glass-regular-shadow: 0 8px 32px oklch(0 0 0 / 0.10);
+
+  --glass-clear-bg: oklch(0.99 0.004 85 / 0.32);
+  --glass-clear-dim: oklch(0 0 0 / 0.25);
+
+  /* Elevated pill on glass tracks (tab bar + segmented controls) */
+  --glass-segment-pill-bg: oklch(1 0.003 85 / 0.94);
+  --glass-segment-pill-border: oklch(0 0 0 / 0.07);
+  --glass-segment-pill-shadow:
+    0 1px 4px oklch(0 0 0 / 0.10),
+    inset 0 1px 0 oklch(1 0 0 / 0.55);
+
+  --glass-interactive-scale: 0.96;
+  --glass-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --content-grouped-bg: var(--secondary);
+  --content-grouped-inset: var(--card);
+  --content-separator: oklch(0.86 0.010 85 / 0.55);
+
+  --radius-glass-outer: 28px;
+  --radius-glass-inner: 22px;
+  --radius-grouped: 12px;
+
+  --mobile-tab-bar-height: 3.5rem;
+  --mobile-tab-bar-minimized: 3rem;
+  --mobile-tab-bar-float-margin: 1rem;
+  --mobile-tab-bar-float-bottom: calc(
+    env(safe-area-inset-bottom, 0px) + 0.5rem
+  );
+
+  /* Compact shell = floating tab bar; desktop sidebar from lg (1024px) up */
+  --shell-compact-max: 1023px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -230,6 +270,18 @@
     --glass-bg-fallback: oklch(0.24 0.016 240 / 0.88);
     --glass-border: oklch(1 0 0 / 0.12);
     --glass-border-subtle: oklch(1 0 0 / 0.06);
+
+    --glass-regular-bg: oklch(0.24 0.016 240 / 0.52);
+    --glass-regular-bg-scrolled: oklch(0.26 0.016 240 / 0.72);
+    --glass-regular-border: oklch(1 0 0 / 0.14);
+    --glass-clear-bg: oklch(0.22 0.014 240 / 0.32);
+    --glass-clear-dim: oklch(0 0 0 / 0.35);
+    --glass-segment-pill-bg: oklch(0.34 0.018 240 / 0.92);
+    --glass-segment-pill-border: oklch(1 0 0 / 0.14);
+    --glass-segment-pill-shadow:
+      0 1px 4px oklch(0 0 0 / 0.35),
+      inset 0 1px 0 oklch(1 0 0 / 0.12);
+    --content-separator: oklch(0.34 0.014 240 / 0.55);
 
     --highlight-inset: inset 0 1px 0 oklch(1 0 0 / 0.08);
     --highlight-inset-subtle: inset 0 1px 0 oklch(1 0 0 / 0.10);
@@ -318,6 +370,7 @@
      * <Section> so anchors land below any future sticky chrome. */
     scroll-behavior: smooth;
     scroll-padding-top: 6rem;
+    overflow-x: clip;
   }
   body {
     background-color: var(--background);
@@ -327,6 +380,21 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    overflow-x: clip;
+  }
+  @media (hover: none) {
+    body {
+      /* iOS Safari: fixed backgrounds break touch hit-testing. */
+      background-attachment: scroll;
+    }
+  }
+  /* iOS Safari auto-zooms focused inputs below 16px — keep mobile legible. */
+  @media (max-width: 1023px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
   }
   h1, h2, h3 {
     font-family: var(--font-display);
@@ -379,6 +447,108 @@
 }
 .slide-from-left {
   animation: higgins-slide-from-left var(--duration-base) var(--ease-out-soft) both;
+}
+
+@keyframes higgins-pager-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Overlay entrances for the Sheet primitive. */
+@keyframes higgins-sheet-in {
+  from { transform: translate3d(0, 100%, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+@keyframes higgins-modal-in {
+  from { opacity: 0; transform: translate3d(-50%, -50%, 0) scale(0.96); }
+  to { opacity: 1; transform: translate3d(-50%, -50%, 0) scale(1); }
+}
+.animate-sheet-in {
+  animation: higgins-sheet-in var(--duration-base) var(--ease-out-soft) both;
+}
+.animate-modal-in {
+  animation: higgins-modal-in var(--duration-base) var(--ease-out-soft) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-in,
+  .animate-modal-in {
+    animation: none;
+  }
+}
+
+/*
+ * Global navigation progress bar (NavigationProgress). Sits above all
+ * chrome (header z-30, tab bar z-40, sheets z-50) so a tap is acknowledged
+ * instantly while the destination RSC payload streams.
+ */
+.nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 100;
+  pointer-events: none;
+}
+.nav-progress-bar {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, var(--triaz), var(--triaz-ink));
+  box-shadow: 0 0 8px var(--triaz), 0 0 2px var(--triaz);
+  transition:
+    transform var(--duration-base) var(--ease-out-soft),
+    opacity 200ms linear;
+}
+.nav-progress[data-state="done"] .nav-progress-bar {
+  opacity: 0;
+  transition:
+    transform 160ms var(--ease-out-soft),
+    opacity 220ms linear 40ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress-bar {
+    transition: opacity 120ms linear;
+  }
+}
+
+/*
+ * Touch devices — tap reliability only.
+ *
+ * NOTE: We intentionally KEEP frosted glass (`backdrop-filter`) on iOS.
+ * Modern iOS Safari (15.4+) supports it well; the earlier blanket
+ * flatten made the phone look "meh" vs desktop for no real benefit. The
+ * genuine tap problems were Radix portals + URL-driven refetch, which are
+ * addressed elsewhere. Accessibility fallbacks (reduced-transparency /
+ * reduced-contrast) below still flatten glass when the user asks for it.
+ */
+@media (hover: none) {
+  .grouped-row button,
+  .grouped-row a,
+  [data-segment],
+  [data-tab-item],
+  .glass-interactive {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /*
+   * A clipped container wrapping `backdrop-filter` children can mis-hit-test
+   * on iOS, so the pager stays unclipped. The directional slide's transient
+   * 16px translate is absorbed by the body's `overflow-x: clip`, so there is
+   * no horizontal wobble.
+   */
+  .pager-root {
+    overflow-x: visible;
+  }
+
+  /* Masked sticky headers can capture taps in transparent regions. */
+  .scroll-edge-bottom {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -481,6 +651,13 @@
       var(--shadow-neutral),
       inset 0 1px 0 oklch(1 0 0 / 0.12),
       inset 0 -1px 0 oklch(0 0 0 / 0.25);
+  }
+
+  .tab-active-pill,
+  .glass-segment-pill {
+    background-color: var(--glass-segment-pill-bg);
+    border: 1px solid var(--glass-segment-pill-border);
+    box-shadow: var(--glass-segment-pill-shadow);
   }
 
   .main-ambient-bleed {
@@ -596,4 +773,159 @@
   width: 1.25rem;
   height: auto;
   border-radius: 2px;
+}
+
+/* Mobile shell — floating tab bar + safe areas (native-wrapper ready) */
+.pb-safe-tab {
+  padding-bottom: calc(
+    var(--mobile-tab-bar-height) + var(--mobile-tab-bar-float-margin) +
+      var(--mobile-tab-bar-float-bottom)
+  );
+}
+
+/* Floating CTAs on compact shell — sit above the tab bar capsule */
+.bottom-above-tab-bar {
+  bottom: calc(
+    var(--mobile-tab-bar-float-bottom) + var(--mobile-tab-bar-height) + 0.75rem
+  );
+}
+
+@media (min-width: 1024px) {
+  .bottom-above-tab-bar {
+    bottom: 1rem;
+  }
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Liquid Glass utilities — navigation / control layer only */
+.glass-regular {
+  background-color: var(--glass-regular-bg);
+  border: 1px solid var(--glass-regular-border);
+  box-shadow: var(--glass-regular-shadow), var(--glass-regular-highlight);
+  -webkit-backdrop-filter: blur(var(--glass-regular-blur))
+    saturate(var(--glass-regular-saturate));
+  backdrop-filter: blur(var(--glass-regular-blur))
+    saturate(var(--glass-regular-saturate));
+}
+
+.glass-regular-scrolled {
+  background-color: var(--glass-regular-bg-scrolled);
+}
+
+.glass-clear {
+  background-color: var(--glass-clear-bg);
+  border: 1px solid var(--glass-regular-border);
+  -webkit-backdrop-filter: blur(var(--glass-regular-blur))
+    saturate(var(--glass-regular-saturate));
+  backdrop-filter: blur(var(--glass-regular-blur))
+    saturate(var(--glass-regular-saturate));
+}
+
+.glass-interactive {
+  transition: transform var(--duration-fast) var(--glass-spring);
+}
+
+.glass-interactive:active {
+  transform: scale(var(--glass-interactive-scale));
+}
+
+.scroll-edge-top {
+  mask-image: linear-gradient(to bottom, transparent, black 1.5rem);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 1.5rem);
+}
+
+.scroll-edge-bottom {
+  mask-image: linear-gradient(to top, transparent, black 1.5rem);
+  -webkit-mask-image: linear-gradient(to top, transparent, black 1.5rem);
+}
+
+.grouped-section {
+  background-color: var(--content-grouped-inset);
+  border-radius: var(--radius-grouped);
+  overflow: hidden;
+}
+
+.grouped-row {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--content-separator);
+}
+
+.grouped-row:last-child,
+.grouped-row-last {
+  border-bottom: none;
+}
+
+.grouped-row-first {
+  border-top-left-radius: var(--radius-grouped);
+  border-top-right-radius: var(--radius-grouped);
+}
+
+.grouped-section-header {
+  padding: 0 1rem 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-transform: capitalize;
+}
+
+.grouped-section-footer {
+  padding: 0.375rem 1rem 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.content-grouped-bg {
+  background-color: var(--content-grouped-bg);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-regular,
+  .glass-clear,
+  .glass-panel,
+  .glass-panel-strong {
+    background-color: var(--glass-bg-fallback);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .glass-segment-pill,
+  .tab-active-pill {
+    background-color: var(--card);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+@media (prefers-contrast: more) {
+  .glass-regular,
+  .glass-clear {
+    background-color: var(--glass-bg-fallback);
+    border-color: var(--border-strong);
+  }
+
+  .grouped-row {
+    border-bottom-color: var(--border-strong);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-interactive:active {
+    transform: none;
+  }
+}
+
+/* Portal shell — hide dev overlay FAB */
+[data-portal-shell] [data-nextjs-dev-tools-button],
+[data-portal-shell] nextjs-portal {
+  display: none !important;
 }

@@ -135,7 +135,7 @@ export function CreditsPanel({
           <p className="text-xs text-[var(--destructive)]">{error}</p>
         )}
         <div className="flex justify-end">
-          <Button type="submit" disabled={pending} variant="solid" tone="triaz">
+          <Button type="submit" loading={pending} variant="solid" tone="triaz">
             {pending ? "Granting…" : "Grant credit"}
           </Button>
         </div>

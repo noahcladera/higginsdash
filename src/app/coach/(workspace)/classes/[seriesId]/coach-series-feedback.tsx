@@ -64,7 +64,7 @@ export function CoachSeriesFeedback({
           type="button"
           size="sm"
           variant="outline"
-          disabled={pending}
+          loading={pending}
           onClick={save}
         >
           {pending ? "Saving…" : "Save feedback"}

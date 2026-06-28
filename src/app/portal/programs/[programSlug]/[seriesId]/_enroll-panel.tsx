@@ -18,6 +18,7 @@ import { computeEnrollmentPricing } from "@/lib/portal/enrollment-pricing";
 import { createEnrollment } from "@/lib/portal/enrollment-actions";
 import { enrollmentSuccessUrl } from "@/lib/portal/purchase-success-url";
 import { startCheckout as beginCheckout } from "@/lib/payments/start-checkout";
+import { startNavProgress } from "@/components/ui/navigation-progress";
 import {
   getMollieAccountForMembership,
   getMollieAccountForOperations,
@@ -334,6 +335,7 @@ export function EnrollPanel({
           ageOverrideAck: !selected.ageOk ? true : undefined,
         });
         if (res.ok) {
+          startNavProgress();
           router.push(
             enrollmentSuccessUrl({
               seriesId,
@@ -430,7 +432,7 @@ export function EnrollPanel({
     venueClubSlug != null;
 
   return (
-    <div className="space-y-4 elev-card p-5">
+    <div className="space-y-4 grouped-section p-5 md:elev-card">
       <CapacityHeader
         slotsLeft={slotsLeft}
         maxStudents={maxStudents}
@@ -469,59 +471,58 @@ export function EnrollPanel({
           to enroll them.
         </p>
       ) : (
-        <fieldset className="space-y-2">
-          <legend className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+        <fieldset className="space-y-0">
+          <legend className="grouped-section-header px-0 normal-case tracking-normal text-sm font-medium">
             Who&apos;s joining?
           </legend>
-          <div className="space-y-1">
+          <ul className="grouped-section mt-2 list-none p-0 m-0">
             {candidates.map((c) => (
-              <label
-                key={c.personId}
-                className={cn(
-                  "flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm transition-colors",
-                  selectedId === c.personId
-                    ? "border-[var(--triaz)] bg-[var(--triaz-soft)]"
-                    : "border-[var(--border)] hover:border-[var(--triaz)]/40",
-                  (c.existing || !c.ageOk) && "opacity-60",
-                )}
-              >
-                <input
-                  type="radio"
-                  name="student"
-                  value={c.personId}
-                  checked={selectedId === c.personId}
-                  onChange={(e) => setSelectedId(e.target.value)}
-                  className="accent-[var(--triaz)]"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="font-medium">{c.displayName}</span>
-                    {c.relation === "you" && (
-                      <Badge variant="outline" className="text-[10px]">
-                        You
-                      </Badge>
+              <li key={c.personId} className="grouped-row p-0">
+                <label
+                  className={cn(
+                    "flex min-h-[2.75rem] w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm",
+                    selectedId === c.personId && "bg-[var(--triaz-soft)]/40",
+                    (c.existing || !c.ageOk) && "opacity-60",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="student"
+                    value={c.personId}
+                    checked={selectedId === c.personId}
+                    onChange={(e) => setSelectedId(e.target.value)}
+                    className="accent-[var(--triaz)]"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="font-medium">{c.displayName}</span>
+                      {c.relation === "you" && (
+                        <Badge variant="outline" className="text-[10px]">
+                          You
+                        </Badge>
+                      )}
+                      {c.age != null && (
+                        <span className="text-xs text-[var(--muted-foreground)]">
+                          ({c.age})
+                        </span>
+                      )}
+                    </div>
+                    {c.existing && (
+                      <div className="text-[11px] text-[var(--muted-foreground)]">
+                        Already enrolled · {c.existing.status.replace("_", " ")}
+                      </div>
                     )}
-                    {c.age != null && (
-                      <span className="text-xs text-[var(--muted-foreground)]">
-                        ({c.age})
-                      </span>
+                    {!c.ageOk && !c.existing && (
+                      <div className="text-[11px] text-[var(--muted-foreground)]">
+                        Outside the age range — request a review below to
+                        enroll anyway.
+                      </div>
                     )}
                   </div>
-                  {c.existing && (
-                    <div className="text-[11px] text-[var(--muted-foreground)]">
-                      Already enrolled · {c.existing.status.replace("_", " ")}
-                    </div>
-                  )}
-                  {!c.ageOk && !c.existing && (
-                    <div className="text-[11px] text-[var(--muted-foreground)]">
-                      Outside the age range — request a review below to
-                      enroll anyway.
-                    </div>
-                  )}
-                </div>
-              </label>
+                </label>
+              </li>
             ))}
-          </div>
+          </ul>
         </fieldset>
       )}
 
@@ -706,9 +707,10 @@ export function EnrollPanel({
       ) : (
         <Button
           tone="triaz"
-          variant="solid"
-          className="w-full"
+          variant="glassProminent"
+          className="w-full min-h-11"
           onClick={onEnroll}
+          loading={pending}
           disabled={
             pending ||
             !enrollmentOpenNow ||
@@ -820,6 +822,7 @@ function TwoStepCheckout({
   onLessonRun: (payload: { lessonAmount: number }) => void;
 }) {
   const router = useRouter();
+  const [step1Pending, startStep1] = useTransition();
   const membershipAccount = getMollieAccountForMembership({
     clubSlug: venueClubSlug,
   });
@@ -827,6 +830,7 @@ function TwoStepCheckout({
 
   function payMembership() {
     const stepReturn = `${pathname}?step=lesson`;
+    startStep1(() => {
     void beginCheckout(
       {
         amountEur: membershipAddOn,
@@ -846,7 +850,10 @@ function TwoStepCheckout({
       },
       router,
     );
+    });
   }
+
+  const step1Busy = pending || step1Pending;
 
   return (
     <div className="space-y-3">
@@ -866,11 +873,12 @@ function TwoStepCheckout({
         ctaLabel={
           lessonStepUnlocked
             ? "Membership paid"
-            : pending
+            : step1Busy
               ? "Opening Mollie…"
               : `Pay (${MOLLIE_ACCOUNT_LABELS[membershipAccount]})`
         }
-        disabled={disabled || lessonStepUnlocked || pending}
+        loading={step1Busy && !lessonStepUnlocked}
+        disabled={disabled || lessonStepUnlocked || step1Busy}
         onClick={payMembership}
       />
 
@@ -890,6 +898,7 @@ function TwoStepCheckout({
             ? "Opening Mollie…"
             : `Pay (${MOLLIE_ACCOUNT_LABELS[lessonAccount]})`
         }
+        loading={pending && lessonStepUnlocked}
         disabled={disabled || !lessonStepUnlocked || pending}
         onClick={() => onLessonRun({ lessonAmount })}
       />
@@ -912,6 +921,7 @@ function StepCard({
   completed,
   ctaLabel,
   disabled,
+  loading = false,
   onClick,
 }: {
   stepNumber: number;
@@ -922,6 +932,7 @@ function StepCard({
   completed: boolean;
   ctaLabel: string;
   disabled: boolean;
+  loading?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -963,10 +974,11 @@ function StepCard({
       </div>
       <Button
         tone="triaz"
-        variant="solid"
+        variant="glassProminent"
         size="sm"
-        className="mt-3 w-full"
+        className="mt-3 w-full min-h-11"
         onClick={onClick}
+        loading={loading}
         disabled={disabled}
       >
         {ctaLabel}

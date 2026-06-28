@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { GroupedSection, GroupedRow } from "@/components/ui/grouped-list";
 
 export default function CoachError({
   error,
@@ -17,21 +18,25 @@ export default function CoachError({
   }, [error]);
 
   return (
-    <div className="space-y-8">
-      <EmptyState
-        title="Something went sideways"
-        description="We couldn't load this view. Have another go, or jump back to today."
-        action={
-          <div className="flex items-center justify-center gap-2">
-            <Button onClick={reset} tone="triaz">
-              Try again
-            </Button>
-            <Button asChild variant="ghost" tone="neutral">
-              <Link href="/coach">Back to today</Link>
-            </Button>
-          </div>
-        }
-      />
+    <div className="space-y-10">
+      <GroupedSection>
+        <GroupedRow className="p-0">
+          <EmptyState
+            title="Something went sideways"
+            description="We couldn't load this view. Have another go, or jump back to today."
+            action={
+              <div className="flex items-center justify-center gap-2">
+                <Button onClick={reset} tone="triaz">
+                  Try again
+                </Button>
+                <Button asChild variant="ghost" tone="neutral">
+                  <Link href="/coach">Back to today</Link>
+                </Button>
+              </div>
+            }
+          />
+        </GroupedRow>
+      </GroupedSection>
       {error.digest && (
         <p className="text-center text-[10px] uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
           Error ID · {error.digest}

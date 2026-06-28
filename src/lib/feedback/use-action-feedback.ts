@@ -3,6 +3,7 @@
 import { useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { startNavProgress } from "@/components/ui/navigation-progress";
 import type { ActionResult } from "./types";
 
 /**
@@ -134,6 +135,7 @@ export function useActionFeedback<T = void>(
         options.onSuccess?.(okResult);
 
         if (options.returnTo) {
+          startNavProgress();
           router.push(options.returnTo);
         } else if (options.refresh !== false) {
           router.refresh();

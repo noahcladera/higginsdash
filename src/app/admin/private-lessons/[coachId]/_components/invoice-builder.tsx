@@ -180,6 +180,7 @@ export function InvoiceBuilder({
           )}
           <Button
             onClick={handleGenerate}
+            loading={isPending}
             disabled={isPending || selected.size === 0}
           >
             {isPending ? "Generating..." : "Generate invoice"}

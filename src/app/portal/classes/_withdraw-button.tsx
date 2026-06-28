@@ -57,7 +57,7 @@ export function WithdrawButton({
         <Button
           size="sm"
           variant="destructive"
-          disabled={pending}
+          loading={pending}
           onClick={fire}
         >
           {pending ? "Withdrawing…" : `Withdraw ${studentName}`}

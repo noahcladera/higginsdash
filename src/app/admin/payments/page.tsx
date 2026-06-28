@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
+import { EmptyState } from "@/components/ui/empty-state";
 
 /**
  * Admin payments list with two queues:
@@ -96,10 +97,10 @@ export default async function AdminPaymentsPage() {
       >
         {refundFlagsEnrollments.length === 0 &&
         refundFlagsMemberships.length === 0 ? (
-          <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--muted-foreground)]">
-            Nothing flagged. The cancellation flows automatically clear this
-            list when a refund is recorded.
-          </div>
+          <EmptyState
+            title="Nothing flagged"
+            description="The cancellation flows automatically clear this list when a refund is recorded."
+          />
         ) : (
           <div className="space-y-2">
             {refundFlagsEnrollments.map((e) => {

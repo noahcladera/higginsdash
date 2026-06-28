@@ -304,7 +304,7 @@ export function PortalTrialForm({
         >
           Back to browse
         </Link>
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" loading={isPending}>
           {isPending ? "Sending..." : "Request trial"}
         </Button>
       </div>

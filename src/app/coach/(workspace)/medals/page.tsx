@@ -1,6 +1,7 @@
 import { requireCoach } from "@/lib/auth/require-coach";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { Section } from "@/components/ui/section";
+import { GroupedSection, GroupedLinkRow } from "@/components/ui/grouped-list";
 import { CeremonyChecklist } from "@/components/medals/coach/ceremony-checklist";
 import { CoachMedalSummary } from "@/components/medals/coach/coach-medal-summary";
 import { LessonTrackCards } from "@/components/medals/coach/lesson-track-cards";
@@ -17,7 +18,7 @@ export default async function CoachMedalsHubPage() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <ShellPageHeader
         kicker="Curriculum"
         title="Medals guide"
         description="Everything you need to run medals season — levels, lesson plans, and your roster totals."
@@ -77,7 +78,25 @@ export default async function CoachMedalsHubPage() {
       </Section>
 
       <Section title="Reference videos">
-        <ul className="space-y-2 text-sm">
+        <div className="lg:hidden">
+          <GroupedSection>
+            {REFERENCE_VIDEOS.map((v) => (
+              <GroupedLinkRow
+                key={v.id}
+                href={youtubeWatchUrl(v.youtubeId)}
+                className="flex-col items-stretch gap-0.5 py-3"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="font-medium">{v.title}</span>
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  Ages {v.ageRange}
+                </span>
+              </GroupedLinkRow>
+            ))}
+          </GroupedSection>
+        </div>
+        <ul className="hidden space-y-2 text-sm lg:block">
           {REFERENCE_VIDEOS.map((v) => (
             <li key={v.id}>
               <a

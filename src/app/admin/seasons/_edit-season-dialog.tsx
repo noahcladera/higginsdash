@@ -130,6 +130,7 @@ export function EditSeasonDialog({
             <Button
               type="submit"
               tone="triaz"
+              loading={pending}
               disabled={pending || !name.trim()}
             >
               {pending ? "Saving…" : "Save changes"}

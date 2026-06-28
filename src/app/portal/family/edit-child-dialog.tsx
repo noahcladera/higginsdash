@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogTrigger,
   DialogClose,
-} from "@/components/ui/dialog";
+} from "@/components/ui/sheet-dialog";
 import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/ui/date-field";
 import { FormField, FormPanel } from "@/components/ui/form-field";
@@ -158,7 +158,7 @@ export function EditChildDialog({ child }: { child: EditChildInitial }) {
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" loading={pending}>
               {pending ? "Saving…" : "Save changes"}
             </Button>
           </DialogFooter>

@@ -213,7 +213,7 @@ export function RecurringRequestCard({ request }: RequestProps) {
           <Button
             tone="triaz"
             onClick={() => decide("approve", liveClashes.map((c) => c.date))}
-            disabled={isPending}
+            loading={isPending}
           >
             {isPending
               ? "..."
@@ -223,7 +223,7 @@ export function RecurringRequestCard({ request }: RequestProps) {
           <Button
             tone="triaz"
             onClick={() => decide("approve")}
-            disabled={isPending}
+            loading={isPending}
           >
             {isPending ? "..." : "Approve & activate"}
           </Button>

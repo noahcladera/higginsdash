@@ -105,7 +105,7 @@ function ProgramCard({
         />
         {isHero && (
           <MaterialTileImageFooter>
-            <span className="rounded-full bg-[var(--card)]/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground)] backdrop-blur-sm">
+            <span className="glass-clear rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground)]">
               {bucketLabel(rec.bucket)}
             </span>
           </MaterialTileImageFooter>
@@ -123,7 +123,7 @@ function ProgramCard({
       <div className={cn(!isHero && "p-4")}>
         {!isHero && (
           <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="rounded-full border border-[var(--glass-border-subtle)] bg-[var(--surface-strong)]/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground)]">
+            <span className="glass-clear rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--foreground)]">
               {bucketLabel(rec.bucket)}
             </span>
             <ArrowRightIcon className="opacity-50 transition-opacity group-hover:opacity-100" />

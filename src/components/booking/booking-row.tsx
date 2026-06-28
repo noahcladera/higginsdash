@@ -34,6 +34,8 @@ export interface BookingRowProps {
     tone?: "triaz" | "randwijck" | "joint" | "neutral";
   };
   href?: string;
+  /** Compact inset-list styling for mobile grouped sections. */
+  variant?: "default" | "grouped";
 }
 
 export function BookingRow({
@@ -46,6 +48,7 @@ export function BookingRow({
   cancellationNote,
   purpose,
   href,
+  variant = "default",
 }: BookingRowProps) {
   const date = new Intl.DateTimeFormat("en-NL", {
     timeZone: "Europe/Amsterdam",
@@ -70,7 +73,12 @@ export function BookingRow({
     href ? (
       <Link
         href={href}
-        className="block rounded-[var(--radius-md)] transition-colors hover:bg-[var(--surface-strong)]"
+        className={cn(
+          "block transition-colors",
+          variant === "grouped"
+            ? "active:bg-[var(--muted)]/40"
+            : "rounded-[var(--radius-md)] hover:bg-[var(--surface-strong)]",
+        )}
       >
         {children}
       </Link>
@@ -78,10 +86,51 @@ export function BookingRow({
       <div>{children}</div>
     );
 
+  if (variant === "grouped") {
+    return (
+      <Wrapper>
+        <div className="flex min-h-[3rem] items-center gap-3 px-4 py-2.5">
+          <div className="w-[4.5rem] shrink-0 text-center">
+            <div className="tabular font-display text-lg font-medium leading-tight">
+              {time}
+            </div>
+            {timeEnd && (
+              <div className="tabular text-[10px] text-[var(--muted-foreground)]">
+                {timeEnd}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[15px] font-medium">
+              {club} · {court}
+            </div>
+            <div className="truncate text-xs text-[var(--muted-foreground)]">
+              {date}
+              {bookedBy && ` · ${bookedBy.isYou ? "You" : bookedBy.name}`}
+            </div>
+            {status === "cancellation_requested" && cancellationNote?.reason && (
+              <div className="truncate text-[11px] text-[var(--warning-ink)]">
+                {cancellationNote.reason}
+              </div>
+            )}
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {purpose && (
+              <Badge tone={purpose.tone ?? "neutral"} variant="soft" className="capitalize">
+                {purpose.label}
+              </Badge>
+            )}
+            <StatusBadge status={status} />
+          </div>
+        </div>
+      </Wrapper>
+    );
+  }
+
   return (
     <Wrapper>
-      <div className="flex items-center gap-4 px-4 py-4">
-        <div className="w-24 shrink-0">
+      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex items-center gap-4 sm:w-24 sm:shrink-0 sm:flex-col sm:items-start">
           <div className="tabular text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
             {date}
           </div>
@@ -114,7 +163,7 @@ export function BookingRow({
             </div>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
           {purpose && (
             <Badge tone={purpose.tone ?? "neutral"} variant="soft">
               {purpose.label}
@@ -156,7 +205,7 @@ export function BookingList({
   return (
     <div
       className={cn(
-        "elev-card divide-y divide-[var(--border)]",
+        "grouped-section divide-y divide-[var(--content-separator)]",
         className,
       )}
     >

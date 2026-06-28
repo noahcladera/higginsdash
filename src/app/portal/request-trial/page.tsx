@@ -1,6 +1,6 @@
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { getTerms } from "@/lib/tenant";
 import { PortalTrialForm } from "./_portal-trial-form";
 
@@ -64,8 +64,8 @@ export default async function PortalRequestTrialPage({
   }));
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className="space-y-10">
+      <PortalPageHeader
         kicker="Trial"
         title={
           series

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireCoach } from "@/lib/auth/require-coach";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
+import { BackLink } from "@/components/ui/back-link";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -164,7 +165,8 @@ export default async function CoachSessionPage({
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <BackLink href={`/coach/classes/${seriesId}`} label="Back to series" />
+      <ShellPageHeader
         kicker={series.program.name}
         title={series.name}
         description={
@@ -184,14 +186,6 @@ export default async function CoachSessionPage({
               </Badge>
             )}
           </>
-        }
-        actions={
-          <Link
-            href={`/coach/classes/${seriesId}`}
-            className="text-sm font-medium text-[var(--triaz-ink)] underline-offset-4 hover:underline"
-          >
-            ← Back to series
-          </Link>
         }
       />
 

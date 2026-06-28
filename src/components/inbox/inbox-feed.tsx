@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { GroupedSection, GroupedRow } from "@/components/ui/grouped-list";
 import { useActionFeedback } from "@/lib/feedback";
 import {
   markAllNotificationsRead,
@@ -81,15 +82,16 @@ export function InboxFeed({
   return (
     <div className="space-y-3">
       {unread.length > 0 && (
-        <div className="elev-panel flex items-center justify-between rounded-[var(--radius-md)] px-4 py-2.5">
-          <p className="text-sm">
-            <strong>{unread.length}</strong>{" "}
-            {unread.length === 1 ? "new update" : "new updates"}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={markAll.pending}
+        <GroupedSection>
+          <GroupedRow className="justify-between gap-3">
+            <p className="text-sm">
+              <strong>{unread.length}</strong>{" "}
+              {unread.length === 1 ? "new update" : "new updates"}
+            </p>
+            <Button
+              variant="glass"
+              size="sm"
+            loading={markAll.pending}
             onClick={() => {
               // `useOptimistic` updates must be applied inside a
               // transition (React 19). `markAll.run` itself uses
@@ -104,22 +106,15 @@ export function InboxFeed({
           >
             {markAll.pending ? "..." : "Mark all read"}
           </Button>
-        </div>
+          </GroupedRow>
+        </GroupedSection>
       )}
 
-      <ul className="space-y-2">
+      <GroupedSection>
         {optimisticItems.map((item) => {
           const href = linkForRelated(item, basePath);
           return (
-            <li
-              key={item.id}
-              className={
-                "elev-card p-4 " +
-                (item.readAt
-                  ? "bg-[var(--surface-muted,_var(--surface))] opacity-80"
-                  : "bg-[var(--surface)]")
-              }
-            >
+            <GroupedRow key={item.id} className="flex-col items-stretch gap-2 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -185,10 +180,10 @@ export function InboxFeed({
                   )}
                 </div>
               </div>
-            </li>
+            </GroupedRow>
           );
         })}
-      </ul>
+      </GroupedSection>
     </div>
   );
 }

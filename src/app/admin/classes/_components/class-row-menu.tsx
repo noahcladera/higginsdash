@@ -118,7 +118,7 @@ export function ClassRowMenu({
             <Button
               type="button"
               variant="destructive"
-              disabled={pending}
+              loading={pending}
               onClick={handleDeleteConfirm}
             >
               {pending ? "Deleting…" : `Delete ${classSingular}`}

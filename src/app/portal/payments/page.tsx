@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
 import { Stat, MetricStrip } from "@/components/ui/stat";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -98,7 +98,7 @@ export default async function PortalPaymentsPage({
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <PortalPageHeader
         kicker="Payments"
         title="Receipts & invoices"
         description="Everything we have on file for your household."
@@ -117,7 +117,7 @@ export default async function PortalPaymentsPage({
         />
       ) : (
         <>
-          <MetricStrip>
+          <MetricStrip density="compact">
             <Stat
               label="Total paid"
               value={formatMoney(totalPaid, "EUR")}
@@ -148,7 +148,7 @@ export default async function PortalPaymentsPage({
             title="Timeline"
             description="Most recent first. Receipts and invoices in one stream."
           >
-            <ul className="elev-card divide-y divide-[var(--border)]">
+            <ul className="grouped-section list-none divide-y divide-[var(--content-separator)] p-0 m-0">
               {timeline.map((t) => {
                 const isHighlighted =
                   highlightId != null && t.key === `p-${highlightId}`;

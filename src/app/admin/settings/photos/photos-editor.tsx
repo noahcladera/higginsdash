@@ -105,7 +105,7 @@ export function PhotosEditor({
       ))}
 
       <div className="flex items-center gap-3 border-t border-[var(--border)] pt-6">
-        <Button type="button" onClick={onSave} disabled={pending}>
+        <Button type="button" onClick={onSave} loading={pending}>
           {pending ? "Saving…" : "Save all photos"}
         </Button>
         {error && (

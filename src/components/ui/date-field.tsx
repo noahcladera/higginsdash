@@ -269,7 +269,7 @@ export function DateField({
       onBlur={onBlurWrap}
       {...spinFor(key)}
       className={cn(
-        "w-0 min-w-0 flex-1 bg-transparent text-center text-sm tabular-nums text-[var(--foreground)] outline-none",
+        "w-0 min-w-0 flex-1 bg-transparent text-center text-base tabular-nums text-[var(--foreground)] outline-none lg:text-sm",
         "placeholder:text-[var(--muted-foreground)]",
         outOfRange && "text-[var(--destructive)]",
       )}
@@ -290,7 +290,7 @@ export function DateField({
       <div
         ref={anchorRef}
         className={cn(
-          "flex min-w-0 items-center gap-0.5 border border-[var(--border)] bg-[var(--control)] px-2 text-sm transition-all duration-150",
+          "flex min-w-0 items-center gap-0.5 border border-[var(--border)] bg-[var(--control)] px-2 text-base transition-all duration-150 lg:text-sm",
           size === "compact"
             ? "h-9 rounded-full"
             : "h-11 rounded-[var(--radius-md)]",

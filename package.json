@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:lan": "next dev --hostname 0.0.0.0",
+    "dev:mobile": "next dev --hostname 0.0.0.0",
+    "warm:mobile": "dotenv -e .env.local -- tsx scripts/warm-mobile-routes.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -38,6 +41,9 @@
     "smoke:gotimmy": "dotenv -e .env.local -- tsx scripts/smoke-gotimmy.ts",
     "smoke:coach": "dotenv -e .env.local -- tsx scripts/smoke-coach-e2e.ts",
     "qa:automated": "dotenv -e .env.local -- tsx scripts/run-qa-automated.ts",
+    "test:e2e": "dotenv -e .env.local -- playwright test",
+    "test:e2e:mobile": "dotenv -e .env.local -- playwright test --project=webkit-mobile --project=webkit-mobile-coach",
+    "audit:admin-routes": "dotenv -e .env.local -- tsx scripts/_audit-admin-routes.ts",
     "deploy:check": "dotenv -e .env.local -- tsx scripts/verify-deploy-readiness.ts",
     "mollie:check": "dotenv -e .env.local -- tsx scripts/check-mollie-config.ts",
     "db:migrate:prod": "dotenv -e .env.production.local -- prisma migrate deploy",
@@ -78,6 +84,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.51.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { coachSubOutcomeTone } from "@/lib/ui/status-tone";
 import { CoachSubRequestCard } from "./_request-card";
 
@@ -78,10 +79,10 @@ export default async function CoachSubsPage() {
           Pending ({pending.length})
         </h2>
         {pending.length === 0 ? (
-          <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--muted-foreground)]">
-            Nothing waiting. Coaches with a clear schedule are a beautiful
-            thing.
-          </div>
+          <EmptyState
+            title="Nothing waiting"
+            description="Coaches with a clear schedule are a beautiful thing."
+          />
         ) : (
           <div className="space-y-3">
             {pending.map((r) => (

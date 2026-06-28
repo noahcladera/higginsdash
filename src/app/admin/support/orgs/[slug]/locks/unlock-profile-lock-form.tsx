@@ -25,6 +25,7 @@ export function UnlockProfileLockForm({
       <Button
         type="submit"
         variant="destructive"
+        loading={isPending}
         disabled={!isLocked || isPending}
       >
         {isPending ? "Unlocking…" : "Clear profile lock"}

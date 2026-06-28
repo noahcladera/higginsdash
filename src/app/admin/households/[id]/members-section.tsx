@@ -223,7 +223,7 @@ function AddMemberForm({
       {error && <p className="text-sm text-[var(--destructive)]">{error}</p>}
 
       <div className="flex items-center gap-2">
-        <Button type="submit" size="sm" disabled={pending}>
+        <Button type="submit" size="sm" loading={pending}>
           {pending ? "Adding…" : "Add member"}
         </Button>
         <Button

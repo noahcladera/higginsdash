@@ -118,7 +118,11 @@ export function MemberWeekGrid({
         </div>
       )}
 
-      <div className="elev-panel overflow-hidden">
+      {/* Mobile: agenda list */}
+      <MemberWeekAgenda days={days} events={events} byDay={byDay} />
+
+      {/* Desktop: time grid */}
+      <div className="elev-panel hidden overflow-hidden lg:block">
         {/* Day header row */}
         <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[var(--glass-border-subtle)] bg-[var(--surface)]/90">
           <div />
@@ -198,6 +202,110 @@ export function MemberWeekGrid({
               )}
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MemberWeekAgenda({
+  days,
+  events,
+  byDay,
+}: {
+  days: Date[];
+  events: MemberCalendarEvent[];
+  byDay: MemberCalendarEvent[][];
+}) {
+  const todayKey = amsterdamDayKey(new Date());
+
+  if (events.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-4 lg:hidden">
+      {days.map((d, dayIdx) => {
+        const dayEvents = byDay[dayIdx] ?? [];
+        if (dayEvents.length === 0) return null;
+        const isToday = amsterdamDayKey(d) === todayKey;
+        const dayLabel = new Intl.DateTimeFormat("en-NL", {
+          timeZone: "Europe/Amsterdam",
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+        }).format(d);
+
+        return (
+          <div key={dayIdx}>
+            <div
+              className={cn(
+                "mb-2 text-xs font-semibold uppercase tracking-[0.14em]",
+                isToday
+                  ? "text-[var(--triaz-ink)]"
+                  : "text-[var(--muted-foreground)]",
+              )}
+            >
+              {isToday ? `Today · ${dayLabel}` : dayLabel}
+            </div>
+            <ul className="grouped-section list-none divide-y divide-[var(--content-separator)] p-0 m-0">
+              {dayEvents.map((e) => (
+                <li key={`${e.kind}-${e.id}`}>
+                  <AgendaEventRow event={e} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AgendaEventRow({ event }: { event: MemberCalendarEvent }) {
+  if (event.kind === "booking") {
+    return (
+      <div className="flex items-start gap-3 px-4 py-3">
+        <div className="tabular shrink-0 text-sm font-semibold">
+          {format.time(event.startsAt)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+            Booking
+          </div>
+          <div className="font-medium">{event.courtName}</div>
+          <div className="truncate text-xs text-[var(--muted-foreground)]">
+            {event.clubName} · {format.time(event.startsAt)}–
+            {format.time(event.endsAt)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const p = paletteFor(event.colorIndex);
+  const timeStart =
+    event.deliveryMode === "pickup" && event.pickupAt
+      ? event.pickupAt
+      : event.classStartAt;
+
+  return (
+    <div
+      className="flex items-start gap-3 border-l-4 px-4 py-3"
+      style={{ borderColor: p.border }}
+    >
+      <div className="tabular shrink-0 text-sm font-semibold" style={{ color: p.ink }}>
+        {format.time(timeStart)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-medium" style={{ color: p.ink }}>
+          {event.ownerFirstName} · {event.seriesName}
+        </div>
+        <div className="tabular truncate text-xs opacity-80" style={{ color: p.ink }}>
+          {format.time(event.classStartAt)}–{format.time(event.classEndAt)}
+        </div>
+        <div className="truncate text-xs opacity-70" style={{ color: p.ink }}>
+          {event.venueName}
         </div>
       </div>
     </div>

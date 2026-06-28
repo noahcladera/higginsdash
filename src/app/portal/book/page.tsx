@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Button } from "@/components/ui/button";
 import { CourtCalendarGrid } from "@/components/booking/court-calendar-grid";
 import { getCalendarWeek } from "@/lib/booking/queries";
@@ -19,9 +20,16 @@ import { getMarketingImages } from "@/lib/uploads/marketing-images";
 import { getActiveMembershipCoverage } from "@/lib/memberships/coverage";
 import { BookingDateJumpForm } from "@/components/booking/booking-date-jump-form";
 import { CalendarPagerTransition } from "../_components/calendar-pager-transition";
+import { BookClubPicker } from "./_components/book-club-picker";
+import { buildBookPageHref } from "@/lib/booking/book-page-href";
 
 interface PageProps {
-  searchParams: Promise<{ club?: string; date?: string }>;
+  searchParams: Promise<{
+    club?: string;
+    date?: string;
+    court?: string;
+    slot?: string;
+  }>;
 }
 
 /**
@@ -73,7 +81,7 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
     ]);
     return (
       <div className="space-y-8">
-        <PageHeader
+        <PortalPageHeader
           kicker={t.bookVerb}
           title={`${t.bookVerb} a ${t.court.singular.toLowerCase()}`}
           description={`Pick a ${t.club.singular.toLowerCase()}, then a slot. To ${t.bookVerb.toLowerCase()}, you'll need an active ${t.membership.singular.toLowerCase()} at that ${t.club.singular.toLowerCase()}.`}
@@ -99,42 +107,31 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
   const today = formatLocalDate(new Date());
   const isToday = date === today;
   const dayLabel = formatLongDay(dateUtc);
+  const activeCourtId =
+    sp.court && data.courts.some((c) => c.id === sp.court) ? sp.court : undefined;
+
+  const dayHref = (d: string) =>
+    buildBookPageHref("/portal/book", {
+      club: activeClub.slug,
+      date: d,
+      court: activeCourtId,
+    });
 
   return (
     <div className="space-y-8">
-      <PageHeader
+      <PortalPageHeader
         kicker={t.bookVerb}
         title={`${t.bookVerb} a ${t.court.singular.toLowerCase()}`}
         description="Tap an open slot to book under your account. Add partners if someone else is playing with you. Cancellations within 24 hours are reviewed."
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Segmented club picker */}
-        <div
-          role="tablist"
-          aria-label="Clubs"
-          className="inline-flex items-center rounded-full bg-[var(--surface)] p-1"
-        >
-          {memberClubs.map((c) => {
-            const active = c.id === activeClub.id;
-            return (
-              <Link
-                key={c.id}
-                role="tab"
-                aria-selected={active}
-                href={`/portal/book?club=${c.slug}&date=${date}`}
-                className={cn(
-                  "rounded-full px-4 py-1.5 text-sm transition-colors",
-                  active
-                    ? "control-well text-[var(--foreground)] shadow-[var(--shadow-elevated)] font-medium"
-                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
-                )}
-              >
-                {c.name}
-              </Link>
-            );
-          })}
-        </div>
+        <BookClubPicker
+          clubs={memberClubs.map((c) => ({ slug: c.slug, name: c.name }))}
+          activeSlug={activeClub.slug}
+          date={date}
+          courtId={activeCourtId}
+        />
 
         {/* Date scrubber — `group/scrub` lets the inner arrow glyphs
          * react to hover on the whole button, signaling the slide
@@ -143,7 +140,7 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
           <Button asChild variant="ghost" tone="neutral" size="icon">
             <Link
               aria-label="Previous day"
-              href={`/portal/book?club=${activeClub.slug}&date=${formatLocalDate(addDays(dateUtc, -1))}`}
+              href={dayHref(formatLocalDate(addDays(dateUtc, -1)))}
               className="group/scrub"
             >
               <span
@@ -167,7 +164,7 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
           <Button asChild variant="ghost" tone="neutral" size="icon">
             <Link
               aria-label="Next day"
-              href={`/portal/book?club=${activeClub.slug}&date=${formatLocalDate(addDays(dateUtc, 1))}`}
+              href={dayHref(formatLocalDate(addDays(dateUtc, 1)))}
               className="group/scrub"
             >
               <span
@@ -180,7 +177,7 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
           </Button>
           {!isToday && (
             <Button asChild variant="ghost" tone="neutral" size="sm">
-              <Link href={`/portal/book?club=${activeClub.slug}&date=${today}`}>
+              <Link href={dayHref(today)}>
                 Today
               </Link>
             </Button>
@@ -195,7 +192,7 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      <div className="elev-panel overflow-hidden p-2 sm:p-4">
+      <div className="glass-regular md:elev-card overflow-hidden p-2 sm:p-4">
         {/* Re-key on the (club, date) pair so the slide plays both
          * when stepping days and when switching clubs. ISO date sorts
          * lexicographically, club slug ties broken alphabetically —
@@ -204,11 +201,21 @@ export default async function PortalBookPage({ searchParams }: PageProps) {
           pagerKey={`${activeClub.slug}:${date}`}
           compareKind="dateThenSlug"
         >
-          <CourtCalendarGrid
-            data={data}
-            viewerRole="member"
-            viewerPersonId={person.id}
-          />
+          <Suspense fallback={<div className="min-h-48 animate-pulse rounded-md bg-[var(--muted)]/30" />}>
+            <CourtCalendarGrid
+              key={`${activeClub.slug}:${date}`}
+              data={data}
+              viewerRole="member"
+              viewerPersonId={person.id}
+              initialSlotIso={sp.slot}
+              bookNavigation={{
+                basePath: "/portal/book",
+                clubSlug: activeClub.slug,
+                date,
+                courtId: activeCourtId,
+              }}
+            />
+          </Suspense>
         </CalendarPagerTransition>
       </div>
     </div>

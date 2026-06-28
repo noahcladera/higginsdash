@@ -4,8 +4,10 @@ import { signOut } from "../admin/actions";
 import {
   AppShell,
   type ShellNavGroup,
+  type ShellMobileTab,
 } from "@/components/portal/app-shell";
 import { getPortalNavSections } from "@/lib/portal/nav-sections";
+import { getPortalMobileTabs } from "@/lib/portal/mobile-tabs";
 import { getMembershipsForHousehold } from "@/lib/portal/queries";
 import { getHouseholdCreditBalanceCents } from "@/lib/credits/balance";
 import { themeBySlug } from "@/lib/club-theme";
@@ -24,6 +26,7 @@ import {
   TrophyIcon,
   CompassIcon,
   InboxIcon,
+  EllipsisVerticalIcon,
 } from "@/components/icons";
 
 /*
@@ -78,6 +81,14 @@ export default async function PortalLayout({
     creditBalanceCents,
   });
 
+  const mobileTabDefs = await getPortalMobileTabs({
+    personId: person.id,
+    householdId,
+    isStudent: !!person.student,
+    hasActiveMembership,
+    creditBalanceCents,
+  });
+
   const { subline, sublineHref } = describeCoverage(
     memberships,
     terms,
@@ -91,6 +102,11 @@ export default async function PortalLayout({
       ...it,
       icon: iconFor(it.href),
     })),
+  }));
+
+  const mobileTabs: ShellMobileTab[] = mobileTabDefs.map((tab) => ({
+    ...tab,
+    icon: mobileTabIconFor(tab.id),
   }));
 
   const switchLinks = getRoleSwitchLinks(
@@ -115,6 +131,7 @@ export default async function PortalLayout({
         brandSubline={wordmark.subline}
         brandLogoUrl={brand.logoUrl}
         groups={groups}
+        mobileTabs={mobileTabs}
         identity={{
           name: displayName,
           subline,
@@ -139,7 +156,7 @@ export default async function PortalLayout({
          * is a `snap-start` target by default, giving "soft stops"
          * without locking long pages from free drag-scrolling.
          */}
-        <div className="snap-y snap-proximity">{children}</div>
+        <div>{children}</div>
       </AppShell>
     </TermsProvider>
   );
@@ -171,6 +188,27 @@ function iconFor(href: string): React.ReactNode {
       return <InboxIcon />;
     case "/levels":
       return <TennisIcon />;
+    default:
+      return null;
+  }
+}
+
+function mobileTabIconFor(
+  id: string,
+): React.ReactNode {
+  switch (id) {
+    case "home":
+      return <HomeIcon />;
+    case "book":
+      return <CalendarIcon />;
+    case "enroll":
+      return <CompassIcon />;
+    case "classes":
+      return <ClassIcon />;
+    case "inbox":
+      return <InboxIcon />;
+    case "more":
+      return <EllipsisVerticalIcon />;
     default:
       return null;
   }

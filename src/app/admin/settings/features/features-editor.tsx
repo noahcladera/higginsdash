@@ -133,7 +133,7 @@ export function FeaturesEditor({
           <Button variant="ghost" type="button" onClick={onReset} disabled={pending}>
             Reset to preset
           </Button>
-          <Button type="button" onClick={onSave} disabled={pending}>
+          <Button type="button" onClick={onSave} loading={pending}>
             {pending ? "Saving…" : "Save features"}
           </Button>
         </div>

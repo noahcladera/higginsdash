@@ -1,5 +1,7 @@
+import { CalendarIcon } from "lucide-react";
 import { listVisibleEvents } from "@/lib/portal/catalog-queries";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { SeriesRow } from "@/app/portal/programs/_components/series-row";
 
 /**
@@ -12,18 +14,19 @@ export default async function PortalEventsPage() {
   const events = await listVisibleEvents();
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-4 py-8">
-      <PageHeader
+    <div className="space-y-10">
+      <PortalPageHeader
         kicker="Events"
         title="What's on"
         description="Tournaments, socials and one-off events. Same booking and payment flow as classes — just hand-picked moments rather than a recurring spot."
       />
 
       {events.length === 0 ? (
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-10 text-center text-sm text-[var(--muted-foreground)]">
-          Nothing scheduled right now. Check back soon — we run socials,
-          ladders and tournaments throughout the season.
-        </div>
+        <EmptyState
+          icon={<CalendarIcon />}
+          title="Nothing scheduled right now"
+          description="Check back soon — we run socials, ladders and tournaments throughout the season."
+        />
       ) : (
         <ul className="space-y-3">
           {events.map((e) => (

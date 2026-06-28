@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
 import { AuthNoticeBanner } from "@/components/auth/auth-notice-banner";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { signInWithPassword } from "./actions";
 
 type Method = "password" | "magic";
 
@@ -116,35 +115,25 @@ export function LoginCard({
 }
 
 function PasswordForm({ nextPath }: { nextPath: string | null }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    startTransition(async () => {
-      const res = await signInWithPassword(email, password, nextPath);
-      if (!res.ok) setError(res.error);
-      // Success path: server action redirects, this branch is unreachable.
-    });
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form
+      method="POST"
+      action="/auth/password-login"
+      className="space-y-4"
+    >
+      {nextPath ? (
+        <input type="hidden" name="next" value={nextPath} />
+      ) : null}
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
           id="email"
+          name="email"
           type="email"
           placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
           required
           autoComplete="email"
           autoFocus
-          disabled={isPending}
         />
       </div>
 
@@ -160,25 +149,15 @@ function PasswordForm({ nextPath }: { nextPath: string | null }) {
         </div>
         <Input
           id="password"
+          name="password"
           type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
           required
           autoComplete="current-password"
-          disabled={isPending}
         />
       </div>
 
-      {error && (
-        <p className="text-sm text-[var(--destructive)]">{error}</p>
-      )}
-
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={isPending || !email || !password}
-      >
-        {isPending ? "Signing in…" : "Sign in"}
+      <Button type="submit" className="w-full">
+        Sign in
       </Button>
     </form>
   );
@@ -188,9 +167,16 @@ function MagicLinkForm() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus({ kind: "sending" });
+
+    const fd = new FormData(e.currentTarget);
+    const emailVal = String(fd.get("email") ?? email).trim();
+    if (!emailVal) {
+      setStatus({ kind: "idle" });
+      return;
+    }
 
     const supabase = createSupabaseBrowserClient();
     // Prefer the live browser origin so production login works even when
@@ -202,7 +188,7 @@ function MagicLinkForm() {
           "http://localhost:3000");
 
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: emailVal,
       options: {
         shouldCreateUser: false,
         emailRedirectTo: `${siteUrl}/auth/callback`,
@@ -239,10 +225,12 @@ function MagicLinkForm() {
         <Label htmlFor="magic-email">Email</Label>
         <Input
           id="magic-email"
+          name="email"
           type="email"
           placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onInput={(e) => setEmail(e.currentTarget.value)}
           required
           autoComplete="email"
           autoFocus
@@ -269,7 +257,7 @@ function MagicLinkForm() {
       <Button
         type="submit"
         className="w-full"
-        disabled={status.kind === "sending" || !email}
+        disabled={status.kind === "sending"}
       >
         {status.kind === "sending" ? "Sending…" : "Send magic link"}
       </Button>

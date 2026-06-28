@@ -22,7 +22,7 @@
 
 import Link from "next/link";
 import { requireMember } from "@/lib/auth/require-member";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,17 +92,14 @@ export default async function ProgramsCatalogPage({
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <PortalPageHeader
         kicker="Enrollment"
         title={heroGreeting}
         description={heroSubtitle}
         actions={
-          <Link
-            href="#browse"
-            className="text-sm font-semibold text-[var(--triaz-ink)] underline-offset-4 hover:underline"
-          >
-            Skip to browse →
-          </Link>
+          <Button asChild variant="ghost" tone="triaz" size="sm">
+            <Link href="#browse">Skip to browse →</Link>
+          </Button>
         }
       />
 

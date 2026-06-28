@@ -72,6 +72,7 @@ export function ProgramDeleteButton({
       <Button
         type="button"
         variant="destructive"
+        loading={pending}
         disabled={pending || blocked}
         onClick={onDelete}
       >

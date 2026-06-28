@@ -1,19 +1,48 @@
 import { headers } from "next/headers";
+import type { NextRequest } from "next/server";
 
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/$/, "");
 }
 
-function isLocalhostHost(host: string): boolean {
-  return host === "localhost" || host.startsWith("127.0.0.1");
+function isLocalDevHost(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname.startsWith("127.") ||
+    /^192\.168\.\d+\.\d+$/.test(hostname) ||
+    /^10\.\d+\.\d+\.\d+$/.test(hostname) ||
+    hostname.endsWith(".local")
+  );
 }
 
-function isLocalhostOrigin(url: string): boolean {
-  try {
-    return isLocalhostHost(new URL(url).hostname);
-  } catch {
-    return true;
+/**
+ * Origin for the current HTTP request. Prefer the Host header over
+ * `request.url` — Next dev often normalizes `request.url` to localhost
+ * even when the client connected via a LAN IP (192.168.x.x).
+ */
+export function requestOrigin(request: NextRequest): string {
+  const host =
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ??
+    request.headers.get("host");
+  if (host) {
+    const hostname = host.split(":")[0] ?? host;
+    const proto =
+      request.headers.get("x-forwarded-proto") ??
+      (isLocalDevHost(hostname) ? "http" : "https");
+    return stripTrailingSlash(`${proto}://${host}`);
   }
+  return stripTrailingSlash(new URL(request.url).origin);
+}
+
+export function requestAbsoluteUrl(
+  request: NextRequest,
+  path: string,
+): URL {
+  return new URL(path, requestOrigin(request));
+}
+
+function isLocalhostHost(host: string): boolean {
+  return isLocalDevHost(host.split(":")[0] ?? host);
 }
 
 /**
@@ -25,6 +54,14 @@ export function getAppOrigin(): string {
   const raw = stripTrailingSlash(process.env.NEXT_PUBLIC_SITE_URL ?? "");
   if (raw) return raw;
   return "http://localhost:3000";
+}
+
+function isLocalhostOrigin(url: string): boolean {
+  try {
+    return isLocalhostHost(new URL(url).hostname);
+  } catch {
+    return true;
+  }
 }
 
 /**

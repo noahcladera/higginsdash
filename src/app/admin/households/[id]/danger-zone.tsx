@@ -37,7 +37,7 @@ export function HouseholdDangerZone({
           type="button"
           variant="outline"
           size="sm"
-          disabled={pending}
+          loading={pending}
           onClick={onRestore}
         >
           {pending ? "Restoring…" : "Restore household"}
@@ -47,7 +47,7 @@ export function HouseholdDangerZone({
           type="button"
           variant="outline"
           size="sm"
-          disabled={pending}
+          loading={pending}
           onClick={onArchive}
         >
           {pending ? "Archiving…" : "Archive household"}

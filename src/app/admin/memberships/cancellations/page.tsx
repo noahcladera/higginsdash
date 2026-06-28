@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
+import { EmptyState } from "@/components/ui/empty-state";
 import { MembershipCancellationCard } from "./_decision-card";
 
 export default async function MembershipCancellationsPage() {
@@ -38,12 +39,15 @@ export default async function MembershipCancellationsPage() {
       />
 
       {pending.length === 0 ? (
-        <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--muted-foreground)]">
-          Nobody's trying to leave today.{" "}
-          <Link href="/admin" className="underline">
-            Back to dashboard
-          </Link>
-        </div>
+        <EmptyState
+          title="Nobody's trying to leave today"
+          description="Cancellation requests will appear here for your decision."
+          action={
+            <Link href="/admin" className="underline underline-offset-4">
+              Back to dashboard
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {pending.map((m) => (

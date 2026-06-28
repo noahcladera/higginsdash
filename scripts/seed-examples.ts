@@ -300,48 +300,42 @@ async function upsertMembership(args: {
   const expiresOn = new Date(startsOn);
   expiresOn.setUTCFullYear(expiresOn.getUTCFullYear() + 1);
 
-  // coverageTier drives membership shape: family vs adult/child individual tiers.
-
-  await prisma.membership.upsert({
-    where: { id: membershipId },
-    create: {
-      id: membershipId,
-      householdId: args.householdId,
-      assignedPersonId: args.assignedPersonId ?? null,
-      coverageTier: args.coverageTier,
-      startsOn,
-      expiresOn,
-      status: "active",
-      pricePaid: new Prisma.Decimal(args.pricePaid),
-      paidAt: new Date(),
-    },
-    update: {
-      assignedPersonId: args.assignedPersonId ?? null,
-      coverageTier: args.coverageTier,
-      startsOn,
-      expiresOn,
-      status: "active",
-      pricePaid: new Prisma.Decimal(args.pricePaid),
-      paidAt: new Date(),
-    },
-  });
-
-  for (const clubId of args.clubIds) {
-    await prisma.membershipClub.upsert({
-      where: {
-        membershipId_clubId: { membershipId, clubId },
-      },
-      create: { membershipId, clubId },
-      update: {},
-    });
+  if (args.clubIds.length === 0) {
+    throw new Error(`upsertMembership(${args.slug}): active membership needs ≥1 club`);
   }
-  // Remove clubs no longer in the seed set (safe: we never drop below 1 in one statement
-  // because we upsert the new set first).
-  await prisma.membershipClub.deleteMany({
-    where: {
-      membershipId,
-      clubId: { notIn: args.clubIds },
-    },
+
+  // Transaction order matters: DB trigger M1 rejects active memberships with zero clubs.
+  await prisma.$transaction(async (tx) => {
+    await tx.membershipClub.deleteMany({ where: { membershipId } });
+
+    await tx.membership.upsert({
+      where: { id: membershipId },
+      create: {
+        id: membershipId,
+        householdId: args.householdId,
+        assignedPersonId: args.assignedPersonId ?? null,
+        coverageTier: args.coverageTier,
+        startsOn,
+        expiresOn,
+        status: "active",
+        pricePaid: new Prisma.Decimal(args.pricePaid),
+        paidAt: new Date(),
+      },
+      update: {
+        householdId: args.householdId,
+        assignedPersonId: args.assignedPersonId ?? null,
+        coverageTier: args.coverageTier,
+        startsOn,
+        expiresOn,
+        status: "active",
+        pricePaid: new Prisma.Decimal(args.pricePaid),
+        paidAt: new Date(),
+      },
+    });
+
+    await tx.membershipClub.createMany({
+      data: args.clubIds.map((clubId) => ({ membershipId, clubId })),
+    });
   });
 }
 

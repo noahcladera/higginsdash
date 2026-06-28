@@ -15,6 +15,36 @@ const CredentialsSchema = z.object({
   password: z.string().min(1).max(200),
 });
 
+async function loginRateLimit(email: string): Promise<LoginResult | null> {
+  const ip = await clientIp();
+  const rl = await checkRateLimit("login", `${ip}:${email}`, {
+    limit: 10,
+    windowSec: 300,
+  });
+  if (!rl.success) {
+    return {
+      ok: false,
+      error:
+        "Too many sign-in attempts. Please wait a few minutes and try again.",
+    };
+  }
+  return null;
+}
+
+/**
+ * Throttle sign-in attempts before the client talks to Supabase Auth.
+ * Returns `null` when the attempt is allowed.
+ */
+export async function checkLoginRateLimit(
+  email: string,
+): Promise<LoginResult | null> {
+  const parsed = CredentialsSchema.pick({ email: true }).safeParse({ email });
+  if (!parsed.success) {
+    return { ok: false, error: "Enter a valid email and password." };
+  }
+  return loginRateLimit(parsed.data.email);
+}
+
 /**
  * Sign in with an email + password. On success the Supabase session cookie is
  * set on the response, we make sure a `people` row exists for the auth user
@@ -29,24 +59,13 @@ export async function signInWithPassword(
   password: string,
   nextPath?: string | null,
 ): Promise<LoginResult> {
-  // Validate input shape before hitting the auth provider.
   const parsed = CredentialsSchema.safeParse({ email, password });
   if (!parsed.success) {
     return { ok: false, error: "Enter a valid email and password." };
   }
 
-  // Throttle by IP + email to blunt credential-stuffing / brute force.
-  const ip = await clientIp();
-  const rl = await checkRateLimit("login", `${ip}:${parsed.data.email}`, {
-    limit: 10,
-    windowSec: 300,
-  });
-  if (!rl.success) {
-    return {
-      ok: false,
-      error: "Too many sign-in attempts. Please wait a few minutes and try again.",
-    };
-  }
+  const limited = await loginRateLimit(parsed.data.email);
+  if (limited) return limited;
 
   const supabase = await createSupabaseServerClient();
 

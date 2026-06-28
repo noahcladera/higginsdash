@@ -10,7 +10,7 @@ import {
   DialogFooter,
   DialogTrigger,
   DialogClose,
-} from "@/components/ui/dialog";
+} from "@/components/ui/sheet-dialog";
 import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/ui/date-field";
 import { Input } from "@/components/ui/input";
@@ -156,7 +156,7 @@ export function AddChildDialog({
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" tone="triaz" disabled={pending}>
+            <Button type="submit" tone="triaz" loading={pending}>
               {pending ? "Adding…" : "Add child"}
             </Button>
           </DialogFooter>

@@ -388,7 +388,7 @@ export function BlockSelectionDialog({
           {conflicts && conflicts.length > 0 ? (
             <Button
               onClick={() => handleSubmit(true)}
-              disabled={isPending}
+              loading={isPending}
             >
               {isPending
                 ? "Saving..."
@@ -397,6 +397,7 @@ export function BlockSelectionDialog({
           ) : (
             <Button
               onClick={() => handleSubmit(false)}
+              loading={isPending}
               disabled={isPending || !label.trim()}
             >
               {isPending

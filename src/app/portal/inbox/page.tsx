@@ -1,6 +1,5 @@
 import { requireMember } from "@/lib/auth/require-member";
-import { PageHeader } from "@/components/ui/page-header";
-import { Section } from "@/components/ui/section";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { InboxFeed } from "@/components/inbox/inbox-feed";
 import { getMemberInbox } from "@/lib/inbox/queries";
 
@@ -18,15 +17,13 @@ export default async function PortalInboxPage() {
   const items = await getMemberInbox(person.id);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className="space-y-10">
+      <PortalPageHeader
         kicker="Inbox"
         title="What's new for you"
         description="Schedule changes, waitlist promotions, refunds, and payment updates — your official channel when rain or holidays affect class."
       />
-      <Section title="Recent notifications">
-        <InboxFeed items={items} basePath="/portal" />
-      </Section>
+      <InboxFeed items={items} basePath="/portal" />
     </div>
   );
 }

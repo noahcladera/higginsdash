@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireMember } from "@/lib/auth/require-member";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
 import { EmptyState } from "@/components/ui/empty-state";
+import { BackLink } from "@/components/ui/back-link";
+import { GroupedSection } from "@/components/ui/grouped-list";
 import { ClassIcon } from "@/components/icons";
 import {
   getProgramBySlug,
@@ -97,15 +99,8 @@ export default async function ProgramSeriesListPage({
       );
 
   return (
-    <div className="space-y-8">
-      <div className="text-xs">
-        <Link
-          href="/portal/programs"
-          className="text-[var(--muted-foreground)] underline-offset-4 hover:underline"
-        >
-          ← All programs
-        </Link>
-      </div>
+    <div className="space-y-10">
+      <BackLink href="/portal/programs" label="All programs" />
 
       {program.coverImageUrl && (
         <CoverImage
@@ -116,7 +111,7 @@ export default async function ProgramSeriesListPage({
         />
       )}
 
-      <PageHeader
+      <PortalPageHeader
         kicker="Lessons"
         title={program.name}
         description={
@@ -145,13 +140,11 @@ export default async function ProgramSeriesListPage({
           }
         />
       ) : (
-        <Section>
-          <ul className="space-y-3">
-            {filtered.map((s) => (
-              <SeriesRow key={s.id} series={s} />
-            ))}
-          </ul>
-        </Section>
+        <GroupedSection>
+          {filtered.map((s) => (
+            <SeriesRow key={s.id} series={s} />
+          ))}
+        </GroupedSection>
       )}
     </div>
   );
@@ -198,44 +191,50 @@ function FilterBar({
   const hasAny = currentDay || currentAge != null || currentSchool;
 
   return (
-    <div className="flex flex-col gap-3 elev-card p-4">
+    <div className="grouped-section flex flex-col gap-4 p-4 md:elev-card">
       <FilterRow label="Day">
-        {days.map((d) => (
-          <Pill
-            key={d.key}
-            href={buildHref({ day: currentDay === d.key ? null : d.key })}
-            active={currentDay === d.key}
-          >
-            {d.label}
-          </Pill>
-        ))}
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+          {days.map((d) => (
+            <Pill
+              key={d.key}
+              href={buildHref({ day: currentDay === d.key ? null : d.key })}
+              active={currentDay === d.key}
+            >
+              {d.label}
+            </Pill>
+          ))}
+        </div>
       </FilterRow>
       {suggestedAges.length > 0 && (
         <FilterRow label="Child's age">
-          {suggestedAges.map((a) => (
-            <Pill
-              key={a}
-              href={buildHref({
-                age: currentAge === a ? null : String(a),
-              })}
-              active={currentAge === a}
-            >
-              {a}
-            </Pill>
-          ))}
+          <div className="flex flex-wrap gap-1.5">
+            {suggestedAges.map((a) => (
+              <Pill
+                key={a}
+                href={buildHref({
+                  age: currentAge === a ? null : String(a),
+                })}
+                active={currentAge === a}
+              >
+                {a}
+              </Pill>
+            ))}
+          </div>
         </FilterRow>
       )}
       {suggestedSchools.length > 0 && (
         <FilterRow label="School">
-          {suggestedSchools.map((s) => (
-            <Pill
-              key={s}
-              href={buildHref({ school: currentSchool === s ? null : s })}
-              active={currentSchool === s}
-            >
-              {s.toUpperCase()}
-            </Pill>
-          ))}
+          <div className="flex flex-wrap gap-1.5">
+            {suggestedSchools.map((s) => (
+              <Pill
+                key={s}
+                href={buildHref({ school: currentSchool === s ? null : s })}
+                active={currentSchool === s}
+              >
+                {s.toUpperCase()}
+              </Pill>
+            ))}
+          </div>
         </FilterRow>
       )}
       {hasAny && (
@@ -260,11 +259,11 @@ function FilterRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+    <div className="flex flex-col gap-2">
+      <span className="grouped-section-header px-0 normal-case tracking-normal text-sm font-medium">
         {label}
       </span>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
+      {children}
     </div>
   );
 }
@@ -284,8 +283,8 @@ function Pill({
       className={cn(
         "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
         active
-          ? "border-[var(--triaz)] bg-[var(--triaz)] text-white"
-          : "border-[var(--border)] bg-transparent text-[var(--muted-foreground)] hover:border-[var(--triaz)]/40 hover:text-[var(--foreground)]",
+          ? "border-[var(--triaz)] bg-[var(--triaz-soft)] text-[var(--triaz-ink)]"
+          : "border-[var(--content-separator)] bg-transparent text-[var(--muted-foreground)] hover:border-[var(--triaz)]/40 hover:text-[var(--foreground)]",
       )}
     >
       {children}

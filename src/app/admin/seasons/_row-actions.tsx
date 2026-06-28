@@ -66,7 +66,7 @@ export function SeasonRowActions({
           <Button
             size="sm"
             variant="destructive"
-            disabled={remove.pending}
+            loading={remove.pending}
             onClick={fireDelete}
           >
             {remove.pending ? "Deleting…" : `Delete ${season.name}`}

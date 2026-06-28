@@ -45,7 +45,7 @@ export function PersonDangerZone({
           type="button"
           variant="outline"
           size="sm"
-          disabled={pending}
+          loading={pending}
           onClick={onRestore}
         >
           {pending ? "Restoring…" : "Restore person"}
@@ -55,6 +55,7 @@ export function PersonDangerZone({
           type="button"
           variant="outline"
           size="sm"
+          loading={pending}
           disabled={pending || isSelf}
           onClick={onArchive}
           title={isSelf ? "You cannot archive yourself." : undefined}

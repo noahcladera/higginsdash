@@ -25,7 +25,7 @@ import {
   newMembershipEndsOn,
   randwijckStatusOn,
 } from "@/lib/membership-seasons";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -143,7 +143,7 @@ export default async function MembershipConfirmPage(props: {
 
   return (
     <div className="space-y-8">
-      <PageHeader
+      <PortalPageHeader
         kicker="Confirm your membership"
         title={`${capitalize(tier === "child" ? "youth" : tier)} membership · ${coverageLabel(resolvedClubs, !!effectiveBundle)}`}
         description="Review what's included and the price before we hand you over to checkout."

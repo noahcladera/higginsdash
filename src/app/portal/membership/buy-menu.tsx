@@ -58,6 +58,8 @@ interface PendingJointStep {
 
 export interface BuyMenuProps {
   collapsedByDefault?: boolean;
+  /** Server-driven open state from `?buyMenu=1` (Link-first expand on iOS). */
+  buyMenuOpen?: boolean;
   randwijckOpen: boolean;
   randwijckReopensLabel: string;
   ownership: HouseholdOwnership;
@@ -101,13 +103,18 @@ const COLUMNS: {
 
 export function BuyMenu({
   collapsedByDefault = false,
+  buyMenuOpen = false,
   randwijckOpen,
   randwijckReopensLabel,
   ownership,
   isReturning,
 }: BuyMenuProps) {
-  const [open, setOpen] = useState(!collapsedByDefault);
+  const [open, setOpen] = useState(!collapsedByDefault || buyMenuOpen);
   const router = useRouter();
+
+  useEffect(() => {
+    if (buyMenuOpen) setOpen(true);
+  }, [buyMenuOpen]);
 
   // Auto-chain the Randwijck Mollie page after the user returns from
   // completing the Triaz one. Fires once per browser tab per joint
@@ -149,10 +156,11 @@ export function BuyMenu({
       {collapsedByDefault && (
         <div className="flex justify-end">
           <Button
-            type="button"
             variant="ghost"
             tone="neutral"
             size="sm"
+            data-testid="membership-buy-toggle"
+            aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
             {open ? "Hide options" : "Show options"}

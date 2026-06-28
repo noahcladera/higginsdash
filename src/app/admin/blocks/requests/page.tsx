@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
+import { EmptyState } from "@/components/ui/empty-state";
 import { findRecurringSlotConflicts } from "@/lib/booking/recurring";
 import { getTerms } from "@/lib/tenant";
 import { RecurringRequestCard } from "./request-decision-card";
@@ -95,12 +96,15 @@ export default async function RecurringRequestsQueuePage() {
       />
 
       {cards.length === 0 ? (
-        <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--muted-foreground)]">
-          Nothing pending.{" "}
-          <Link href="/admin/blocks" className="underline">
-            Back to blocks
-          </Link>
-        </div>
+        <EmptyState
+          title="Nothing pending"
+          description="Recurring booking requests will appear here for your decision."
+          action={
+            <Link href="/admin/blocks" className="underline underline-offset-4">
+              Back to blocks
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {cards.map((c) => (

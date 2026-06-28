@@ -10,7 +10,8 @@ import type { AuthErrorCode } from "@/lib/auth/guard";
 export type LoginErrorCode =
   | AuthErrorCode
   | "signup_succeeded_signin_failed"
-  | "auth_callback_failed";
+  | "auth_callback_failed"
+  | "sign_in_failed";
 
 export type AuthNoticeCode = "password_reset";
 
@@ -65,6 +66,10 @@ export const AUTH_ERROR_MESSAGES: Record<LoginErrorCode, AuthErrorMessage> = {
       "The sign-in link could not be completed. Request a new link from the " +
       "same browser you use for this site (avoid switching between " +
       "localhost and 127.0.0.1), or sign in with password if you have one.",
+  },
+  sign_in_failed: {
+    variant: "destructive",
+    body: "That email or password didn't work. Check both and try again.",
   },
 };
 

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireCoach } from "@/lib/auth/require-coach";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import {
   CoachProfessionalStaffForm,
   CoachProfessionalZzpForm,
@@ -34,7 +34,7 @@ export default async function CoachProfessionalPage() {
     const coach = full.coach;
     return (
       <div className="space-y-10">
-        <PageHeader
+        <ShellPageHeader
           kicker="Account"
           title="Professional profile"
           description="Bio and photo for listings; rates and qualifications are admin-managed."
@@ -63,7 +63,7 @@ export default async function CoachProfessionalPage() {
     const z = full.zzpCoach;
     return (
       <div className="space-y-10">
-        <PageHeader
+        <ShellPageHeader
           kicker="Account"
           title="Professional profile"
           description="Your business details as an independent coach."

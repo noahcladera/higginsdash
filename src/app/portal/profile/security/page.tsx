@@ -1,6 +1,6 @@
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { SecurityForm } from "@/components/account/security-form";
 import { updateMyPassword } from "@/lib/account/security-actions";
 
@@ -16,7 +16,7 @@ export default async function PortalProfileSecurityPage() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <PortalPageHeader
         kicker="Profile"
         title="Security"
         description="Sign-in email and password."

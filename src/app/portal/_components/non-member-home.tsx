@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,16 +11,19 @@ import {
   UsersIcon,
   ClockIcon,
   CheckIcon,
-  StarIcon,
   CompassIcon,
   CardIcon,
+  MembershipIcon,
+  InboxIcon,
+  TicketIcon,
 } from "@/components/icons";
+import { MobileQuickActions } from "./mobile-quick-actions";
+import { GroupedSection } from "@/components/ui/grouped-list";
 import {
   ClubTilesGrid,
   JointCrossSell,
   type MembershipPitchClub,
 } from "./membership-pitch";
-import { RecommendedPrograms } from "./recommended-programs";
 import {
   RANDWIJCK_FULL_YEAR,
   TRIAZ_FULL_YEAR,
@@ -34,33 +36,18 @@ import {
   randwijckStatusOn,
 } from "@/lib/membership-seasons";
 import { cn } from "@/lib/utils";
-import type { ProgramRec } from "@/lib/portal/recommend";
 
 /**
  * The portal home for households with NO active membership.
  *
- * This is the high-conversion variant of `/portal`. Top-to-bottom it
- * walks a non-member through:
- *   1. A welcoming sales hero with primary "Get a membership" CTA.
- *   2. A three-anchor price strip (adult / family / both clubs).
- *   3. The two-club tile grid + joint upsell (shared with /portal/book).
- *   4. A six-tile "what you unlock" feature grid.
- *   5. The recommended-programs strip with a "members enroll first" pill.
- *   6. A family / kids pitch (only when relevant).
- *   7. A ladder teaser.
- *   8. A season urgency strip (Randwijck reopens / closes when).
- *   9. A short FAQ block.
- *
- * The empty-week calendar, the `—` stat strip, and the "talk to the
- * office" banner from the member layout are deliberately absent — they
- * say "you have nothing here" and we want every block to say "join us".
+ * Leads with quick actions (lessons, classes, membership, trial, inbox),
+ * then pricing, club tiles, and supporting membership content below.
  */
 export function NonMemberHome({
   firstName,
   isParent,
   hasAnyChild,
   clubs,
-  recs,
   brandName,
   showTrialEntry = true,
   marketingImages = {},
@@ -70,7 +57,6 @@ export function NonMemberHome({
   /** True when the household roster already has any child member. */
   hasAnyChild: boolean;
   clubs: MembershipPitchClub[];
-  recs: { hero: ProgramRec[]; more: ProgramRec[] };
   marketingImages?: Record<string, string>;
   /** Active tenant brand name, used in the welcome kicker. Defaults to a
    *  generic label so callers that haven't been updated still render. */
@@ -81,9 +67,6 @@ export function NonMemberHome({
   const headline = isParent
     ? "Find a lesson for the family. Membership when you're ready."
     : "Find a lesson. Become a member when you're ready.";
-  const subtitle = isParent
-    ? `${greeting}${firstName ? `, ${firstName}` : ""}. Browse what's on for you and the kids — coaching is open to non-members too. A membership unlocks bookings and the best price on lessons.`
-    : `${greeting}${firstName ? `, ${firstName}` : ""}. Have a look at the lessons we run — anyone can sign up. A membership adds court bookings and member pricing.`;
 
   const randwijck = randwijckStatusOn();
   const adultJointSaving = jointSavings("adult", { isReturning: true });
@@ -91,36 +74,58 @@ export function NonMemberHome({
     (c) => c.slug === "triaz" || c.slug === "randwijck",
   );
 
+  const mobileQuickActions = [
+    {
+      href: "/portal/programs",
+      label: "Browse lessons",
+      icon: <CompassIcon size={20} />,
+      emphasis: true,
+    },
+    {
+      href: "/portal/classes",
+      label: "Classes",
+      icon: <ClassIcon size={20} />,
+    },
+    {
+      href: "/portal/membership#buy",
+      label: "Get membership",
+      icon: <MembershipIcon size={20} />,
+    },
+    ...(showTrialEntry
+      ? [
+          {
+            href: "/portal/request-trial",
+            label: "Request trial",
+            icon: <TicketIcon size={20} />,
+          },
+        ]
+      : []),
+    {
+      href: "/portal/inbox",
+      label: "Inbox",
+      icon: <InboxIcon size={20} />,
+    },
+  ];
+
   return (
-    <div className="space-y-10">
-      {/* 1 — Sales hero (lessons-first; "skip to membership" stays one click away) */}
-      <PageHeader
-        kicker={`Welcome to ${brandName ?? "us"}`}
-        title={headline}
-        description={subtitle}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild tone="triaz" size="lg">
-              <Link href="/portal/programs">
-                <CompassIcon /> Browse lessons <ArrowRightIcon />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" tone="neutral" size="lg">
-              <Link href="/portal/membership#buy">Membership only</Link>
-            </Button>
+    <div className="space-y-6 md:space-y-10">
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <div className="kicker-pill text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--triaz-ink)]">
+            Welcome to {brandName ?? "us"}
           </div>
-        }
-      />
+          <h1 className="font-display text-2xl font-medium leading-tight tracking-[-0.02em] md:text-3xl">
+            {headline}
+          </h1>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            {greeting}
+            {firstName ? `, ${firstName}` : ""}. Tap below to get started.
+          </p>
+        </div>
+        <MobileQuickActions items={mobileQuickActions} alwaysVisible header={false} />
+      </div>
 
-      {/* 2 — Lessons teaser leads the page now */}
-      <LessonsTeaser
-        hero={recs.hero}
-        more={recs.more}
-        isParent={isParent}
-        showTrialEntry={showTrialEntry}
-      />
-
-      {/* 3 — Headline price strip (includes season urgency footer) */}
+      {/* Headline price strip (includes season urgency footer) */}
       <PriceAnchorStrip
         randwijckOpen={randwijck.isOpen}
         randwijckEvent={
@@ -203,13 +208,13 @@ function PriceAnchorStrip({
   ];
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-px bg-[var(--content-separator)] md:grid-cols-3 md:gap-3 md:bg-transparent">
         {items.map((it) => (
           <div
             key={it.href}
             className={cn(
-              "group relative flex flex-col gap-2 elev-card p-5 transition-shadow hover:shadow-[var(--shadow-floating)]",
-              it.highlight && "ring-1 ring-[var(--joint)]/40",
+              "group relative flex flex-col gap-2 bg-[var(--content-grouped-inset)] p-5 md:elev-card md:transition-shadow md:hover:shadow-[var(--shadow-floating)]",
+              it.highlight && "md:ring-1 md:ring-[var(--joint)]/40",
             )}
           >
             {it.highlight && (
@@ -274,134 +279,84 @@ function PriceAnchorStrip({
 // ---------------------------------------------------------------------------
 
 function FeatureGrid({ brandName: _brandName }: { brandName: string }) {
-  const features: {
-    icon: React.ReactNode;
-    title: string;
-    body: string;
-  }[] = [
-    {
-      icon: <CalendarIcon size={18} />,
-      title: "Court bookings, online",
-      body: "Reserve at your home club from your phone. No phone calls.",
-    },
-    {
-      icon: <ClassIcon size={18} />,
-      title: "Adult group lessons",
-      body: "Weekly classes for every level — beginner to high intermediate.",
-    },
-    {
-      icon: <UsersIcon size={18} />,
-      title: "Kids' programs",
-      body: "Group lessons, camps, school pickups, high performance.",
-    },
-    {
-      icon: <ClockIcon size={18} />,
-      title: "Year-round play",
-      body: "Triaz drains in the rain — the season never really stops.",
-    },
-    {
-      icon: <FamilyIcon size={18} />,
-      title: "Cover the family",
-      body: "One family membership covers everyone in your household.",
-    },
-  ];
+  const features = FEATURE_ITEMS;
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {features.map((f) => (
-        <div
-          key={f.title}
-          className="flex gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-5"
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--triaz-soft)] text-[var(--triaz-ink)]">
-            {f.icon}
+    <>
+      <GroupedSection header="What membership unlocks" className="md:hidden">
+        <li className="grouped-row p-0">
+          <div className="grid w-full grid-cols-1 divide-y divide-[var(--content-separator)]">
+            {features.map((f) => (
+              <div key={f.title} className="flex gap-3 px-4 py-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--triaz-soft)] text-[var(--triaz-ink)]">
+                  {f.icon}
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-semibold">{f.title}</div>
+                  <div className="text-sm text-[var(--muted-foreground)]">
+                    {f.body}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="space-y-1">
-            <div className="text-sm font-semibold">{f.title}</div>
-            <div className="text-sm text-[var(--muted-foreground)]">
-              {f.body}
+        </li>
+      </GroupedSection>
+      <div className="hidden md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3">
+        {features.map((f) => (
+          <div
+            key={f.title}
+            className="flex gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-5"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--triaz-soft)] text-[var(--triaz-ink)]">
+              {f.icon}
+            </div>
+            <div className="space-y-1">
+              <div className="text-sm font-semibold">{f.title}</div>
+              <div className="text-sm text-[var(--muted-foreground)]">
+                {f.body}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 5 — Lessons teaser
-// ---------------------------------------------------------------------------
-
-function LessonsTeaser({
-  hero,
-  more,
-  isParent,
-  showTrialEntry,
-}: {
-  hero: ProgramRec[];
-  more: ProgramRec[];
-  isParent: boolean;
-  showTrialEntry: boolean;
-}) {
-  const hasAny = hero.length > 0 || more.length > 0;
-  return (
-    <Section
-      title="Lessons & programs"
-      description={
-        isParent
-          ? "Coaching for adults and kids — anyone can sign up. Members get priority enrollment and the best price."
-          : "Group classes for every level. Anyone can join — members enroll first and pay less."
-      }
-      action={
-        <Button asChild variant="ghost" tone="neutral" size="sm">
-          <Link href="/portal/programs">
-            See everything <ArrowRightIcon size={14} />
-          </Link>
-        </Button>
-      }
-    >
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="triaz" variant="soft">
-            <StarIcon size={12} /> Members enroll first
-          </Badge>
-          <p className="text-xs text-[var(--muted-foreground)]">
-            Lock in a membership and you can book any class below in seconds.
-          </p>
-        </div>
-        {hasAny ? (
-          <RecommendedPrograms hero={hero} more={more} isParent={isParent} />
-        ) : (
-          <Link
-            href="/portal/programs"
-            className="flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-4 text-sm transition-colors hover:bg-[var(--surface-strong)]"
-          >
-            <span className="text-[var(--muted-foreground)]">
-              Browse the full catalog of group lessons, camps and clinics.
-            </span>
-            <span className="inline-flex items-center gap-1 font-semibold text-[var(--foreground)]">
-              Open <ArrowRightIcon size={14} />
-            </span>
-          </Link>
-        )}
-        {showTrialEntry && (
-          <p className="text-xs text-[var(--muted-foreground)]">
-            Not sure where to start?{" "}
-            <Link
-              href="/portal/request-trial"
-              className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-            >
-              Request a trial lesson
-            </Link>{" "}
-            and we&apos;ll match you with the right group.
-          </p>
-        )}
+        ))}
       </div>
-    </Section>
+    </>
   );
 }
 
+const FEATURE_ITEMS: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+}[] = [
+  {
+    icon: <CalendarIcon size={18} />,
+    title: "Court bookings, online",
+    body: "Reserve at your home club from your phone. No phone calls.",
+  },
+  {
+    icon: <ClassIcon size={18} />,
+    title: "Adult group lessons",
+    body: "Weekly classes for every level — beginner to high intermediate.",
+  },
+  {
+    icon: <UsersIcon size={18} />,
+    title: "Kids' programs",
+    body: "Group lessons, camps, school pickups, high performance.",
+  },
+  {
+    icon: <ClockIcon size={18} />,
+    title: "Year-round play",
+    body: "Triaz drains in the rain — the season never really stops.",
+  },
+  {
+    icon: <FamilyIcon size={18} />,
+    title: "Cover the family",
+    body: "One family membership covers everyone in your household.",
+  },
+];
+
 // ---------------------------------------------------------------------------
-// 6 — Family pitch
+// Family pitch
 // ---------------------------------------------------------------------------
 
 function FamilyPitch({ hasAnyChild }: { hasAnyChild: boolean }) {
@@ -470,7 +425,7 @@ function KidProgramTile({ title, body }: { title: string; body: string }) {
   return (
     <Link
       href="/portal/programs"
-      className="group elev-card flex items-start gap-3 p-4 transition-shadow hover:shadow-[var(--shadow-floating)]"
+      className="group flex min-h-[2.75rem] w-full items-start gap-3 px-4 py-3 no-underline active:bg-[var(--muted)]/30 md:elev-card md:p-4 md:transition-shadow md:hover:shadow-[var(--shadow-floating)]"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--triaz-soft)] text-[var(--triaz-ink)]">
         <ClassIcon size={14} />

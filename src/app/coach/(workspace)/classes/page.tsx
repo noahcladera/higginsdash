@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { requireCoach } from "@/lib/auth/require-coach";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { Section } from "@/components/ui/section";
+import { GroupedSection, GroupedLinkRow } from "@/components/ui/grouped-list";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ClassIcon } from "@/components/icons";
 import { formatPublicAgeLabel, programTargetToAudience } from "@/lib/classes/age-band";
 import { getCoachClassSeriesList } from "@/lib/coach/class-series-queries";
 import { formatLocalDate } from "@/lib/booking/time";
@@ -16,7 +18,7 @@ export default async function CoachClassesPage() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <ShellPageHeader
         kicker={t.class.plural}
         title={`My ${t.class.plural.toLowerCase()}`}
         description={`Series you teach, rosters, and ${t.student.singular.toLowerCase()} skill ${t.level.plural.toLowerCase()}.`}
@@ -28,11 +30,45 @@ export default async function CoachClassesPage() {
       >
         {rows.length === 0 ? (
           <EmptyState
+            icon={<ClassIcon />}
             title="No classes yet"
             description="When you are assigned to a class series in the admin CRM, it will appear here."
           />
         ) : (
-          <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
+          <>
+            <div className="lg:hidden">
+              <GroupedSection header="All series">
+                {rows.map((s) => {
+                  const ageLabel = formatPublicAgeLabel({
+                    minAge: s.minAge,
+                    maxAge: s.maxAge,
+                    audience: programTargetToAudience(
+                      s.targetAudience as "kids" | "adults" | "mixed",
+                    ),
+                  });
+                  return (
+                    <GroupedLinkRow
+                      key={s.id}
+                      href={`/coach/classes/${s.id}`}
+                      className="flex-col items-stretch gap-1 py-3"
+                    >
+                      <div className="font-medium">{s.name}</div>
+                      <div className="text-xs text-[var(--muted-foreground)]">
+                        {s.programName} · {audienceLabel(s.targetAudience)}
+                        {ageLabel ? ` · ${ageLabel}` : ""}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <Badge variant="secondary">{s.status}</Badge>
+                        <span className="text-xs text-[var(--muted-foreground)]">
+                          {s.enrolledCount} enrolled
+                        </span>
+                      </div>
+                    </GroupedLinkRow>
+                  );
+                })}
+              </GroupedSection>
+            </div>
+            <ul className="hidden divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] lg:block">
             {rows.map((s) => {
               const ageLabel = formatPublicAgeLabel({
                 minAge: s.minAge,
@@ -67,7 +103,8 @@ export default async function CoachClassesPage() {
               </li>
             );
             })}
-          </ul>
+            </ul>
+          </>
         )}
       </Section>
     </div>

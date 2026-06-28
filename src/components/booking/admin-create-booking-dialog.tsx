@@ -451,7 +451,7 @@ export function AdminCreateBookingDialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending || !canSubmit}>
+          <Button onClick={handleSubmit} loading={isPending} disabled={isPending || !canSubmit}>
             {isPending
               ? "Booking…"
               : willChargeMember && priceDueEur > 0

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -34,6 +35,10 @@ const buttonVariants = cva(
         outline: "border bg-transparent",
         ghost: "bg-transparent",
         link: "underline-offset-4 hover:underline px-0 h-auto rounded-none active:scale-100",
+        glass:
+          "glass-regular min-h-11 border border-[var(--glass-regular-border)] text-[var(--foreground)] shadow-[var(--glass-regular-shadow)] hover:brightness-105 active:scale-[var(--glass-interactive-scale)]",
+        glassProminent:
+          "glass-regular min-h-11 border border-[var(--glass-regular-border)] bg-[var(--glass-regular-bg-scrolled)] font-semibold text-[var(--foreground)] shadow-[var(--glass-regular-shadow)] hover:brightness-105 active:scale-[var(--glass-interactive-scale)]",
       },
       tone: {
         neutral: "",
@@ -172,17 +177,52 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /**
+   * Show a leading spinner and disable the button while an async action is
+   * in flight. Gives every action a consistent pending cue (most call sites
+   * also swap the label, e.g. "Saving…"). Ignored when `asChild` is set
+   * (a Slot wraps a single child and can't host a disabled button anyway).
+   */
+  loading?: boolean;
+  /** Optional label rendered next to the spinner while `loading`. */
+  loadingText?: React.ReactNode;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, tone, size, asChild = false, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      tone,
+      size,
+      asChild = false,
+      loading = false,
+      loadingText,
+      disabled,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : "button";
+    const showSpinner = loading && !asChild;
     return (
       <Comp
         className={cn(buttonVariants({ variant, tone, size, className }))}
         ref={ref}
+        aria-busy={loading || undefined}
+        disabled={asChild ? undefined : disabled || loading}
         {...props}
-      />
+      >
+        {showSpinner ? (
+          <>
+            <Loader2 className="animate-spin" aria-hidden />
+            {loadingText ?? children}
+          </>
+        ) : (
+          children
+        )}
+      </Comp>
     );
   },
 );

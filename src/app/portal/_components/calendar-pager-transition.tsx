@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { cn } from "@/lib/utils";
 
 /*
  * CalendarPagerTransition — a tiny client-side wrapper that re-mounts
@@ -94,7 +95,11 @@ export function CalendarPagerTransition({
         : "";
 
   return (
-    <div key={pagerKey} className={animClass} data-pager-direction={direction}>
+    <div
+      key={pagerKey}
+      className={cn("pager-root overflow-x-clip", animClass)}
+      data-pager-direction={direction}
+    >
       {children}
     </div>
   );

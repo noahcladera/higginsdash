@@ -1,5 +1,5 @@
-import { RoutePageSkeleton } from "@/components/ui/route-page-skeleton";
+import { BookingPageSkeleton } from "@/components/ui/booking-page-skeleton";
 
 export default function PortalBookLoading() {
-  return <RoutePageSkeleton rows={6} className="space-y-10" />;
+  return <BookingPageSkeleton />;
 }

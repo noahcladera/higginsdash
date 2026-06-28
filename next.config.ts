@@ -23,6 +23,15 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  /*
+   * Allow the dev server's `_next/*` resources (JS chunks, HMR, CSS) to be
+   * fetched cross-origin when testing on a real device over the LAN. Without
+   * this, Next 16 blocks those requests by default, so the page loads with no
+   * client JS / styles and the glass nav bar never renders. Add your machine's
+   * LAN IP here (run `ipconfig getifaddr en0`); update it if your network/IP
+   * changes (e.g. a different Wi-Fi or hotspot).
+   */
+  allowedDevOrigins: ["172.20.10.6", "localhost", "127.0.0.1"],
   async headers() {
     return [
       {

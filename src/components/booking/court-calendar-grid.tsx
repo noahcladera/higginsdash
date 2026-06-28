@@ -20,7 +20,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/sheet-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,6 +86,9 @@ import {
   formatLocalHour,
   localMinutesSinceMidnight,
 } from "@/lib/booking/time";
+import { MemberCourtTimeline } from "./member-court-timeline";
+import { buildBookPageHref } from "@/lib/booking/book-page-href";
+import { useOverlay } from "@/components/ui/overlay-provider";
 
 export type ViewerRole = "admin" | "coach" | "member";
 
@@ -122,6 +125,18 @@ export interface CourtCalendarGridProps {
   embedded?: boolean;
   /** Week view: scroll this local date column into view on mount. */
   scrollToDate?: string;
+  /**
+   * URL-driven mobile court/slot navigation (member + coach book pages).
+   * Enables Link-based pickers that work on iOS Safari.
+   */
+  bookNavigation?: {
+    basePath: string;
+    clubSlug: string;
+    date: string;
+    courtId?: string;
+  };
+  /** Server-provided ?slot= deep link (Link-first mobile booking). */
+  initialSlotIso?: string;
 }
 
 type SelectedSlot =
@@ -135,6 +150,44 @@ type SelectedSlot =
   | { kind: "walkon"; courtName: string }
   | null;
 
+function resolveSlotDeepLink(
+  slotIso: string,
+  courtId: string | undefined,
+  data: CalendarWeek,
+  viewerRole: ViewerRole,
+  fallbackCourtId: string | null,
+): SelectedSlot {
+  const resolvedCourtId = courtId ?? fallbackCourtId;
+  if (!resolvedCourtId) return null;
+
+  const court = data.courts.find((c) => c.id === resolvedCourtId);
+  if (!court) return null;
+
+  const slot = court.slots.find((s) => s.startsAtLocal === slotIso);
+  if (!slot) return null;
+
+  if (slot.state.kind === "free" && court.isBookable) {
+    return {
+      kind: "free",
+      courtId: court.id,
+      courtName: court.name,
+      slot,
+    };
+  }
+  if (slot.state.kind === "booked") {
+    if (viewerRole === "member" && slot.state.purpose === "coaching") {
+      return null;
+    }
+    return {
+      kind: "booked",
+      courtId: court.id,
+      courtName: court.name,
+      slot,
+    };
+  }
+  return null;
+}
+
 export function CourtCalendarGrid({
   data,
   dayDates,
@@ -146,7 +199,12 @@ export function CourtCalendarGrid({
   compact = false,
   embedded = false,
   scrollToDate,
+  bookNavigation,
+  initialSlotIso,
 }: CourtCalendarGridProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -226,9 +284,6 @@ export function CourtCalendarGrid({
     return map;
   }, [data, visibleDates]);
 
-  const [selected, setSelected] = useState<SelectedSlot>(null);
-
-  // ---- Tap-to-block (admin): multi-select free cells, then confirm. -----
   const [blockMode, setBlockMode] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [selectionDialogOpen, setSelectionDialogOpen] = useState(false);
@@ -268,10 +323,80 @@ export function CourtCalendarGrid({
   }, [data.courts]);
 
   const isWeek = view === "week";
+  const isMobileDayView =
+    (viewerRole === "member" || viewerRole === "coach") && !isWeek;
+  const defaultMobileCourtId =
+    data.courts.find((c) => c.isBookable)?.id ?? data.courts[0]?.id ?? null;
+  const activeMobileCourtId =
+    bookNavigation?.courtId ?? defaultMobileCourtId;
+  const showCourtOnMobile = (courtId: string) =>
+    !isMobileDayView || courtId === activeMobileCourtId;
+
+  // Booking sheet open/close is pure client state (instant — no RSC
+  // refetch). `?slot=` is retained ONLY for cold-load deep links: the
+  // initializer resolves it once on mount, and we open the back-dismiss
+  // overlay so the hardware back button closes the sheet.
+  const bookingOverlay = useOverlay("booking-sheet");
+
+  const [selected, setSelected] = useState<SelectedSlot>(() => {
+    if (!bookNavigation || !isMobileDayView || !initialSlotIso) return null;
+    return resolveSlotDeepLink(
+      initialSlotIso,
+      bookNavigation.courtId,
+      data,
+      viewerRole,
+      defaultMobileCourtId,
+    );
+  });
+
+  /** Open the booking sheet for a slot — instant, no navigation. */
+  const openSlot = (selection: SelectedSlot) => {
+    if (!selection) return;
+    setSelected(selection);
+    bookingOverlay.openSheet();
+  };
+
+  /** Close the booking sheet (pops the back-dismiss history entry). */
+  function clearSelectedAndSlotParam() {
+    if (bookingOverlay.open) bookingOverlay.closeSheet();
+    else setSelected(null);
+  }
+
+  // Cold-load deep link (`?slot=`): the initializer already resolved the
+  // slot — register the back-dismiss entry once so back closes the sheet.
+  const coldLoadOpenedRef = useRef(false);
+  useEffect(() => {
+    if (selected && !coldLoadOpenedRef.current) {
+      coldLoadOpenedRef.current = true;
+      bookingOverlay.openSheet();
+    }
+    // Mount-only: subsequent opens go through `openSlot`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When the overlay closes (back button or programmatic), clear the
+  // selection and strip a cold-load `?slot=` so a refresh won't reopen it.
+  const wasBookingOpenRef = useRef(false);
+  useEffect(() => {
+    if (bookingOverlay.open) {
+      wasBookingOpenRef.current = true;
+      return;
+    }
+    if (!wasBookingOpenRef.current) return;
+    wasBookingOpenRef.current = false;
+    setSelected(null);
+    if (searchParams.get("slot")) {
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete("slot");
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+  }, [bookingOverlay.open, pathname, router, searchParams]);
+
   const useAdminWeekColumnWidths =
     compact && viewerRole === "admin" && isWeek;
 
-  /** Stronger day separators in admin week view. */
+  // ---- Tap-to-block (admin): multi-select free cells, then confirm. -----
   const adminDaySeparator =
     "border-l-[4px] border-l-[var(--border-strong)] pl-1";
 
@@ -347,7 +472,12 @@ export function CourtCalendarGrid({
     <div className="space-y-3">
       {!embedded && !compact && (
         <>
-          <div className="flex items-baseline justify-between gap-3">
+          <div
+            className={cn(
+              "flex items-baseline justify-between gap-3",
+              isMobileDayView && "hidden lg:flex",
+            )}
+          >
             <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
               {headerLabel}
             </h2>
@@ -405,6 +535,47 @@ export function CourtCalendarGrid({
           )}
         </>
       )}
+      {isMobileDayView && bookNavigation && (
+        <>
+          <MemberCourtTimeline
+            data={data}
+            dayDate={rowDays[0]?.[0]?.date ?? visibleDates[0] ?? ""}
+            viewerRole={viewerRole}
+            viewerPersonId={viewerPersonId}
+            activeCourtId={activeMobileCourtId ?? ""}
+            courtHrefFor={(courtId) =>
+              buildBookPageHref(bookNavigation.basePath, {
+                club: bookNavigation.clubSlug,
+                date: bookNavigation.date,
+                court: courtId,
+              })
+            }
+            slotHrefFor={(court, slot) =>
+              buildBookPageHref(bookNavigation.basePath, {
+                club: bookNavigation.clubSlug,
+                date: bookNavigation.date,
+                court: court.id,
+                slot: slot.startsAtLocal,
+              })
+            }
+            onSelectSlot={(court, slot) => {
+              const selection = resolveSlotDeepLink(
+                slot.startsAtLocal,
+                court.id,
+                data,
+                viewerRole,
+                defaultMobileCourtId,
+              );
+              openSlot(selection);
+            }}
+            todayLocalDate={todayLocalDate}
+            nowMinutes={nowMinutes}
+            rowStepMin={rowStepMin}
+          />
+          <div className="hidden lg:block" aria-hidden />
+        </>
+      )}
+
       {embedded && viewerRole === "admin" && (
         <div className="flex flex-wrap items-center justify-end gap-2">
           {!blockMode ? (
@@ -460,7 +631,12 @@ export function CourtCalendarGrid({
              * natural column "anchor" — visually obvious and there's
              * exactly one per column.
              */
-            className="snap-x snap-proximity overflow-x-auto rounded-md border border-[var(--border)] scroll-pl-20"
+            className={cn(
+              "rounded-md border border-[var(--border)] overscroll-x-contain",
+              isMobileDayView
+                ? "hidden lg:block lg:snap-x lg:snap-proximity lg:overflow-x-auto lg:scroll-pl-20"
+                : "snap-x snap-proximity overflow-x-auto scroll-pl-20 max-lg:[@media(hover:none)]:snap-none",
+            )}
             ref={rowIdx === 0 ? scrollRef : undefined}
           >
             <table className="w-full border-collapse text-sm">
@@ -540,6 +716,7 @@ export function CourtCalendarGrid({
                       const headerCls = cn(
                         widthClassForColumn(c, dh.date),
                         "snap-start",
+                        !showCourtOnMobile(c.id) && "hidden lg:table-cell",
                         dayBoundary
                           ? useAdminWeekColumnWidths
                             ? cn(adminDaySeparator, "px-1.5 py-2 text-left")
@@ -653,6 +830,9 @@ export function CourtCalendarGrid({
                           const dayBoundary = isWeek && ci === 0 && di > 0;
                           const visual = visualByCourtId.get(court.id);
                           const columnWidth = widthClassForColumn(court, d.date);
+                          const mobileHidden = !showCourtOnMobile(court.id)
+                            ? "hidden lg:table-cell"
+                            : undefined;
                           const isToday = d.date === todayLocalDate;
                           const dimPast =
                             d.date < todayLocalDate ||
@@ -675,6 +855,7 @@ export function CourtCalendarGrid({
                                         isWeek || denseGrid ? "px-1 py-0.5" : "px-2 py-1.5",
                                       ),
                                   columnWidth,
+                                  mobileHidden,
                                   dimPast && PAST_CELL,
                                 )}
                               />
@@ -720,6 +901,8 @@ export function CourtCalendarGrid({
                               compact={isWeek || denseGrid}
                               adminWeekStyle={useAdminWeekColumnWidths}
                               widthClass={columnWidth}
+                              mobileHidden={mobileHidden}
+                              memberLargeTouch={isMobileDayView}
                               surfaceTintClass={
                                 useAdminWeekColumnWidths
                                   ? undefined
@@ -795,7 +978,7 @@ export function CourtCalendarGrid({
       {selected?.kind === "free" && viewerRole === "admin" && (
         <AdminCreateBookingDialog
           open
-          onOpenChange={() => setSelected(null)}
+          onOpenChange={() => clearSelectedAndSlotParam()}
           courtId={selected.courtId}
           courtName={selected.courtName}
           slot={selected.slot}
@@ -815,7 +998,7 @@ export function CourtCalendarGrid({
       {selected?.kind === "free" && viewerRole !== "admin" && (
         <CreateBookingDialog
           open
-          onOpenChange={() => setSelected(null)}
+          onOpenChange={() => clearSelectedAndSlotParam()}
           courtId={selected.courtId}
           courtName={selected.courtName}
           slot={selected.slot}
@@ -835,7 +1018,7 @@ export function CourtCalendarGrid({
       {selected?.kind === "booked" && selected.slot.state.kind === "booked" && (
         <BookingDetailDialog
           open
-          onOpenChange={() => setSelected(null)}
+          onOpenChange={() => clearSelectedAndSlotParam()}
           courtName={selected.courtName}
           slot={selected.slot}
           viewerRole={viewerRole}
@@ -845,7 +1028,7 @@ export function CourtCalendarGrid({
       {selected?.kind === "walkon" && (
         <WalkOnInfoDialog
           open
-          onOpenChange={() => setSelected(null)}
+          onOpenChange={() => clearSelectedAndSlotParam()}
           courtName={selected.courtName}
         />
       )}
@@ -968,6 +1151,8 @@ function SlotCell({
   compact,
   adminWeekStyle,
   widthClass,
+  mobileHidden,
+  memberLargeTouch,
   surfaceTintClass,
 }: {
   slot: CalendarSlot;
@@ -986,15 +1171,23 @@ function SlotCell({
   compact?: boolean;
   adminWeekStyle?: boolean;
   widthClass?: string;
+  mobileHidden?: string;
+  memberLargeTouch?: boolean;
   surfaceTintClass?: string;
 }) {
-  const cellPy = compact ? "py-0.5" : "py-1.5";
-  const cellPx = compact ? "px-1" : "px-2";
+  const cellPy = memberLargeTouch
+    ? "py-2"
+    : compact
+      ? "py-0.5"
+      : "py-1.5";
+  const cellPx = compact ? "px-1" : memberLargeTouch ? "px-2" : "px-2";
   const adminDaySep =
     "border-l-[4px] border-l-[var(--border-strong)] pl-0.5";
   const bookableInteractive = compact
     ? cn(BOOKABLE_SLOT_INTERACTIVE_COMPACT, "py-0.5")
-    : BOOKABLE_SLOT_INTERACTIVE_DAY;
+    : memberLargeTouch
+      ? cn(BOOKABLE_SLOT_INTERACTIVE_DAY, "min-h-11 py-2")
+      : BOOKABLE_SLOT_INTERACTIVE_DAY;
   const baseCell = cn(
     dayBoundary
       ? adminWeekStyle
@@ -1002,6 +1195,7 @@ function SlotCell({
         : `border-l-2 border-l-[var(--border-strong)] ${cellPx} ${cellPy} text-xs leading-tight`
       : `border-l border-[var(--border)] ${cellPx} ${cellPy} text-xs leading-tight`,
     widthClass,
+    mobileHidden,
     dimPast && PAST_CELL,
   );
   const reservedCls = memberReservedSlotClasses();
@@ -1255,7 +1449,7 @@ function SlotCell({
           className={cn(
             baseCell,
             isInfoOnly
-              ? "bg-stone-100 text-stone-600"
+              ? "bg-stone-100 p-0 text-stone-600"
               : "bg-stone-200 text-stone-700",
             dimPast && PAST_SLOT_MUTED,
             continuesFromAbove &&
@@ -1264,30 +1458,46 @@ function SlotCell({
               (isInfoOnly ? "border-b-stone-100" : "border-b-stone-200"),
             continuesFromAbove && "pt-0",
             continuesToBelow && "pb-0",
-            isInfoOnly && "cursor-pointer hover:bg-stone-50",
           )}
           title={blockTitle}
-          onClick={() => {
-            if (!isInfoOnly) return;
-            if (!court.isBookable) {
-              onClick();
-              return;
-            }
-            onClick();
-          }}
         >
-          {!continuesFromAbove && (
-            <>
-              <div className="truncate text-[11px] font-medium">
-                {blockLabel}
-              </div>
-              {!compact && (
-                <div className="text-[9px] uppercase tracking-wide opacity-75">
-                  {isInfoOnly ? "members only" : "blocked"}
+          {!continuesFromAbove &&
+            (isInfoOnly ? (
+              <button
+                type="button"
+                className={cn(
+                  "flex h-full min-h-[inherit] w-full flex-col justify-center px-1 text-left",
+                  "touch-manipulation hover:bg-stone-50 active:bg-stone-100",
+                )}
+                onClick={() => {
+                  if (!court.isBookable) {
+                    onClick();
+                    return;
+                  }
+                  onClick();
+                }}
+              >
+                <div className="truncate text-[11px] font-medium">
+                  {blockLabel}
                 </div>
-              )}
-            </>
-          )}
+                {!compact && (
+                  <div className="text-[9px] uppercase tracking-wide opacity-75">
+                    members only
+                  </div>
+                )}
+              </button>
+            ) : (
+              <>
+                <div className="truncate text-[11px] font-medium">
+                  {blockLabel}
+                </div>
+                {!compact && (
+                  <div className="text-[9px] uppercase tracking-wide opacity-75">
+                    blocked
+                  </div>
+                )}
+              </>
+            ))}
         </td>
       );
     }
@@ -1409,9 +1619,163 @@ function CreateBookingDialog({
     run(() => createBooking(bookingInput));
   };
 
+  if (viewerRole === "member" || viewerRole === "coach") {
+    if (!open) return null;
+
+    const descriptionLine =
+      viewerRole === "member"
+        ? " · Books under your account — add partners if someone else is playing with you."
+        : ` · Book a ${t.privateLesson.singular.toLowerCase()} on this court.`;
+
+    return (
+      <>
+        <div
+          className="fixed inset-0 z-[60] bg-[var(--foreground)]/25 backdrop-blur-sm"
+          aria-hidden
+          onClick={() => onOpenChange(false)}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Book ${courtName}`}
+          data-testid="booking-dialog-sheet"
+          className="glass-regular fixed inset-x-0 bottom-0 z-[60] flex max-h-[85dvh] flex-col rounded-t-[var(--radius-glass-inner)] border-b-0 outline-none"
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto p-6 pb-safe">
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="font-display text-xl font-medium tracking-tight">
+              Book {courtName}
+            </h2>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              {clubName} · {slot.startsAtLocal.replace("T", " ")} ·{" "}
+              {effectiveDuration === 60
+                ? "1 hour"
+                : `${effectiveDuration} min`}
+              {descriptionLine}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {canPickDuration && (
+              <div className="space-y-1">
+                <Label>Duration</Label>
+                <div className="inline-flex overflow-hidden rounded-md border border-[var(--border)]">
+                  {([30, 45, 60] as const).map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => setDurationMinutes(mins)}
+                      className={cn(
+                        "min-h-11 touch-manipulation px-3 py-1.5 text-sm transition-colors",
+                        "border-l border-[var(--border)] first:border-l-0",
+                        durationMinutes === mins
+                          ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+                          : "bg-transparent text-[var(--foreground)] active:bg-[var(--muted)]/60",
+                      )}
+                      aria-pressed={durationMinutes === mins}
+                    >
+                      {mins} min
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[var(--muted-foreground)]">
+                  Private-lesson slot length. Grid cells stay 60 min; your
+                  booking will be {durationMinutes} minutes long.
+                </p>
+              </div>
+            )}
+
+            <PartyInput
+              value={partyEntries}
+              onChange={setPartyEntries}
+              label={partyLabel}
+              max={partyMax}
+              lookup={
+                memberPartnerLookup
+                  ? async (q) => {
+                      const res = await searchClubMembers({
+                        clubSlug,
+                        query: q,
+                      });
+                      return res.ok ? res.candidates : [];
+                    }
+                  : undefined
+              }
+              membersOnly={memberPartnerLookup}
+            />
+
+            {canPickDuration && (
+              <button
+                type="button"
+                onClick={() => setRecurringOpen(true)}
+                className="min-h-11 touch-manipulation text-xs text-[var(--accent)] underline underline-offset-2"
+              >
+                Make this recurring →
+              </button>
+            )}
+
+            <div className="space-y-1">
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            {error && (
+              <p className="rounded-md bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-ink)]">
+                {error}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              loading={isPending}
+              onClick={handleSubmit}
+            >
+              {isPending
+                ? "Booking..."
+                : willChargeMember && priceDueEur > 0
+                  ? `Continue to payment · €${priceDueEur.toFixed(2)}`
+                  : "Confirm booking"}
+            </Button>
+          </div>
+          </div>
+        </div>
+
+        {recurringOpen && (
+          <RecurringCoachLessonDialog
+            open={recurringOpen}
+            onOpenChange={setRecurringOpen}
+            courtId={courtId}
+            courtName={courtName}
+            clubId={clubId}
+            clubName={clubName}
+            slotLocalDate={slot.startsAtLocal.slice(0, 10)}
+            slotLocalStart={slot.startsAtLocal.slice(11, 16)}
+            initialDurationMinutes={durationMinutes}
+            onCreated={() => onOpenChange(false)}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent variant="dialog">
         <DialogHeader>
           <DialogTitle>Book {courtName}</DialogTitle>
           <DialogDescription>
@@ -1419,23 +1783,10 @@ function CreateBookingDialog({
             {effectiveDuration === 60
               ? "1 hour"
               : `${effectiveDuration} min`}
-            {viewerRole === "member" && (
-              <>
-                {" "}
-                · Books under your account — add partners if someone else is
-                playing with you.
-              </>
-            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
-          {viewerRole === "coach" && (
-            <p className="text-xs text-[var(--muted-foreground)]">
-              Book a {t.privateLesson.singular.toLowerCase()} on this court.
-            </p>
-          )}
-
           {canPickDuration && (
             <div className="space-y-1">
               <Label>Duration</Label>
@@ -1521,7 +1872,7 @@ function CreateBookingDialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
+          <Button onClick={handleSubmit} loading={isPending}>
             {isPending
               ? "Booking..."
               : willChargeMember && priceDueEur > 0
@@ -1593,7 +1944,10 @@ function BookingDetailDialog({
     if (slot.state.status === "cancellation_requested") {
       return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent>
+          <DialogContent
+            variant={viewerRole === "member" ? "sheet" : "dialog"}
+            className={viewerRole === "member" ? "max-lg:pb-safe-tab" : undefined}
+          >
             <DialogHeader>
               <DialogTitle>Coaching slot · pending review</DialogTitle>
               <DialogDescription>
@@ -1651,7 +2005,10 @@ function BookingDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+        variant={viewerRole === "member" ? "sheet" : "dialog"}
+        className={viewerRole === "member" ? "max-lg:pb-safe-tab" : undefined}
+      >
         <DialogHeader>
           <DialogTitle>Booking on {courtName}</DialogTitle>
           <DialogDescription>
@@ -1725,13 +2082,13 @@ function BookingDetailDialog({
             <Button
               variant="destructive"
               onClick={handleCancel}
-              disabled={isPending}
+              loading={isPending}
             >
               {isPending ? "Cancelling..." : "Cancel booking"}
             </Button>
           )}
           {isCoachingByOwner && (
-            <Button onClick={handleRequestDeletion} disabled={isPending}>
+            <Button onClick={handleRequestDeletion} loading={isPending}>
               {isPending ? "Sending..." : "Request deletion"}
             </Button>
           )}
@@ -1756,7 +2113,7 @@ function WalkOnInfoDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent variant="sheet">
         <DialogHeader>
           <DialogTitle>{courtName} · walk-on only</DialogTitle>
           <DialogDescription>

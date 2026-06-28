@@ -147,7 +147,7 @@ export function TransferRequestForm({
         <Button variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button tone="triaz" disabled={pending} onClick={submit}>
+        <Button tone="triaz" loading={pending} onClick={submit}>
           {pending ? "Sending…" : "Submit transfer request"}
         </Button>
       </div>

@@ -181,7 +181,7 @@ export function GeneralEditor({
       </section>
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending}>
           {pending ? "Saving…" : "Save changes"}
         </Button>
         {error && (

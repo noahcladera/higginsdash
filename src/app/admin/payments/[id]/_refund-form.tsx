@@ -81,7 +81,7 @@ export function RefundForm({
       <div className="flex justify-end">
         <Button
           tone="triaz"
-          disabled={pending}
+          loading={pending}
           onClick={() => {
             setLocalError(null);
             const parsed = Number(amount);

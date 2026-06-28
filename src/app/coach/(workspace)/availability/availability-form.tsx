@@ -166,7 +166,7 @@ export function CoachAvailabilityForm({
           <Button
             type="button"
             tone="triaz"
-            disabled={pending}
+            loading={pending}
             onClick={submit}
           >
             {pending ? "Saving…" : "Save availability"}

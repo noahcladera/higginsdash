@@ -1,10 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireCoach } from "@/lib/auth/require-coach";
 import { prisma } from "@/lib/prisma";
 import { formatEur } from "@/lib/invoicing/private-lesson-rates";
 import { PrintReceiptButton } from "./print-button";
 import { getCurrentBrand } from "@/lib/tenant";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
+import { BackLink } from "@/components/ui/back-link";
 
 export const metadata = { title: "Receipt" };
 
@@ -62,14 +63,24 @@ export default async function CoachReceiptPage({
   const email = payment.paidByPerson.emails[0]?.address ?? null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 print:hidden">
-        <Link
-          href="/coach/receipts"
-          className="text-sm text-[var(--muted-foreground)] hover:underline"
-        >
-          ← Back to receipts
-        </Link>
+    <div className="space-y-10">
+      <BackLink
+        href="/coach/receipts"
+        label="Back to receipts"
+        className="print:hidden"
+      />
+      <ShellPageHeader
+        kicker="Receipt"
+        title={payment.invoiceNumber ?? (isPaid ? "Receipt" : "Invoice")}
+        description={payment.description}
+        className="print:hidden"
+      />
+
+      <div className="flex items-center justify-end gap-4 print:hidden lg:hidden">
+        <PrintReceiptButton />
+      </div>
+
+      <div className="hidden items-center justify-end print:hidden lg:flex">
         <PrintReceiptButton />
       </div>
 

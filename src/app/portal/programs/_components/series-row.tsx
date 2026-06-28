@@ -48,10 +48,10 @@ export function SeriesRow({
   });
 
   return (
-    <li>
+    <li className="grouped-row p-0 md:border-0">
       <Link
         href={href}
-        className="group flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-4 transition-all hover:border-[var(--triaz)]/40 hover:shadow-[var(--shadow-md)] sm:flex-row sm:items-stretch sm:gap-4"
+        className="group flex w-full flex-col gap-4 p-4 no-underline transition-colors active:bg-[var(--muted)]/30 md:rounded-[var(--radius-lg)] md:border md:border-[var(--border)] md:bg-[var(--card)] md:p-4 md:hover:border-[var(--triaz)]/40 md:hover:shadow-[var(--shadow-md)] sm:flex-row sm:items-stretch sm:gap-4"
       >
         <div
           className="relative aspect-[16/9] w-full shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--triaz)]/10 sm:w-28 sm:aspect-[4/3]"
@@ -111,8 +111,8 @@ export function SeriesRow({
           </p>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end justify-between gap-3 sm:min-w-[148px] sm:pl-2">
-          <div className="text-right">
+        <div className="flex shrink-0 flex-col gap-3 sm:min-w-[148px] sm:items-end sm:justify-between sm:pl-2">
+          <div className="w-full text-left sm:text-right">
             {hasMemberPricing ? (
               <div className="space-y-0.5">
                 <p className="tabular text-base font-semibold text-[var(--foreground)]">
@@ -133,7 +133,7 @@ export function SeriesRow({
             ) : null}
           </div>
 
-          <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
             {series.isFull ? (
               <span className="text-sm font-bold text-[var(--triaz-ink)]">
                 Waitlist only
@@ -143,7 +143,13 @@ export function SeriesRow({
                 {slotsLeft} {slotsLeft === 1 ? "spot" : "spots"} left
               </span>
             )}
-            <Button asChild variant="outline" tone="neutral" size="sm">
+            <Button
+              asChild
+              variant="glassProminent"
+              tone="neutral"
+              size="sm"
+              className="min-h-11 w-full sm:w-auto"
+            >
               <span>
                 {series.isFull ? "Join waitlist" : "Enroll"}{" "}
                 <span className="ml-1 transition-transform group-hover:translate-x-0.5">

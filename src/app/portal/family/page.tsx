@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireMember } from "@/lib/auth/require-member";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Avatar } from "@/components/portal/avatar";
 import { FamilyIcon } from "@/components/icons";
@@ -73,7 +73,7 @@ export default async function FamilyPage({ searchParams }: FamilyPageProps) {
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <PortalPageHeader
         kicker="Family"
         title="Your family"
         description="Keep your kids' info up to date so coaches always have what they need."

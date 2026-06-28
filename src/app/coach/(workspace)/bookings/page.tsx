@@ -2,14 +2,16 @@ import Link from "next/link";
 import { requireCoach } from "@/lib/auth/require-coach";
 import { courtBookingClubFilter } from "@/lib/coach/club-scope";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { Section } from "@/components/ui/section";
+import { GroupedSection, GroupedRow } from "@/components/ui/grouped-list";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, PlusIcon } from "@/components/icons";
 import { BookingList, BookingRow } from "@/components/booking/booking-row";
 import { getTerms } from "@/lib/tenant";
+import { CoachPendingBanner } from "../_components/coach-pending-banner";
+import { RecurringRequestRow } from "./_components/recurring-request-row";
 
 /**
  * Coach's own booking history. Splits into upcoming + past, with deletion-
@@ -42,10 +44,6 @@ export default async function CoachBookingsPage() {
       take: 20,
       include: { court: true, club: true },
     }),
-    // Pending + denied recurring lesson requests so the coach can see what's
-    // waiting on admin and read the admin's note when something gets denied.
-    // We hide approved/active rows here because they're already visible on
-    // the calendar as a normal recurring block.
     prisma.recurringBlock.findMany({
       where: {
         requesterPersonId: person.id,
@@ -61,9 +59,14 @@ export default async function CoachBookingsPage() {
     (b) => b.status === "cancellation_requested",
   ).length;
 
+  const purposeFor = (purpose: string) => ({
+    label: purpose,
+    tone: (purpose === "coaching" ? "joint" : "triaz") as "joint" | "triaz",
+  });
+
   return (
     <div className="space-y-10">
-      <PageHeader
+      <ShellPageHeader
         kicker={terms.coach.role}
         title="Your bookings"
         description={`${terms.privateLesson.singular} bookings need an admin to approve cancellations.`}
@@ -76,26 +79,111 @@ export default async function CoachBookingsPage() {
         }
       />
 
-      {pendingCount > 0 && (
-        <div className="fade-in rounded-[var(--radius-md)] bg-[var(--warning-soft)] px-5 py-3 text-sm text-[var(--warning-ink)]">
-          {pendingCount} deletion request{pendingCount === 1 ? "" : "s"} waiting
-          on admin review.
-        </div>
-      )}
+      <CoachPendingBanner count={pendingCount} />
 
       {recurringRequests.length > 0 && (
-        <Section
-          title="Recurring lesson requests"
-          description="Pending or denied. Approved series show up as recurring blocks on the calendar."
-        >
-          <div className="space-y-2">
-            {recurringRequests.map((r) => (
-              <RecurringRequestRow key={r.id} request={r} />
-            ))}
+        <>
+          <div className="lg:hidden">
+            <GroupedSection header="Recurring lesson requests">
+              {recurringRequests.map((r) => (
+                <RecurringRequestRow key={r.id} request={r} />
+              ))}
+            </GroupedSection>
           </div>
-        </Section>
+          <Section
+            title="Recurring lesson requests"
+            description="Pending or denied. Approved series show up as recurring blocks on the calendar."
+            className="hidden lg:block"
+          >
+            <div className="grouped-section md:elev-card divide-y divide-[var(--content-separator)]">
+              {recurringRequests.map((r) => (
+                <RecurringRequestRow key={r.id} request={r} />
+              ))}
+            </div>
+          </Section>
+        </>
       )}
 
+      {/* Mobile grouped lists */}
+      <div className="space-y-6 lg:hidden">
+        <GroupedSection
+          header="Upcoming"
+          footer={
+            upcoming.length === 0
+              ? undefined
+              : `${upcoming.length} booking${upcoming.length === 1 ? "" : "s"}`
+          }
+        >
+          {upcoming.length === 0 ? (
+            <GroupedRow className="p-0">
+              <EmptyState
+                icon={<CalendarIcon size={20} />}
+                title="No upcoming bookings"
+                description="Add one when you're ready."
+                action={
+                  <Button asChild tone="triaz" size="sm">
+                    <Link href="/coach/book">
+                      {`${terms.bookVerb} a ${terms.court.singular.toLowerCase()}`}
+                    </Link>
+                  </Button>
+                }
+              />
+            </GroupedRow>
+          ) : (
+            upcoming.map((b) => (
+              <GroupedRow key={b.id} className="p-0">
+                <BookingRow
+                  variant="grouped"
+                  startsAt={b.startsAt}
+                  endsAt={b.endsAt}
+                  club={b.club.name}
+                  court={b.court.name}
+                  status={b.status}
+                  bookedBy={{ name: "you", isYou: true }}
+                  purpose={purposeFor(b.purpose)}
+                  cancellationNote={
+                    b.status === "cancellation_requested"
+                      ? { reason: b.cancellationReason }
+                      : undefined
+                  }
+                />
+              </GroupedRow>
+            ))
+          )}
+        </GroupedSection>
+
+        <GroupedSection
+          header="Past"
+          footer={
+            past.length === 0
+              ? undefined
+              : `${past.length} most recent`
+          }
+        >
+          {past.length === 0 ? (
+            <GroupedRow className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
+              No past bookings yet.
+            </GroupedRow>
+          ) : (
+            past.map((b) => (
+              <GroupedRow key={b.id} className="p-0">
+                <BookingRow
+                  variant="grouped"
+                  startsAt={b.startsAt}
+                  endsAt={b.endsAt}
+                  club={b.club.name}
+                  court={b.court.name}
+                  status={b.status}
+                  bookedBy={{ name: "you", isYou: true }}
+                  purpose={purposeFor(b.purpose)}
+                />
+              </GroupedRow>
+            ))
+          )}
+        </GroupedSection>
+      </div>
+
+      {/* Desktop sections */}
       <Section
         title="Upcoming"
         description={
@@ -103,6 +191,7 @@ export default async function CoachBookingsPage() {
             ? "Nothing on the books."
             : `${upcoming.length} booking${upcoming.length === 1 ? "" : "s"}`
         }
+        className="hidden lg:block"
       >
         {upcoming.length === 0 ? (
           <EmptyState
@@ -111,7 +200,9 @@ export default async function CoachBookingsPage() {
             description="Add one when you're ready."
             action={
               <Button asChild tone="triaz" size="sm">
-                <Link href="/coach/book">{`${terms.bookVerb} a ${terms.court.singular.toLowerCase()}`}</Link>
+                <Link href="/coach/book">
+                  {`${terms.bookVerb} a ${terms.court.singular.toLowerCase()}`}
+                </Link>
               </Button>
             }
           />
@@ -126,10 +217,7 @@ export default async function CoachBookingsPage() {
                   court={b.court.name}
                   status={b.status}
                   bookedBy={{ name: "you", isYou: true }}
-                  purpose={{
-                    label: b.purpose,
-                    tone: b.purpose === "coaching" ? "joint" : "triaz",
-                  }}
+                  purpose={purposeFor(b.purpose)}
                 />
                 {(b.cancellationReason || b.cancellationDenialReason) && (
                   <div className="space-y-0.5 px-4 pb-3 text-[11px] text-[var(--muted-foreground)]">
@@ -153,10 +241,9 @@ export default async function CoachBookingsPage() {
       <Section
         title="Past"
         description={
-          past.length === 0
-            ? "Nothing yet."
-            : `${past.length} most recent`
+          past.length === 0 ? "Nothing yet." : `${past.length} most recent`
         }
+        className="hidden lg:block"
       >
         {past.length === 0 ? (
           <EmptyState
@@ -175,10 +262,7 @@ export default async function CoachBookingsPage() {
                 court={b.court.name}
                 status={b.status}
                 bookedBy={{ name: "you", isYou: true }}
-                purpose={{
-                  label: b.purpose,
-                  tone: b.purpose === "coaching" ? "joint" : "triaz",
-                }}
+                purpose={purposeFor(b.purpose)}
               />
             ))}
           </BookingList>
@@ -186,103 +270,4 @@ export default async function CoachBookingsPage() {
       </Section>
     </div>
   );
-}
-
-const DAY_LABEL_FULL: Record<string, string> = {
-  mon: "Mon",
-  tue: "Tue",
-  wed: "Wed",
-  thu: "Thu",
-  fri: "Fri",
-  sat: "Sat",
-  sun: "Sun",
-};
-
-interface RecurringRequestRowProps {
-  request: {
-    id: string;
-    purposeDescription: string;
-    status: string;
-    dayOfWeek: string | null;
-    startTime: Date;
-    endTime: Date;
-    startsOn: Date;
-    endsOn: Date;
-    deniedReason: string | null;
-    requestedAt: Date;
-    excludedDates: Date[];
-    court: { name: string };
-    club: { name: string };
-  };
-}
-
-function RecurringRequestRow({ request: r }: RecurringRequestRowProps) {
-  const startTime = `${pad(r.startTime.getUTCHours())}:${pad(r.startTime.getUTCMinutes())}`;
-  const endTime = `${pad(r.endTime.getUTCHours())}:${pad(r.endTime.getUTCMinutes())}`;
-  const startsOn = isoFromDate(r.startsOn);
-  const endsOn = isoFromDate(r.endsOn);
-  const isPending = r.status === "pending";
-
-  return (
-    <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <div className="text-sm font-medium">
-            {r.purposeDescription}
-            <Badge
-              tone={isPending ? "warning" : "danger"}
-              variant="soft"
-              className="ml-2"
-            >
-              {r.status}
-            </Badge>
-          </div>
-          <div className="text-xs text-[var(--muted-foreground)]">
-            {r.club.name} · {r.court.name} · every{" "}
-            {r.dayOfWeek ? DAY_LABEL_FULL[r.dayOfWeek] : "day"} ·{" "}
-            <span className="font-mono">
-              {startTime}–{endTime}
-            </span>
-          </div>
-        </div>
-        <div className="font-mono text-[11px] text-[var(--muted-foreground)]">
-          {startsOn} → {endsOn}
-        </div>
-      </div>
-      {r.excludedDates.length > 0 && (
-        <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">
-          Skipping {r.excludedDates.length} date(s) you marked as conflicts.
-        </div>
-      )}
-      {r.status === "denied" && r.deniedReason && (
-        <div className="mt-2 rounded-md bg-[var(--danger-soft)] px-3 py-2 text-xs text-[var(--destructive)]">
-          <span className="font-semibold">Admin note:</span> {r.deniedReason}
-        </div>
-      )}
-      {isPending && (
-        <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">
-          Submitted {formatRequestedAt(r.requestedAt)}; admin will review.
-        </div>
-      )}
-    </div>
-  );
-}
-
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-function isoFromDate(d: Date): string {
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-}
-
-function formatRequestedAt(d: Date): string {
-  return new Intl.DateTimeFormat("en-NL", {
-    timeZone: "Europe/Amsterdam",
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
 }

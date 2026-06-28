@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { requireCoach } from "@/lib/auth/require-coach";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { Section } from "@/components/ui/section";
 import { LessonPlanPicker } from "@/components/medals/coach/lesson-plan-picker";
 import { PdfViewerLink } from "@/components/medals/coach/pdf-viewer-link";
@@ -27,7 +27,7 @@ export default async function CoachLessonPlanTrackPage({
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <ShellPageHeader
         kicker="Lesson plans"
         title={track.title}
         description={track.description}

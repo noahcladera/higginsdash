@@ -1,0 +1,75 @@
+{
+  "at": "2026-06-27T01:42:51.080Z",
+  "rows": [
+    {
+      "route": "/admin",
+      "status": "pass",
+      "http": 200,
+      "ms": 343,
+      "note": "Redirect login"
+    },
+    {
+      "route": "/admin/classes",
+      "status": "pass",
+      "http": 200,
+      "ms": 245,
+      "note": "Redirect login"
+    },
+    {
+      "route": "/admin/bookings",
+      "status": "pass",
+      "http": 200,
+      "ms": 232,
+      "note": "Redirect login"
+    },
+    {
+      "route": "/admin/households",
+      "status": "pass",
+      "http": 200,
+      "ms": 234,
+      "note": "Redirect login"
+    },
+    {
+      "route": "/admin/memberships",
+      "status": "pass",
+      "http": 200,
+      "ms": 235,
+      "note": "Redirect login"
+    },
+    {
+      "route": "/admin/payments",
+      "status": "pass",
+      "http": 200,
+      "ms": 260,
+      "note": "Redirect login"
+    },
+    {
+      "route": "/admin/inbox",
+      "status": "pass",
+      "http": 200,
+      "ms": 236,
+      "note": "Redirect login"
+    },
+    {
+      "route": "/admin/settings",
+      "status": "pass",
+      "http": 200,
+      "ms": 232,
+      "note": "Redirect login"
+    },
+    {
+      "route": "/admin/coaches",
+      "status": "pass",
+      "http": 200,
+      "ms": 242,
+      "note": "Redirect login"
+    },
+    {
+      "route": "/admin/programs",
+      "status": "pass",
+      "http": 200,
+      "ms": 312,
+      "note": "Redirect login"
+    }
+  ]
+}

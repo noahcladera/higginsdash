@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
 import { Stat, MetricStrip } from "@/components/ui/stat";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,6 +12,10 @@ import {
   CalendarIcon,
   ArrowRightIcon,
   FamilyIcon,
+  CompassIcon,
+  ClassIcon,
+  MembershipIcon,
+  TicketIcon,
 } from "@/components/icons";
 import {
   getUpcomingBookingsForPerson,
@@ -21,8 +25,6 @@ import {
   type MembershipDetail,
   type HouseholdMemberSummary,
 } from "@/lib/portal/queries";
-import { getRecommendationsForViewer } from "@/lib/portal/recommend-queries";
-import { RecommendedPrograms } from "./_components/recommended-programs";
 import { NonMemberHome } from "./_components/non-member-home";
 import { ProfileIncompleteBanner } from "./_components/profile-incomplete-banner";
 import { checkProfileCompleteness } from "@/lib/account/profile-completeness";
@@ -45,6 +47,13 @@ import {
   type MemberCalendarLegendEntry,
 } from "./_components/member-week-grid";
 import { CalendarPagerTransition } from "./_components/calendar-pager-transition";
+import { MobileQuickActions } from "./_components/mobile-quick-actions";
+import { HomeMobileHeader } from "./_components/home-mobile-header";
+import { MobileGroupedMetrics } from "./_components/mobile-grouped-metrics";
+import {
+  NextUpCard,
+  type NextUpItem,
+} from "./_components/next-up-card";
 import { AddToCalendarDialog, type CalendarTokenSummary } from "@/components/calendar/add-to-calendar-dialog";
 import { cn } from "@/lib/utils";
 import { clubTheme } from "@/lib/club-theme";
@@ -58,9 +67,7 @@ import { getMarketingImages } from "@/lib/uploads/marketing-images";
  * The page splits into two top-level renders:
  *
  *   - Non-member households (no active memberships) → {@link NonMemberHome},
- *     a high-conversion sales surface with hero, pricing anchors, club
- *     tiles, lesson teasers and an FAQ. Empty calendar grids are
- *     deliberately suppressed — they would only say "you have nothing".
+ *     quick actions plus pricing, club tiles, and membership content.
  *   - Member households → the original calendar-driven layout extracted
  *     into {@link MemberHome} below: editorial hero, week nav, metric
  *     strip, week grid, household ribbon, active memberships.
@@ -133,8 +140,7 @@ export default async function PortalHomePage({
   // Non-member: render the dedicated sales surface and short-circuit.
   // -----------------------------------------------------------------
   if (!hasAnyActive) {
-    const [recs, clubs, marketingImages] = await Promise.all([
-      getRecommendationsForViewer(person.id, householdId),
+    const [clubs, marketingImages] = await Promise.all([
       prisma.club.findMany({
         where: { isActive: true },
         orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
@@ -154,7 +160,6 @@ export default async function PortalHomePage({
           isParent={isParent}
           hasAnyChild={hasAnyChild}
           clubs={clubs}
-          recs={{ hero: recs.hero, more: recs.more }}
           brandName={brand.shortName}
           showTrialEntry={org.features.trialInterest && !hasLiveEnrollment}
           marketingImages={marketingImages}
@@ -187,7 +192,7 @@ export default async function PortalHomePage({
     });
   }
 
-  const [upcomingBookings, upcomingSessions, weekEvents, recs, calendarTokens] =
+  const [upcomingBookings, upcomingSessions, weekEvents, calendarTokens] =
     await Promise.all([
       getUpcomingBookingsForPerson(person.id, 6),
       getUpcomingSessionsForStudents(studentIdsToShow, 6),
@@ -197,7 +202,6 @@ export default async function PortalHomePage({
         weekStart,
         calendarStudents,
       ),
-      getRecommendationsForViewer(person.id, householdId),
       prisma.calendarFeedToken.findMany({
         where: { personId: person.id, revokedAt: null },
         select: { id: true, scope: true },
@@ -227,7 +231,6 @@ export default async function PortalHomePage({
         weekStart={weekStart}
         upcomingBookings={upcomingBookings}
         upcomingSessions={upcomingSessions}
-        recs={recs}
         origin={origin}
         hasHousehold={householdId != null}
         calendarTokens={calendarTokens}
@@ -252,7 +255,6 @@ async function MemberHome({
   weekStart,
   upcomingBookings,
   upcomingSessions,
-  recs,
   origin,
   hasHousehold,
   calendarTokens,
@@ -268,11 +270,13 @@ async function MemberHome({
   weekStart: Date;
   upcomingBookings: Awaited<ReturnType<typeof getUpcomingBookingsForPerson>>;
   upcomingSessions: Awaited<ReturnType<typeof getUpcomingSessionsForStudents>>;
-  recs: Awaited<ReturnType<typeof getRecommendationsForViewer>>;
   origin: string;
   hasHousehold: boolean;
   calendarTokens: CalendarTokenSummary[];
 }) {
+  const org = await getCurrentOrg();
+  const f = org.features;
+  const t = org.terms;
   const days = daysOfWeek(weekStart);
 
   // Pull club rows once so the membership card surfaces the active
@@ -334,12 +338,50 @@ async function MemberHome({
     (e) => e.kind === "booking",
   ).length;
 
-  const hasUpcomingActivity =
-    bookingsCount > 0 || sessionsCount > 0 || weekEvents.length > 0;
+  const quickActions = buildMemberQuickActions({
+    courtBookings: f.courtBookings,
+    classes: f.classes,
+    isParent,
+    isStudent,
+    enrollmentLabel: t.enrollment.singular,
+    classPlural: t.class.plural,
+  });
+
+  const nextUp = pickNextUpItem(upcomingBookings, upcomingSessions);
+
+  const mobileWeekPager = (
+    <div className="flex flex-wrap items-center gap-2 lg:hidden">
+      {(isParent || isStudent) && (
+        <AddToCalendarDialog
+          origin={origin}
+          hasHousehold={hasHousehold}
+          initialTokens={calendarTokens}
+        />
+      )}
+      <Button asChild variant="outline" size="sm" className="min-h-11">
+        <Link href={`/portal?week=${prevParam}`}>← Prev</Link>
+      </Button>
+      {!isThisWeek && (
+        <Button asChild variant="outline" size="sm" className="min-h-11">
+          <Link href={`/portal?week=${thisWeekParam}`}>This week</Link>
+        </Button>
+      )}
+      <Button asChild variant="outline" size="sm" className="min-h-11">
+        <Link href={`/portal?week=${nextParam}`}>Next →</Link>
+      </Button>
+      {f.courtBookings && (
+        <Button asChild tone="triaz" size="sm" className="min-h-11 flex-1 sm:flex-none">
+          <Link href="/portal/book">
+            <CalendarIcon /> Book
+          </Link>
+        </Button>
+      )}
+    </div>
+  );
 
   const calendarBlock = (
     <>
-      <MetricStrip>
+      <MetricStrip density="compact" className="hidden lg:flex">
         <Stat
           label="Active memberships"
           value={activeMemberships.length || "—"}
@@ -432,12 +474,13 @@ async function MemberHome({
                 .join(" · ")
         }
         action={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden flex-wrap items-center gap-2 lg:flex">
             {(isParent || isStudent) && (
               <AddToCalendarDialog
                 origin={origin}
                 hasHousehold={hasHousehold}
                 initialTokens={calendarTokens}
+                rendersSheet={false}
               />
             )}
             <Button asChild variant="ghost" tone="neutral" size="sm">
@@ -474,8 +517,52 @@ async function MemberHome({
   );
 
   return (
-    <div className="space-y-10">
-      <PageHeader
+    <div className="space-y-6 md:space-y-10">
+      {/* Mobile dashboard — above the fold */}
+      <div className="space-y-4 lg:hidden">
+        <HomeMobileHeader kicker="Members" greeting={greeting} subtitle={subtitle} />
+        <MobileQuickActions items={quickActions} />
+        {nextUp && <NextUpCard item={nextUp} />}
+        <MobileGroupedMetrics
+          items={[
+            {
+              label: "Active memberships",
+              value: activeMemberships.length || "—",
+              hint: hasAnyActive
+                ? coverageHint(activeMemberships)
+                : "Get one to start playing",
+            },
+            {
+              label: "Upcoming bookings",
+              value: bookingsCount || "—",
+              hint: bookingsCount === 0 ? "Nothing booked yet" : "Court time held",
+            },
+            {
+              label: "Upcoming classes",
+              value: sessionsCount || "—",
+              hint:
+                !isParent && !isStudent
+                  ? "Not enrolled"
+                  : sessionsCount === 0
+                    ? "Quiet week ahead"
+                    : "Sessions on the books",
+            },
+            {
+              label: "In your household",
+              value: familySize || "—",
+              hint:
+                familySize === 0
+                  ? "Just you for now"
+                  : familySize === 1
+                    ? "Just you"
+                    : `You + ${familySize - 1} other${familySize - 1 === 1 ? "" : "s"}`,
+            },
+          ]}
+        />
+        {mobileWeekPager}
+      </div>
+
+      <PortalPageHeader
         kicker="Members"
         title={greeting}
         description={subtitle}
@@ -510,34 +597,19 @@ async function MemberHome({
                 </Link>
               </Button>
             </div>
-            <Button asChild tone="triaz" size="lg">
-              <Link href="/portal/book">
-                <CalendarIcon /> Book a court
-              </Link>
-            </Button>
+            {f.courtBookings && (
+              <Button asChild tone="triaz" size="lg">
+                <Link href="/portal/book">
+                  <CalendarIcon /> Book a court
+                </Link>
+              </Button>
+            )}
           </div>
         }
+        className="hidden lg:flex"
       />
 
-      {hasUpcomingActivity ? (
-        <>
-          {calendarBlock}
-          <RecommendedPrograms
-            hero={recs.hero}
-            more={recs.more}
-            isParent={isParent}
-          />
-        </>
-      ) : (
-        <>
-          <RecommendedPrograms
-            hero={recs.hero}
-            more={recs.more}
-            isParent={isParent}
-          />
-          {calendarBlock}
-        </>
-      )}
+      {calendarBlock}
 
       <div className="grid gap-8 lg:grid-cols-2">
         <Section title="Household" description="Everyone on your account.">
@@ -671,4 +743,113 @@ function greetingWord(): string {
   if (h < 12) return "Good morning";
   if (h < 18) return "Good afternoon";
   return "Good evening";
+}
+
+function capitalizeWord(s: string): string {
+  return s ? s[0]!.toUpperCase() + s.slice(1) : s;
+}
+
+function buildMemberQuickActions({
+  courtBookings,
+  classes,
+  isParent,
+  isStudent,
+  enrollmentLabel,
+  classPlural,
+}: {
+  courtBookings: boolean;
+  classes: boolean;
+  isParent: boolean;
+  isStudent: boolean;
+  enrollmentLabel: string;
+  classPlural: string;
+}) {
+  const items: {
+    href: string;
+    label: string;
+    icon: React.ReactNode;
+    emphasis?: boolean;
+  }[] = [];
+
+  if (courtBookings) {
+    items.push({
+      href: "/portal/book",
+      label: "Book a court",
+      icon: <CalendarIcon size={20} />,
+      emphasis: true,
+    });
+  }
+  if (isStudent || isParent) {
+    items.push({
+      href: "/portal/classes",
+      label: `My ${classPlural.toLowerCase()}`,
+      icon: <ClassIcon size={20} />,
+    });
+  }
+  if (classes) {
+    items.push({
+      href: "/portal/programs",
+      label: capitalizeWord(enrollmentLabel),
+      icon: <CompassIcon size={20} />,
+    });
+  }
+  items.push({
+    href: "/portal/membership",
+    label: "Membership",
+    icon: <MembershipIcon size={20} />,
+  });
+  if (courtBookings) {
+    items.push({
+      href: "/portal/bookings",
+      label: "My bookings",
+      icon: <TicketIcon size={20} />,
+    });
+  }
+  if (isParent) {
+    items.push({
+      href: "/portal/family",
+      label: "My family",
+      icon: <FamilyIcon size={20} />,
+    });
+  }
+
+  return items;
+}
+
+function pickNextUpItem(
+  bookings: Awaited<ReturnType<typeof getUpcomingBookingsForPerson>>,
+  sessions: Awaited<ReturnType<typeof getUpcomingSessionsForStudents>>,
+): NextUpItem | null {
+  type Candidate = NextUpItem & { sortAt: number };
+  const candidates: Candidate[] = [];
+
+  for (const b of bookings) {
+    candidates.push({
+      kind: "booking",
+      startsAt: b.startsAt,
+      endsAt: b.endsAt,
+      title: `${b.clubName} · ${b.courtName}`,
+      subtitle: "Court booking",
+      href: "/portal/bookings",
+      sortAt: b.startsAt.getTime(),
+    });
+  }
+  for (const s of sessions) {
+    candidates.push({
+      kind: "session",
+      startsAt: s.startsAt,
+      endsAt: s.endsAt,
+      title: s.studentFirstName
+        ? `${s.studentFirstName} · ${s.seriesName}`
+        : s.seriesName,
+      subtitle: s.programName,
+      href: "/portal/classes",
+      sortAt: s.startsAt.getTime(),
+    });
+  }
+
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => a.sortAt - b.sortAt);
+  const { sortAt: _, ...item } = candidates[0]!;
+  return item;
 }

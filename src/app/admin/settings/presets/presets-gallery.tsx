@@ -208,6 +208,7 @@ export function PresetsGallery({
                 <Button
                   type="button"
                   onClick={onConfirm}
+                  loading={submitting}
                   disabled={submitting || !ackIrreversible}
                 >
                   {submitting ? "Locking profile…" : `Commit to ${pending.label}`}

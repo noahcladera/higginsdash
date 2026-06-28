@@ -180,7 +180,7 @@ export function ConfirmCheckoutButton({
       type="button"
       tone={clubs.length === 2 ? "joint" : clubs[0] === "triaz" ? "triaz" : "randwijck"}
       size="lg"
-      disabled={isPending}
+      loading={isPending}
       onClick={onConfirm}
     >
       {isPending ? "Sending you to checkout…" : "Confirm and pay"}{" "}

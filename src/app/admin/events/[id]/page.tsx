@@ -203,9 +203,6 @@ export default async function AdminEventDetailPage({
         description="Manage event details, schedule, staff, pricing, and participants from one place."
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link href="/admin/events">Back to events</Link>
-            </Button>
             {series.status === "published" ? (
               <form action={unpublishSeries}>
                 <input type="hidden" name="classSeriesId" value={series.id} />

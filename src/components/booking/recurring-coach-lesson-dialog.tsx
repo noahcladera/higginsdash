@@ -34,7 +34,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/sheet-dialog";
 import { Button } from "@/components/ui/button";
 import { DateRangeField } from "@/components/ui/date-field";
 import { Input } from "@/components/ui/input";
@@ -342,7 +342,7 @@ export function RecurringCoachLessonDialog({
               >
                 Cancel
               </Button>
-              <Button onClick={handleRequestClick} disabled={isPending}>
+              <Button onClick={handleRequestClick} loading={isPending}>
                 {isPending ? "Checking..." : "Request series"}
               </Button>
             </>
@@ -358,6 +358,7 @@ export function RecurringCoachLessonDialog({
               </Button>
               <Button
                 onClick={handleSkipAndSubmit}
+                loading={isPending}
                 disabled={isPending || remainingAfterSkip === 0}
               >
                 {isPending

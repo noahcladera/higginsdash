@@ -19,7 +19,7 @@ export function ResendCoachInviteButton({ inviteId }: { inviteId: string }) {
       <form action={formAction} className="flex flex-wrap items-center gap-2">
         <input type="hidden" name="inviteId" value={inviteId} />
         <input type="hidden" name="loginMethod" value="magiclink" />
-        <Button type="submit" size="sm" variant="outline" disabled={isPending}>
+        <Button type="submit" size="sm" variant="outline" loading={isPending}>
           {isPending ? "Generating…" : "Copy login link"}
         </Button>
       </form>

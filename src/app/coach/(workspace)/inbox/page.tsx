@@ -1,6 +1,5 @@
 import { requireCoach } from "@/lib/auth/require-coach";
-import { PageHeader } from "@/components/ui/page-header";
-import { Section } from "@/components/ui/section";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { InboxFeed } from "@/components/inbox/inbox-feed";
 import { getInbox } from "@/lib/inbox/queries";
 
@@ -17,15 +16,13 @@ export default async function CoachInboxPage() {
   const items = await getInbox(person.id);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className="space-y-10">
+      <ShellPageHeader
         kicker="Inbox"
         title="What's new"
         description="Class changes, sub decisions and roster updates we've sent your way."
       />
-      <Section title="Recent notifications">
-        <InboxFeed items={items} basePath="/coach" />
-      </Section>
+      <InboxFeed items={items} basePath="/coach" />
     </div>
   );
 }

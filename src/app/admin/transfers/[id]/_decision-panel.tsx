@@ -315,6 +315,7 @@ export function DecisionPanel({
           <div className="flex justify-end">
             <Button
               tone="triaz"
+              loading={approve.pending}
               disabled={
                 approve.pending ||
                 !selected ||
@@ -343,6 +344,7 @@ export function DecisionPanel({
           <div className="flex justify-end">
             <Button
               variant="destructive"
+              loading={reject.pending}
               disabled={reject.pending || rejectNote.trim().length < 5}
               onClick={fireReject}
             >

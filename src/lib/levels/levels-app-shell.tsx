@@ -2,6 +2,7 @@ import { signOut } from "@/app/admin/actions";
 import {
   AppShell,
   type ShellNavGroup,
+  type ShellMobileTab,
 } from "@/components/portal/app-shell";
 import {
   HomeIcon,
@@ -14,10 +15,12 @@ import {
   ClassIcon,
   TennisIcon,
   InboxIcon,
+  EllipsisVerticalIcon,
 } from "@/components/icons";
 import { requireAuthenticated } from "@/lib/auth/require-authenticated";
 import { getRoleSwitchLinks } from "@/lib/auth/role-switch-links";
 import { getCoachShellNavGroups } from "@/lib/coach/nav-groups";
+import { getCoachMobileTabs } from "@/lib/coach/mobile-tabs";
 import { getLevelsShellKind } from "@/lib/levels/shell-kind";
 import { getPortalNavSections } from "@/lib/portal/nav-sections";
 import { getMembershipsForHousehold } from "@/lib/portal/queries";
@@ -61,6 +64,11 @@ export async function LevelsAppShell({ children }: { children: React.ReactNode }
       terms,
       features: org.features,
     });
+    const mobileTabDefs = await getCoachMobileTabs({ unreadCount });
+    const mobileTabs: ShellMobileTab[] = mobileTabDefs.map((tab) => ({
+      ...tab,
+      icon: coachMobileTabIconFor(tab.id),
+    }));
     const switchLinks = getRoleSwitchLinks(subject, "coach", terms);
     const wordmark = splitBrandForWordmark(brand);
 
@@ -72,10 +80,13 @@ export async function LevelsAppShell({ children }: { children: React.ReactNode }
           brandSubline={wordmark.subline}
           brandLogoUrl={brand.logoUrl}
           groups={groups}
+          mobileTabs={mobileTabs}
+          homeHref="/coach"
           identity={{
             name: displayName,
             subline: `${terms.coach.role} · ${brand.displayName}`,
             avatarTone: "triaz",
+            navAccentTone: "triaz",
           }}
           accountMenu={{
             profileHref: "/coach/profile",
@@ -207,4 +218,21 @@ function inferTone(
   if (slugs.has("triaz")) return "triaz";
   if (slugs.has("randwijck")) return "randwijck";
   return "neutral";
+}
+
+function coachMobileTabIconFor(id: string): React.ReactNode {
+  switch (id) {
+    case "today":
+      return <HomeIcon />;
+    case "calendar":
+      return <CalendarIcon />;
+    case "book":
+      return <CalendarIcon />;
+    case "inbox":
+      return <InboxIcon />;
+    case "more":
+      return <EllipsisVerticalIcon />;
+    default:
+      return null;
+  }
 }

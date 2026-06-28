@@ -1,6 +1,6 @@
 import { requireCoach } from "@/lib/auth/require-coach";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { SecurityForm } from "@/components/account/security-form";
 import { updateMyPassword } from "@/lib/account/security-actions";
 
@@ -17,7 +17,7 @@ export default async function CoachProfileSecurityPage() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <ShellPageHeader
         kicker="Account"
         title="Security"
         description="Sign-in email and password."

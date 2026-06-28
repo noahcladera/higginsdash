@@ -159,6 +159,7 @@ export function CoachSubRequestCard({
           />
           <Button
             tone="triaz"
+            loading={assigning}
             disabled={assigning || !substituteId}
             onClick={handleAssign}
             className="w-full"
@@ -177,7 +178,7 @@ export function CoachSubRequestCard({
           <Button
             variant="outline"
             tone="danger"
-            disabled={denying}
+            loading={denying}
             onClick={handleDeny}
             className="w-full"
           >

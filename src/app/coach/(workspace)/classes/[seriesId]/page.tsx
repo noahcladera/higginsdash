@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireCoach } from "@/lib/auth/require-coach";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
+import { BackLink } from "@/components/ui/back-link";
 import { Section } from "@/components/ui/section";
+import { GroupedSection, GroupedLinkRow } from "@/components/ui/grouped-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -102,7 +104,8 @@ export default async function CoachClassSeriesPage({
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <BackLink href="/coach/classes" label="All classes" />
+      <ShellPageHeader
         kicker="Roster"
         title={series.name}
         description={
@@ -114,14 +117,6 @@ export default async function CoachClassSeriesPage({
               {series.status}
             </Badge>
           </>
-        }
-        actions={
-          <Link
-            href="/coach/classes"
-            className="text-sm font-medium text-[var(--triaz-ink)] underline-offset-4 hover:underline"
-          >
-            All classes
-          </Link>
         }
       />
 
@@ -186,7 +181,55 @@ export default async function CoachClassSeriesPage({
             description="No active or waitlist students in this series yet."
           />
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+          <>
+            <div className="space-y-3 lg:hidden">
+              <GroupedSection header="Students">
+                {series.enrollments.map((e) => {
+                  const p = e.student.person;
+                  const name =
+                    [p.firstName, p.lastName].filter(Boolean).join(" ").trim() ||
+                    "Unnamed";
+                  const role = roleByStudent[e.studentPersonId] ?? null;
+                  const medalEligible = studentMedalEligible(p, role);
+                  const medalLevel = e.student.medalLevel as MedalLevelValue | null;
+                  const sl = e.student.skillLevel as SkillLevelValue | null;
+                  const levelLabel = formatStudentLevel({
+                    medalEligible,
+                    medalLevel,
+                    skillLevel: sl,
+                  });
+                  const needsReview =
+                    promptActive && !reviewedThisSeason.has(e.studentPersonId);
+                  return (
+                    <GroupedLinkRow
+                      key={e.id}
+                      href={`/coach/classes/${seriesId}/students/${e.studentPersonId}`}
+                      className="flex-col items-stretch gap-2 py-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">{name}</span>
+                        {needsReview && (
+                          <Badge tone="warning" variant="soft" className="text-[10px]">
+                            Confirm
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-[var(--muted-foreground)]">
+                        {levelLabel} · {e.status === "waitlist" ? "Waitlist" : "Active"}
+                      </div>
+                      <CoachStudentLevelSelect
+                        classSeriesId={seriesId}
+                        studentPersonId={e.studentPersonId}
+                        medalEligible={medalEligible}
+                        medalLevel={medalLevel}
+                        skillLevel={sl}
+                      />
+                    </GroupedLinkRow>
+                  );
+                })}
+              </GroupedSection>
+            </div>
+            <div className="hidden overflow-x-auto rounded-lg border border-[var(--border)] lg:block">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-[var(--border)] bg-[var(--muted)]/30">
                 <tr>
@@ -307,7 +350,8 @@ export default async function CoachClassSeriesPage({
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </Section>
     </div>

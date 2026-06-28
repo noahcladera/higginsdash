@@ -89,7 +89,7 @@ export function SchoolFormFields({
         {error && (
           <p className="mr-auto text-sm text-[var(--destructive)]">{error}</p>
         )}
-        <Button tone="triaz" type="submit" disabled={pending}>
+        <Button tone="triaz" type="submit" loading={pending}>
           {pending ? "Saving…" : submitLabel}
         </Button>
       </div>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -61,7 +61,7 @@ export default async function PortalBookingsPage() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <PortalPageHeader
         kicker="Bookings"
         title={`Your ${t.court.singular.toLowerCase()} time`}
         description={`Everything you and your ${t.household.singular.toLowerCase()} have on the books.`}
@@ -116,9 +116,11 @@ export default async function PortalBookingsPage() {
 
       <Section title="Past" description="Your last 10 bookings.">
         {past.length === 0 ? (
-          <p className="text-sm text-[var(--muted-foreground)]">
-            No past bookings yet.
-          </p>
+          <EmptyState
+            icon={<CalendarIcon size={20} />}
+            title="No past bookings yet"
+            description="Once you've played, your recent court bookings show up here."
+          />
         ) : (
           <BookingList>
             {past.map((b) => (

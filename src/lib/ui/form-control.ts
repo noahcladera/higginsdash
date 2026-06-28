@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 /** Shared shell for text inputs, native selects, and date fields. */
 export const formControlClasses = cn(
-  "control-well flex w-full rounded-[var(--radius-md)] px-3.5 text-sm",
+  "control-well flex w-full rounded-[var(--radius-md)] px-3.5 text-base lg:text-sm",
   "text-[var(--foreground)]",
   "placeholder:text-[var(--muted-foreground)]",
   "transition-all duration-[var(--duration-fast)] ease-[var(--ease-out-soft)]",

@@ -121,7 +121,7 @@ export function CourtFormFields({
       )}
 
       <div className="flex gap-2">
-        <Button type="submit" tone="triaz" disabled={pending}>
+        <Button type="submit" tone="triaz" loading={pending}>
           {pending ? "Saving…" : "Save"}
         </Button>
         <Button asChild variant="outline" type="button">

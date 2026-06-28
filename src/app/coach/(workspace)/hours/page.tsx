@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireCoach } from "@/lib/auth/require-coach";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { Section, SectionDivider } from "@/components/ui/section";
+import { GroupedSection, GroupedLinkRow } from "@/components/ui/grouped-list";
 import { Stat, MetricStrip } from "@/components/ui/stat";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
@@ -97,13 +98,28 @@ export default async function CoachHoursPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <ShellPageHeader
         kicker="Hours"
         title="Your hours"
         description={description}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="lg:hidden">
+        <GroupedSection header="Date range">
+          {presets.map((p) => (
+            <GroupedLinkRow key={p.label} href={`/coach/hours?from=${p.from}&to=${p.to}`}>
+              <span className={cn(activePreset?.label === p.label && "font-semibold")}>
+                {p.label}
+              </span>
+            </GroupedLinkRow>
+          ))}
+        </GroupedSection>
+        <div className="mt-4">
+          <CoachHoursDateRangeFilterForm from={from} to={to} />
+        </div>
+      </div>
+
+      <div className="hidden flex-wrap items-center gap-2 lg:flex">
         {presets.map((p) => (
           <Link
             key={p.label}

@@ -79,7 +79,7 @@ export function ResetPasswordCard({
           <p className="text-sm text-[var(--destructive)]">{error}</p>
         )}
 
-        <Button type="submit" className="w-full" disabled={isPending}>
+        <Button type="submit" className="w-full" loading={isPending}>
           {isPending ? "Updating…" : "Update password"}
         </Button>
 

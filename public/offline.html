@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Offline · Higgins</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fbf9f3;
+        --fg: #1f2933;
+        --muted: #6b7280;
+        --accent: #2f6b4f;
+        --card: #ffffff;
+        --border: rgba(0, 0, 0, 0.08);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1a1d24;
+          --fg: #e7e9ee;
+          --muted: #9aa3b2;
+          --card: #232730;
+          --border: rgba(255, 255, 255, 0.1);
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: env(safe-area-inset-top, 0) 1.5rem env(safe-area-inset-bottom, 0);
+        text-align: center;
+      }
+      .card {
+        max-width: 22rem;
+        width: 100%;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 2rem 1.5rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      }
+      img { width: 64px; height: 64px; border-radius: 16px; margin-bottom: 1rem; }
+      h1 { font-size: 1.25rem; margin: 0 0 0.5rem; letter-spacing: -0.01em; }
+      p { color: var(--muted); font-size: 0.95rem; line-height: 1.5; margin: 0 0 1.5rem; }
+      button {
+        appearance: none;
+        border: 0;
+        background: var(--accent);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 0.85rem 1.5rem;
+        border-radius: 999px;
+        min-height: 48px;
+        width: 100%;
+        cursor: pointer;
+      }
+      button:active { opacity: 0.85; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <img src="/icons/icon-192.png" alt="Higgins" />
+      <h1>You're offline</h1>
+      <p>
+        We can't reach Higgins right now. Check your connection and try
+        again — your schedule will be right here when you're back.
+      </p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

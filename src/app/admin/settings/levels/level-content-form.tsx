@@ -106,7 +106,7 @@ export function LevelContentForm({
       {error && (
         <p className="text-sm text-[var(--destructive)]">{error}</p>
       )}
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" loading={pending}>
         {pending ? "Saving…" : "Save"}
       </Button>
     </form>

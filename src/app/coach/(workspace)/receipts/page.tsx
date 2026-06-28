@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { requireCoach } from "@/lib/auth/require-coach";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { ShellPageHeader } from "@/components/portal/shell-page-header";
 import { Section } from "@/components/ui/section";
+import { GroupedSection, GroupedLinkRow } from "@/components/ui/grouped-list";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ReceiptIcon } from "lucide-react";
 import { formatEur } from "@/lib/invoicing/private-lesson-rates";
 import { getCurrentBrand } from "@/lib/tenant";
 
@@ -33,8 +35,8 @@ export default async function CoachReceiptsPage() {
   });
 
   return (
-    <div className="space-y-8">
-      <PageHeader
+    <div className="space-y-10">
+      <ShellPageHeader
         kicker="Receipts"
         title="Your receipts & invoices"
         description={`Every invoice ${brand.shortName} has issued to you (court rental, materials, etc.). Open one to view a clean print-ready receipt for your records.`}
@@ -47,11 +49,45 @@ export default async function CoachReceiptsPage() {
       >
         {payments.length === 0 ? (
           <EmptyState
+            icon={<ReceiptIcon />}
             title="No receipts yet"
             description="When admin issues an invoice in your name, it will appear here."
           />
         ) : (
-          <div className="-mx-2 overflow-x-auto">
+          <>
+            <div className="lg:hidden">
+              <GroupedSection header={`Invoices (${payments.length})`}>
+                {payments.map((p) => {
+                  const status = paymentStatusBadge(p.status, !!p.paidAt);
+                  return (
+                    <GroupedLinkRow
+                      key={p.id}
+                      href={`/coach/receipts/${p.id}`}
+                      className="flex-col items-stretch gap-1 py-3"
+                    >
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <span className="font-mono text-xs text-[var(--muted-foreground)]">
+                          {p.invoiceNumber ?? "—"}
+                        </span>
+                        <Badge tone={status.tone} variant="soft">
+                          {status.label}
+                        </Badge>
+                      </div>
+                      <div className="font-medium">{p.description}</div>
+                      <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+                        <span>
+                          {p.issuedAt ? formatDate(p.issuedAt) : "—"}
+                        </span>
+                        <span className="tabular-nums font-medium text-[var(--foreground)]">
+                          {formatEur(Number(p.amount))}
+                        </span>
+                      </div>
+                    </GroupedLinkRow>
+                  );
+                })}
+              </GroupedSection>
+            </div>
+            <div className="-mx-2 hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[640px] border-separate border-spacing-y-1 text-sm">
               <thead className="text-left text-[11px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
                 <tr>
@@ -105,7 +141,8 @@ export default async function CoachReceiptsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </Section>
     </div>

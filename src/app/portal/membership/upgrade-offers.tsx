@@ -150,7 +150,7 @@ function OfferCard({ offer }: { offer: UpgradeOffer }) {
         <Button
           type="button"
           onClick={onApply}
-          disabled={isPending}
+          loading={isPending}
           tone={themeKey === "joint" ? "joint" : themeKey}
         >
           {isPending

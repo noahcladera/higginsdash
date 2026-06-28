@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
+import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { StatusSurface } from "@/components/ui/status-surface";
 import { transferStatusTone } from "@/lib/ui/status-tone";
@@ -80,9 +81,10 @@ export default async function AdminTransfersPage() {
         }
       >
         {pending.length === 0 ? (
-          <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--muted-foreground)]">
-            No pending requests.
-          </div>
+          <EmptyState
+            title="No pending requests"
+            description="Transfer requests from members will show up here."
+          />
         ) : (
           <ul className="space-y-3">
             {pending.map((r) => {

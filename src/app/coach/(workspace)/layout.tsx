@@ -1,8 +1,12 @@
 import { requireCoach } from "@/lib/auth/require-coach";
 import { getRoleSwitchLinks } from "@/lib/auth/role-switch-links";
 import { signOut } from "../../admin/actions";
-import { AppShell } from "@/components/portal/app-shell";
+import {
+  AppShell,
+  type ShellMobileTab,
+} from "@/components/portal/app-shell";
 import { getCoachShellNavGroups } from "@/lib/coach/nav-groups";
+import { getCoachMobileTabs } from "@/lib/coach/mobile-tabs";
 import { getUnreadCount } from "@/lib/inbox/queries";
 import {
   getCurrentOrg,
@@ -10,6 +14,13 @@ import {
   requireFeature,
 } from "@/lib/tenant";
 import { TermsProvider } from "@/components/tenant/terms-provider";
+import {
+  HomeIcon,
+  CalendarIcon,
+  TicketIcon,
+  InboxIcon,
+  EllipsisVerticalIcon,
+} from "@/components/icons";
 
 /*
  * Authenticated coach shell — AppChrome + nav. Excludes `/coach/accept-invite`.
@@ -34,6 +45,12 @@ export default async function CoachWorkspaceLayout({
 
   const unreadCount = await getUnreadCount(person.id);
   const groups = getCoachShellNavGroups({ unreadCount, terms, features: org.features });
+  const mobileTabDefs = await getCoachMobileTabs({ unreadCount });
+
+  const mobileTabs: ShellMobileTab[] = mobileTabDefs.map((tab) => ({
+    ...tab,
+    icon: coachMobileTabIconFor(tab.id),
+  }));
 
   const switchLinks = getRoleSwitchLinks(
     {
@@ -57,10 +74,13 @@ export default async function CoachWorkspaceLayout({
         brandSubline={wordmark.subline}
         brandLogoUrl={brand.logoUrl}
         groups={groups}
+        mobileTabs={mobileTabs}
+        homeHref="/coach"
         identity={{
           name: displayName,
           subline: `${terms.coach.role} · ${brand.displayName}`,
           avatarTone: "triaz",
+          navAccentTone: "triaz",
         }}
         accountMenu={{
           profileHref: "/coach/profile",
@@ -74,4 +94,21 @@ export default async function CoachWorkspaceLayout({
       </AppShell>
     </TermsProvider>
   );
+}
+
+function coachMobileTabIconFor(id: string): React.ReactNode {
+  switch (id) {
+    case "today":
+      return <HomeIcon />;
+    case "calendar":
+      return <CalendarIcon />;
+    case "book":
+      return <CalendarIcon />;
+    case "inbox":
+      return <InboxIcon />;
+    case "more":
+      return <EllipsisVerticalIcon />;
+    default:
+      return null;
+  }
 }

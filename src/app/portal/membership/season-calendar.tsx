@@ -28,7 +28,7 @@ export function SeasonCalendar() {
 
   return (
     <div className="space-y-6">
-      <div className="elev-card p-5 sm:p-6">
+      <div className="elev-card hidden p-5 sm:p-6 md:block">
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
             {year}
@@ -74,7 +74,7 @@ export function SeasonCalendar() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <SummaryCard
           tone="triaz"
           title={`Triaz · ${triazHalf.label}`}

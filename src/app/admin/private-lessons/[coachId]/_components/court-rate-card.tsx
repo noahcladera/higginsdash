@@ -110,7 +110,7 @@ export function CourtRateCard({
             disabled={isPending}
           />
         </label>
-        <Button type="button" size="sm" onClick={handleSave} disabled={isPending}>
+        <Button type="button" size="sm" onClick={handleSave} loading={isPending}>
           {isPending ? "Saving…" : "Save"}
         </Button>
         <button

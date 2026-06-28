@@ -65,13 +65,13 @@ However, several issues will drive office email volume and parent frustration at
 | **D** | Enroll adult in group lesson | **Partial** | Programs catalog loads (7.4s cold); series detail not probed; no test enrollment executed |
 | **E** | Enroll child (school pickup) | **Partial** | Parent programs load; family/classes pages slow on cold start |
 | **F** | Add child to household | **Partial** | Profile loads; `/portal/family` 25s timeout cold, 2.2s warm; FAQ links to profile not family |
-| **G** | Book court + partner search | **Partial** | `/portal/book` 25s timeout cold, 2.3s warm; `MembershipGate` component verified in code |
+| **G** | Book court + partner search | **Pass (E2E)** | Link-first club/court/slot; native booking sheet; `mobile-book.spec.ts` |
 | **H** | Skip session / makeup | **Pass (code)** | `SkipSessionButton` notifies coach; makeup request flow exists in attendance actions |
 | **I** | Transfer class | **Pass (code)** | `/portal/classes/[id]/transfer` form present; not live-tested |
 | **J** | Cancel membership | **Pass (code)** | Cancellation request → admin queue; refunds still office-handled per FAQ |
-| **K** | Calendar sync | **Pass** | Profile page includes calendar sync card |
-| **L** | Inbox notifications | **Pass** | Inbox loads (~2.2s) |
-| **M** | Expired membership state | **Pass (code)** | Banner shows office handoff; no self-serve renew button in banner |
+| **K** | Calendar sync | **Pass (E2E)** | Add to calendar Link-first sheet; `mobile-calendar.spec.ts` |
+| **L** | Inbox notifications | **Pass** | Inbox loads (~2.2s); `mobile-account.spec.ts` |
+| **M** | Expired membership state | **Pass (code)** | Banner includes self-serve renew CTA → `/portal/membership#buy` |
 
 Raw probe data: [`_portal-test-results.json`](./_portal-test-results.json)
 

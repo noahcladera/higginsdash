@@ -129,9 +129,7 @@ export function ProfileForm({
       className="space-y-8 pb-24"
     >
       {avatarUploadSlot && (
-        <div
-          className="elev-card p-4"
-        >
+        <div className="grouped-section p-4 md:elev-card">
           {avatarUploadSlot}
         </div>
       )}
@@ -139,7 +137,7 @@ export function ProfileForm({
         title="Identity"
         description="What we'll call you and how to verify your age."
       >
-        <FormPanel>
+        <FormPanel variant="grouped">
           <FormField label="First name" name="firstName" required>
             <Input
               id="firstName"
@@ -198,7 +196,7 @@ export function ProfileForm({
         title="Address"
         description="Used for invoices and emergency contact."
       >
-        <FormPanel>
+        <FormPanel variant="grouped">
           <FormField label="Country" name="country" required>
             <CountrySelect
               id="country"
@@ -228,7 +226,7 @@ export function ProfileForm({
         title="Emergency contact"
         description="Who should we call if something happens? All three fields are required so we can reach someone fast."
       >
-        <FormPanel>
+        <FormPanel variant="grouped">
           <FormField label="Name" name="emergencyContactName" required>
             <Input
               id="emergencyContactName"
@@ -266,7 +264,7 @@ export function ProfileForm({
         </FormPanel>
       </FormSection>
 
-      <div className="fixed bottom-4 left-1/2 z-20 -translate-x-1/2">
+      <div className="fixed bottom-above-tab-bar left-1/2 z-20 -translate-x-1/2 lg:bottom-4">
         <div
           className={cn(
             "flex items-center gap-3 rounded-full border border-[var(--border)] bg-[var(--card)] px-2 py-2 shadow-[var(--shadow-lg)] transition-all",
@@ -296,7 +294,9 @@ export function ProfileForm({
           ) : null}
           <Button
             type="submit"
+            variant="glassProminent"
             tone={submitTone}
+            loading={pending}
             disabled={pending || !dirty}
           >
             {pending ? "Saving…" : "Save changes"}

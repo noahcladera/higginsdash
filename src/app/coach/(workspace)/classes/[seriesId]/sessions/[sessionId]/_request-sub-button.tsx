@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/sheet-dialog";
 import { RequestStatusBadge } from "@/components/workflow/request-status-badge";
 import { useActionFeedback } from "@/lib/feedback";
 import { requestCoachSub, cancelCoachSub } from "@/lib/coach-subs/actions";
@@ -84,7 +84,7 @@ export function RequestSubButton({
           <Button
             variant="outline"
             size="sm"
-            disabled={cancelling}
+            loading={cancelling}
             onClick={() =>
               runCancel(() => cancelCoachSub({ requestId: pending.id }))
             }
@@ -132,7 +132,7 @@ export function RequestSubButton({
           </Button>
           <Button
             tone="triaz"
-            disabled={requesting}
+            loading={requesting}
             onClick={() => {
               setLocalError(null);
               if (reason.trim().length < 5) {

@@ -8,14 +8,19 @@ import { cn } from "@/lib/utils";
 export function FormPanel({
   className,
   children,
+  variant = "default",
 }: {
   className?: string;
   children: React.ReactNode;
+  /** iOS grouped inset on mobile; classic panel on desktop. */
+  variant?: "default" | "grouped";
 }) {
   return (
     <div
       className={cn(
-        "elev-panel grid gap-4 p-5 sm:grid-cols-2 sm:p-6",
+        variant === "grouped"
+          ? "grouped-section divide-y divide-[var(--content-separator)] p-0 md:elev-panel md:grid md:gap-4 md:p-5 md:sm:grid-cols-2 md:sm:p-6"
+          : "elev-panel grid gap-4 p-5 sm:grid-cols-2 sm:p-6",
         className,
       )}
     >
@@ -45,7 +50,7 @@ export function FormField({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("space-y-1.5", wide && "sm:col-span-2", className)}>
+    <div className={cn("space-y-1.5 px-4 py-3 md:px-0 md:py-0", wide && "sm:col-span-2", className)}>
       <Label
         htmlFor={name}
         className="text-sm font-medium text-[var(--foreground)]/80"
@@ -77,7 +82,7 @@ export function FormSection({
 }) {
   return (
     <section className="grid gap-6 lg:grid-cols-[1fr_2fr]">
-      <header className="space-y-1.5">
+      <header className="space-y-1.5 px-1 md:px-0">
         <h2 className="font-display text-xl font-medium tracking-tight">
           {title}
         </h2>

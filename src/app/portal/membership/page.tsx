@@ -20,7 +20,7 @@ import { isReturningHousehold } from "@/lib/memberships/returning";
 import { clubTheme, ctaToneForContext, themeForClubs } from "@/lib/club-theme";
 import { cn } from "@/lib/utils";
 import { formatLongDate, randwijckStatusOn } from "@/lib/membership-seasons";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,13 @@ import { CreditStrip } from "@/components/credits/credit-strip";
  *     calendar → coverage explainer. Buyers see structure first, then
  *     the matrix, then the small-print.
  */
-export default async function PortalMembershipPage() {
+export default async function PortalMembershipPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ buyMenu?: string }>;
+}) {
+  const sp = await searchParams;
+  const buyMenuOpen = sp.buyMenu === "1";
   const { householdId, person } = await requireMember();
 
   const [memberships, members, ownership, clubs, isReturning, marketingImages, creditBalanceCents] =
@@ -118,7 +124,7 @@ export default async function PortalMembershipPage() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <PortalPageHeader
         kicker="Membership"
         title="Your memberships"
         description="What you cover today, how memberships work, and how to add more."
@@ -169,6 +175,7 @@ export default async function PortalMembershipPage() {
       >
         <BuyMenu
           collapsedByDefault={true}
+          buyMenuOpen={buyMenuOpen}
           randwijckOpen={randwijck.isOpen}
           randwijckReopensLabel={formatLongDate(randwijck.upcoming.startsOn)}
           ownership={ownership}
@@ -210,7 +217,7 @@ function NonMemberMembershipView({
 
   return (
     <div className="space-y-10">
-      <PageHeader
+      <PortalPageHeader
         kicker="Memberships"
         title="Pick yours."
         description={`Two clubs, three tiers. From ${fromAdult} a year — and one membership covers the whole household if you go family.`}

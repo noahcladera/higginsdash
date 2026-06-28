@@ -161,7 +161,7 @@ export function StaffCommercialsEditor({
             <Button
               size="sm"
               tone="triaz"
-              disabled={pending}
+              loading={pending}
               onClick={() => {
                 setError(null);
                 setOkFlash(false);
@@ -273,7 +273,7 @@ export function ZzpCommercialsEditor({
             <Button
               size="sm"
               tone="triaz"
-              disabled={pending}
+              loading={pending}
               onClick={() => {
                 setError(null);
                 setOkFlash(false);

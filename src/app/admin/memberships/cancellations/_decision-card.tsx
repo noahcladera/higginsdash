@@ -116,7 +116,7 @@ export function MembershipCancellationCard({
           )}
           <Button
             tone="danger"
-            disabled={approving}
+            loading={approving}
             className="w-full"
             onClick={() => {
               setMode("approve");
@@ -143,7 +143,7 @@ export function MembershipCancellationCard({
           />
           <Button
             variant="outline"
-            disabled={denying}
+            loading={denying}
             className="w-full"
             onClick={() => {
               setMode("deny");

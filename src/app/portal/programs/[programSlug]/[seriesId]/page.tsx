@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireMember } from "@/lib/auth/require-member";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { PortalPageHeader } from "@/components/portal/portal-page-header";
 import { Section } from "@/components/ui/section";
+import { BackLink } from "@/components/ui/back-link";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -200,15 +200,8 @@ export default async function SeriesDetailPage({
   });
 
   return (
-    <div className="space-y-8">
-      <div className="text-xs">
-        <Link
-          href={`/portal/programs/${programSlug}`}
-          className="text-[var(--muted-foreground)] underline-offset-4 hover:underline"
-        >
-          ← All {program.name}
-        </Link>
-      </div>
+    <div className="space-y-10">
+      <BackLink href={`/portal/programs/${programSlug}`} label={`All ${program.name}`} />
 
       {series.coverImageUrl && (
         <CoverImage
@@ -220,7 +213,7 @@ export default async function SeriesDetailPage({
       )}
 
       <div className="space-y-3">
-        <PageHeader
+        <PortalPageHeader
           kicker={program.name}
           title={composedTitle}
           description={description}
@@ -354,7 +347,7 @@ export default async function SeriesDetailPage({
               title="Sub-groups"
               description="This class runs as one block on court but has more than one age band — pick the matching sub-group when you enroll."
             >
-              <ul className="elev-card divide-y divide-[var(--border)]">
+              <ul className="grouped-section list-none divide-y divide-[var(--content-separator)] p-0 m-0">
                 {series.groups.map((g) => {
                   const slotsLeft = Math.max(g.maxStudents - g.enrolledCount, 0);
                   const ageStr =
@@ -529,7 +522,7 @@ export default async function SeriesDetailPage({
                 calendar.
               </p>
             ) : (
-              <ul className="elev-card divide-y divide-[var(--border)]">
+              <ul className="grouped-section list-none divide-y divide-[var(--content-separator)] p-0 m-0">
                 {series.sessions.map((s, i) => {
                   const isPast = s.startsAt.getTime() <= now.getTime();
                   return (

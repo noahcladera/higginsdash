@@ -40,6 +40,20 @@ export interface PortalNavSections {
 // <CreditStrip> on overview / programs and the toggle inside
 // <EnrollPanel>) — a permanent nav item with €0 was just noise.
 
+export interface PortalNavSectionsArgs {
+  personId: string;
+  householdId: string | null;
+  isStudent: boolean;
+  /**
+   * When false the sidebar pivots into "sales" mode — see the doc
+   * comment above. Defaults to true so existing callers keep their
+   * current behaviour until they pass through the real value.
+   */
+  hasActiveMembership?: boolean;
+  /** Household credit balance in cents — surfaces Credits nav when > 0. */
+  creditBalanceCents?: number;
+}
+
 /**
  * Compute the sidebar items for the portal based on who the viewer is.
  *
@@ -60,20 +74,6 @@ export interface PortalNavSections {
  * that require coverage to be useful (My bookings, Ladder) are hidden
  * until they're worth showing.
  */
-interface PortalNavSectionsArgs {
-  personId: string;
-  householdId: string | null;
-  isStudent: boolean;
-  /**
-   * When false the sidebar pivots into "sales" mode — see the doc
-   * comment above. Defaults to true so existing callers keep their
-   * current behaviour until they pass through the real value.
-   */
-  hasActiveMembership?: boolean;
-  /** Household credit balance in cents — surfaces Credits nav when > 0. */
-  creditBalanceCents?: number;
-}
-
 // Public entry point. We keep the object-arg shape callers already use,
 // then forward to a positional-arg, cached implementation. `React.cache`
 // keys on Object.is for each argument, so an object literal would never
